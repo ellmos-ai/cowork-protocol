@@ -14,7 +14,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | FormBuilder web validation/export is retained | attributed engine, `formbuilder-use-case.test.js`; upstream Web Companion 48/48 tests | Web logic proven; visual browser flow open |
 | WebMCP Bridge is bounded and fail-closed | `packages/bridge/test/webmcp-bridge.test.js` | Explicit host-catalog adapter proven; foreign discovery open |
 | Legacy fallback is bounded | `packages/bridge/test/legacy-bridge.test.js`; visual eval | Request contract proven; DOM snapshot/image capture open |
-| Repository is reproducible | clean clone of `aef484d2d552172d89af9d50f07b950da4eebc93` | `npm ci --ignore-scripts`, 46/46 tests, 10/10 evals, 0 vulnerabilities, 0 secret findings, HTTP 200 with feedback copy |
+| Public-preview tree is reproducible | clean clone of local `release/public-preview` at `88d85fe0faec66eb7e4c67eff38bfb1a4794bba9` | `npm ci --ignore-scripts`, 48/48 tests, 10/10 evals, 15-file Pages build, 0 vulnerabilities, 0 secret findings, HTTP 200 for root/showcase/modules |
 
 ## Commit trail
 
@@ -24,6 +24,9 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 - `c86eea407e0e5625b42afe4cbfe4f3be8e0c108d` — Bounded legacy semantic/visual request bridge.
 - `b6fcaae9` — Public evidence separated from internal submission drafts.
 - `aef484d2d552172d89af9d50f07b950da4eebc93` — Causal changes, bounded human feedback and latest-only WebMCP reads.
+- `4fc92b0e` — Allowlisted static artifact and manual-only Pages workflow.
+
+Local release preparation: `release/public-preview` at tested commit `88d85fe0faec66eb7e4c67eff38bfb1a4794bba9` had the same tree as `main`, retained safe history through `c86eea4`, and excluded internal Prepare paths from its ancestry. It was not pushed; the repository had no remote.
 
 ## Explicitly not yet evidenced
 
