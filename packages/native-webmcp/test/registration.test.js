@@ -1,0 +1,174 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import {
+  createActionOffer,
+  createActionReceipt,
+  createPresenceEvent
+} from "../../core/src/index.js";
+import { buildFormBuilderFocus } from "../../formbuilder-connector/src/index.js";
+import { registerNativeCoworkTools } from "../src/index.js";
+
+test("native registration exposes a read-only focus tool backed by the real connector", async () => {
+  const registrations = [];
+  const modelContext = {
+    async registerTool(tool, options) {
+      registrations.push({ tool, options });
+    }
+  };
+
+  const controller = await registerNativeCoworkTools({
+    modelContext,
+    readFocus: () =>
+      buildFormBuilderFocus({
+        sessionId: "browser-session-1",
+        pageVersion: 8,
+        fieldId: "field-name",
+        label: "Name",
+        controlKind: "text",
+        selectedText: "Lu"
+      }),
+    offerAction: ({ capabilityId, targetId, value, summary }) =>
+      createActionOffer({
+        offerId: "browser-offer-1",
+        capabilityId,
+        targetId,
+        pageVersion: 8,
+        proposedArguments: { value },
+        summary,
+        effect: "mutate",
+        undoAvailable: true,
+        expiresAt: "2026-08-30T10:01:00.000Z"
+      }),
+    readPresence: () =>
+      createPresenceEvent({
+        humanPresence: "afk-short",
+        agentPresence: "active",
+        leaseValid: true,
+        reason: "Limited field task",
+        changedBy: "human"
+      }),
+    executeSolo: () =>
+      createActionReceipt({
+        offerId: "lease:lease-1",
+        verified: true,
+        observedChangeIds: ["form-page-9"],
+        verificationSummary: "Email updated inside the solo lease",
+        undoAvailable: true
+      })
+  });
+
+  assert.equal(registrations.length, 4);
+  const { tool, options } = registrations.find(
+    (registration) => registration.tool.name === "cowork_read_focus"
+  );
+  assert.equal(tool.name, "cowork_read_focus");
+  assert.equal(tool.title, "Read focused FormBuilder field");
+  assert.equal(
+    tool.description,
+    "Read the current user-directed focus as a token-bounded Cowork Protocol packet."
+  );
+  assert.deepEqual(tool.inputSchema, {
+    type: "object",
+    properties: {},
+    additionalProperties: false
+  });
+  assert.deepEqual(tool.annotations, {
+    readOnlyHint: true,
+    untrustedContentHint: true
+  });
+  assert.equal(options.signal.aborted, false);
+
+  const result = await tool.execute({});
+  assert.equal(result.structuredContent.targetId, "form-field:field-name");
+  assert.equal(result.structuredContent.metrics.contextCharacters, 6);
+  assert.deepEqual(result.content, [
+    { type: "text", text: JSON.stringify(result.structuredContent) }
+  ]);
+
+  const offerRegistration = registrations.find(
+    (registration) => registration.tool.name === "cowork_offer_action"
+  );
+  assert.deepEqual(offerRegistration.tool.annotations, {
+    readOnlyHint: false,
+    untrustedContentHint: true
+  });
+  assert.deepEqual(offerRegistration.tool.inputSchema.required, [
+    "capabilityId",
+    "targetId",
+    "value",
+    "summary"
+  ]);
+  const offerResult = await offerRegistration.tool.execute({
+    capabilityId: "form.set_value",
+    targetId: "form-field:field-name",
+    value: "Lukas",
+    summary: "Set Name to Lukas"
+  });
+  assert.equal(offerResult.structuredContent.type, "action-offer");
+  assert.equal(offerResult.structuredContent.requiresHumanConfirmation, true);
+  assert.deepEqual(offerResult.structuredContent.proposedArguments, { value: "Lukas" });
+
+  const presenceRegistration = registrations.find(
+    (registration) => registration.tool.name === "cowork_read_presence"
+  );
+  assert.deepEqual(presenceRegistration.tool.annotations, {
+    readOnlyHint: true,
+    untrustedContentHint: false
+  });
+  const presenceResult = await presenceRegistration.tool.execute({});
+  assert.equal(presenceResult.structuredContent.effectiveMode, "agent-solo");
+
+  const soloRegistration = registrations.find(
+    (registration) => registration.tool.name === "cowork_execute_solo"
+  );
+  assert.deepEqual(soloRegistration.tool.annotations, {
+    readOnlyHint: false,
+    untrustedContentHint: true
+  });
+  const soloResult = await soloRegistration.tool.execute({
+    capabilityId: "form.set_value",
+    targetId: "form-field:email",
+    value: "lukas@example.com"
+  });
+  assert.equal(soloResult.structuredContent.status, "verified");
+
+  controller.abort();
+  assert.equal(options.signal.aborted, true);
+  assert.equal(offerRegistration.options.signal.aborted, true);
+  assert.equal(presenceRegistration.options.signal.aborted, true);
+  assert.equal(soloRegistration.options.signal.aborted, true);
+});
+
+test("missing document.modelContext reports an unavailable native capability", async () => {
+  await assert.rejects(
+    () => registerNativeCoworkTools({ modelContext: undefined, readFocus: () => ({}) }),
+    {
+      name: "CoworkProtocolError",
+      code: "CAPABILITY_UNAVAILABLE"
+    }
+  );
+});
+
+test("a partial WebMCP registration aborts every tool already registered", async () => {
+  const signals = [];
+  let registrationCount = 0;
+  const modelContext = {
+    async registerTool(_tool, options) {
+      registrationCount += 1;
+      signals.push(options.signal);
+      if (registrationCount === 2) throw new Error("Browser rejected the second tool");
+    }
+  };
+
+  await assert.rejects(
+    () =>
+      registerNativeCoworkTools({
+        modelContext,
+        readFocus: () => ({}),
+        offerAction: () => ({})
+      }),
+    /Browser rejected the second tool/
+  );
+  assert.equal(signals[0].aborted, true);
+});

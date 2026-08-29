@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#121a2b">
+  <title>Cowork Protocol — FormBuilder Showcase</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#demo-form">Skip to the form</a>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">WebMCP collaboration protocol</p>
+      <h1>Cowork, without shipping the whole screen.</h1>
+      <p class="lede">A FormBuilder field becomes a small, actionable contract between you and an agent.</p>
+    </div>
+    <div class="header-badges" aria-label="Prototype status">
+      <span class="badge badge-accent">Local prototype</span>
+      <span class="badge" id="capability-badge">Detecting WebMCP…</span>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="form-surface" aria-labelledby="form-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">FormBuilder showcase</p>
+          <h2 id="form-title">Event registration</h2>
+        </div>
+        <span class="page-version">Page v<span id="page-version">1</span></span>
+      </div>
+
+      <p class="form-intro">Point to a field, select text, or pin a target. The panel reports exactly what enters the Cowork context.</p>
+
+      <form id="demo-form" novalidate>
+        <div class="form-field" data-field-id="full-name" data-label="Full name" data-control-kind="text">
+          <label for="full-name">Full name <span aria-hidden="true">*</span></label>
+          <input id="full-name" name="full-name" autocomplete="name" required value="">
+          <p class="field-help">Used on your event badge.</p>
+        </div>
+
+        <div class="form-field" data-field-id="email" data-label="Email address" data-control-kind="text">
+          <label for="email">Email address <span aria-hidden="true">*</span></label>
+          <input id="email" name="email" type="email" autocomplete="email" required value="">
+          <p class="field-help">We send the access link here.</p>
+        </div>
+
+        <div class="form-field" data-field-id="role" data-label="Role" data-control-kind="select">
+          <label for="role">Role</label>
+          <select id="role" name="role">
+            <option value="">Choose one</option>
+            <option>Developer</option>
+            <option>Designer</option>
+            <option>Product</option>
+          </select>
+          <p class="field-help">Helps us tailor the sessions.</p>
+        </div>
+
+        <div class="form-field" data-field-id="access-needs" data-label="Access needs" data-control-kind="textarea">
+          <label for="access-needs">Access needs</label>
+          <textarea id="access-needs" name="access-needs" rows="4" placeholder="Tell us what would help"></textarea>
+          <p class="field-help">Optional. This text is hashed instead of copied when a selection exceeds 160 characters.</p>
+        </div>
+
+        <button class="primary-action" type="submit">Validate and export JSON</button>
+      </form>
+
+      <section id="form-result" class="form-result" aria-labelledby="form-result-title" hidden>
+        <div class="section-row">
+          <h3 id="form-result-title">FormBuilder response</h3>
+          <a id="download-response" class="download-link" download>Download JSON</a>
+        </div>
+        <pre id="response-json"></pre>
+      </section>
+    </section>
+
+    <aside class="cowork-panel" aria-labelledby="panel-title">
+      <div class="panel-topline">
+        <div>
+          <p class="eyebrow">Cowork panel</p>
+          <h2 id="panel-title">Shared control</h2>
+        </div>
+        <span class="mode-badge" id="mode-badge">Cowork</span>
+      </div>
+
+      <section class="presence-strip" aria-label="Presence">
+        <div class="presence-person">
+          <span class="presence-dot tone-green" id="human-dot" aria-hidden="true"></span>
+          <span id="human-label">Human present</span>
+        </div>
+        <div class="presence-person">
+          <span class="agent-mark" aria-hidden="true">A</span>
+          <span id="agent-label">Agent active</span>
+        </div>
+      </section>
+
+      <section class="panel-section focus-readout" aria-labelledby="focus-heading">
+        <div class="section-row">
+          <h3 id="focus-heading">Attention lens</h3>
+          <span class="metric" id="context-label">No context sent</span>
+        </div>
+        <p class="focus-target" id="focus-label">Point to or select a form field</p>
+        <div class="field-grid">
+          <label>
+            <span>Look at</span>
+            <select id="attention-mode">
+              <option value="pointer">Pointer lens</option>
+              <option value="selection">Selection lens</option>
+              <option value="pinned">Pinned focus</option>
+              <option value="off">Off — no context</option>
+            </select>
+          </label>
+          <label class="check-row">
+            <input id="change-causality" type="checkbox" checked>
+            <span>Track changes and causes</span>
+          </label>
+        </div>
+        <button class="quiet-button" id="expand-context" type="button">Allow one more context level</button>
+      </section>
+
+      <section class="panel-section" aria-labelledby="action-heading">
+        <div class="section-row">
+          <h3 id="action-heading">Action rights</h3>
+          <label class="compact-select">
+            <span class="visually-hidden">Action mode</span>
+            <select id="action-mode">
+              <option value="explain">Explain</option>
+              <option value="suggest" selected>Suggest</option>
+              <option value="preview">Preview</option>
+              <option value="execute-on-click">Execute after click</option>
+              <option value="delegated">Delegated scope</option>
+              <option value="paused">Paused</option>
+            </select>
+          </label>
+        </div>
+        <div id="offer-list" class="offer-list" aria-live="polite">
+          <p class="empty-state">Agent proposals will appear here as clickable offers.</p>
+        </div>
+        <button class="demo-button" id="demo-offer" type="button">Create local demo offer</button>
+      </section>
+
+      <section class="panel-section" aria-labelledby="presence-heading">
+        <div class="section-row">
+          <h3 id="presence-heading">Handoff</h3>
+          <button class="text-button" id="toggle-agent" type="button">Pause agent</button>
+        </div>
+        <label>
+          <span>Solo task while I am away</span>
+          <input id="lease-goal" value="Complete only the focused field" maxlength="120">
+        </label>
+        <div class="button-row">
+          <button class="quiet-button" id="away-short" type="button">I’m briefly away</button>
+          <button class="quiet-button" id="away-long" type="button">I’m away longer</button>
+          <button class="primary-small" id="return-human" type="button">I’m back</button>
+        </div>
+        <p class="microcopy">The demo lease lasts two minutes, allows two calls, and is bound to the focused field.</p>
+      </section>
+
+      <section class="panel-section" aria-labelledby="audio-heading">
+        <div class="section-row">
+          <h3 id="audio-heading">Conversation</h3>
+          <label class="check-row compact-check">
+            <input id="speak-output" type="checkbox" checked>
+            <span>Speak replies</span>
+          </label>
+        </div>
+        <div class="button-row">
+          <button class="audio-button" id="talk" type="button"><span aria-hidden="true">●</span> Push to talk</button>
+          <button class="quiet-button" id="stop-speech" type="button">Stop voice</button>
+        </div>
+        <p id="transcript" class="transcript" aria-live="polite">Waiting quietly. Silence creates no model turn.</p>
+      </section>
+
+      <section class="receipt-panel" aria-labelledby="receipt-heading">
+        <div class="section-row">
+          <h3 id="receipt-heading">Verified receipts</h3>
+          <span class="metric" id="receipt-count">0</span>
+        </div>
+        <ol id="receipt-list" class="receipt-list" aria-live="polite"></ol>
+      </section>
+
+      <p class="system-status" id="system-status" role="status">Initializing local protocol…</p>
+    </aside>
+  </main>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
