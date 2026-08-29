@@ -1,4 +1,7 @@
-import { negotiateWebMcpCatalog } from "../../bridge/src/index.js";
+import {
+  negotiateWebMcpCatalog,
+  requestLegacyContext
+} from "../../bridge/src/index.js";
 import { buildFocusPacket, routeContextSignal } from "../../core/src/index.js";
 
 function focus({ label, selectedText }) {
@@ -60,6 +63,11 @@ export function runTokenEconomyEval() {
     }]
   });
   const bridgeCapability = bridgeCatalog.capabilities[0];
+  const visualFallback = requestLegacyContext({
+    currentLevel: 2,
+    requestedLevel: 3,
+    pointer: { x: 640, y: 360 }
+  });
 
   const cases = [
     evaluatedCase(
@@ -121,6 +129,18 @@ export function runTokenEconomyEval() {
       },
       JSON.stringify(bridgeCapability).length <= 350 &&
         bridgeCapability.description.length === 160
+    ),
+    evaluatedCase(
+      "legacy-visual-160000",
+      { maximumPixelArea: 160000, imageCaptured: false },
+      {
+        maximumWidth: visualFallback.visualRequest.maximumWidth,
+        maximumHeight: visualFallback.visualRequest.maximumHeight,
+        maximumPixelArea: visualFallback.visualRequest.maximumPixelArea,
+        imageCaptured: Object.hasOwn(visualFallback, "image")
+      },
+      visualFallback.visualRequest.maximumPixelArea === 160000 &&
+        !Object.hasOwn(visualFallback, "image")
     )
   ];
 

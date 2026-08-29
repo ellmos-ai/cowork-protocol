@@ -17,11 +17,22 @@ test("the token-economy eval covers every declared budget and silence invariant"
       "silence-no-packet",
       "unchanged-no-packet",
       "context-one-step",
-      "bridge-summary-350"
+      "bridge-summary-350",
+      "legacy-visual-160000"
     ]
   );
   assert.equal(report.summary.failed, 0);
   assert.equal(report.summary.passed, report.cases.length);
+});
+
+test("the legacy visual fallback requests a bounded region without claiming image capture", () => {
+  const report = runTokenEconomyEval();
+  const visualCase = report.cases.find(({ id }) => id === "legacy-visual-160000");
+
+  assert.equal(visualCase.observed.maximumWidth, 400);
+  assert.equal(visualCase.observed.maximumHeight, 400);
+  assert.equal(visualCase.observed.maximumPixelArea, 160000);
+  assert.equal(visualCase.observed.imageCaptured, false);
 });
 
 test("the eval reports avoided source characters without converting them to tokens", () => {

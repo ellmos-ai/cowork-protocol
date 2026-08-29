@@ -1,5 +1,7 @@
 import { CoworkProtocolError } from "../../core/src/index.js";
 
+export { buildLegacyDomFocus, requestLegacyContext } from "./legacy.js";
+
 const MAX_DESCRIPTION_CHARS = 160;
 const MAX_PARAMETER_NAMES = 12;
 const MAX_TOOL_NAME_CHARS = 64;

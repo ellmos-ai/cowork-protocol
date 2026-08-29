@@ -20,10 +20,11 @@ This gate contains:
 - an integration test from the real FormBuilder connector output through the WebMCP tool callback;
 - a registration contract test for the current `document.modelContext.registerTool()` shape.
 - bridge tests for bounded host catalogs, missing schemas, required arguments and offer-only mutation handling.
+- legacy tests for ephemeral versus stable targets, 350/1,200-character semantic tiers, rejected level jumps and the 160,000-pixel visual request ceiling.
 
 Tests use the real protocol and connector. Only the browser-owned `ModelContext` boundary is represented by a small contract fake, because Node does not implement WebMCP.
 
-The eval output deliberately uses `adapter-characters`. It does not convert characters to tokens or claim visibility into a browser/agent host. A passing run covers seven named cases and reports both included and avoided source characters where meaningful.
+The eval output deliberately uses `adapter-characters`. It does not convert characters to tokens or claim visibility into a browser/agent host. A passing run covers eight named cases, reports both included and avoided source characters where meaningful, and records the bounded visual request without claiming an image was captured.
 
 ## Still required before acceptance
 

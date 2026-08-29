@@ -32,6 +32,10 @@ Text alternative: the panel is the human control surface, the core enforces cont
 
 This completes a portable adapter contract, not a live foreign-site discovery result. Host discovery and invocation still require a browser-owned integration and an acceptance test.
 
+## Legacy bridge boundary
+
+The legacy path accepts a host-provided semantic DOM/accessibility snapshot. A target without a stable ID is ephemeral and explain-only; a stable target may create a visible value offer but never directly mutate. Context expands one tier at a time: 350 characters of nearby semantic text, 1,200 characters of an accessibility-region summary, then a request for a pointer-centered region no larger than 400×400 pixels. The package returns the request descriptor, not image bytes. Capturing and delivering that region is a separate browser-host responsibility and remains unverified.
+
 ## Source and scope
 
 - Source IDs: package paths in this repository.
