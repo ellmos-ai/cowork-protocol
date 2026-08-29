@@ -8,8 +8,10 @@
     "apps/*"
   ],
   "scripts": {
+    "build:pages": "node scripts/build-pages.mjs",
     "check:secrets": "node scripts/check-secrets.mjs .",
     "eval": "node packages/evals/src/cli.js",
+    "preview:pages": "node scripts/serve.mjs 4174 dist",
     "start": "node scripts/serve.mjs",
     "test": "node --test"
   },

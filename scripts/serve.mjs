@@ -51,10 +51,10 @@ export function createStaticServer({ root }) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const root = path.resolve(process.cwd());
+  const root = path.resolve(process.cwd(), process.argv[3] ?? ".");
   const port = Number(process.env.COWORK_PORT ?? process.argv[2] ?? 4173);
   const server = createStaticServer({ root });
   server.listen(port, "127.0.0.1", () => {
-    console.log(`Cowork Protocol showcase: http://127.0.0.1:${port}/apps/formbuilder-showcase/`);
+    console.log(`Cowork Protocol site: http://127.0.0.1:${port}/`);
   });
 }

@@ -50,6 +50,15 @@ The suite uses Node's built-in test runner and has no external runtime dependenc
 
 `npm run eval` measures adapter-produced characters, not browser or model tokens. It verifies the 350-character focus, change and feedback budgets; the 160/161 selected-text boundary; silence and unchanged-state suppression; one-step expansion; latest-only event snapshots; and the bounded bridge summary without inventing unavailable host telemetry.
 
+## Build the web-only release
+
+```powershell
+npm run build:pages
+npm run preview:pages
+```
+
+The allowlisted `dist/` artifact contains only the browser showcase and required runtime modules. The included GitHub Pages workflow is manual-only; neither a local build nor a later push deploys automatically. See [docs/deployment.md](docs/deployment.md).
+
 ## Native WebMCP tools
 
 - `cowork_read_focus` returns the current token-bounded focus packet.
@@ -69,7 +78,7 @@ The suite uses Node's built-in test runner and has no external runtime dependenc
 - `apps/formbuilder-showcase` — visible reference journey for focus, offer, confirmation, causal receipt, feedback, presence, solo lease and audio controls.
 - `apps/formbuilder-showcase/src/form-engine.mjs` — attributed web-only FormBuilder engine for required-field validation and JSON response export.
 
-See [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), [docs/evidence.md](docs/evidence.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
+See [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), [docs/deployment.md](docs/deployment.md), [docs/evidence.md](docs/evidence.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
 
 ## License
 
