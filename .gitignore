@@ -5,3 +5,11 @@ dist/
 .env.*
 !.env.example
 *.log
+
+# Internal hackathon planning stays in the OneDrive project, never in the public repo.
+devpost-submission.md
+docs/submission/
+DEVPOST*.md
+RELEASE-CHECKLIST*.md
+DEMO-SCRIPT*.md
+_reports/

@@ -66,7 +66,7 @@ The suite uses Node's built-in test runner and has no external runtime dependenc
 - `apps/formbuilder-showcase` — visible reference journey for focus, offer, confirmation, receipt, presence, solo lease and audio controls.
 - `apps/formbuilder-showcase/src/form-engine.mjs` — attributed web-only FormBuilder engine for required-field validation and JSON response export.
 
-See [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
+See [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), [docs/evidence.md](docs/evidence.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
 
 ## License
 
