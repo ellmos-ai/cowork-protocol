@@ -9,6 +9,7 @@ Cowork Protocol is a small collaboration contract for people and web agents. It 
 The repository currently contains:
 
 - a protocol core for token-bounded focus packets;
+- bounded `ChangeEvent` and click-authenticated `FeedbackEvent` contracts;
 - explicit human-click authorization for proposed actions;
 - presence modes and fail-closed solo leases;
 - a one-step context escalation router that emits nothing for silence or unchanged state;
@@ -17,7 +18,7 @@ The repository currently contains:
 - a current WebMCP registration adapter using `document.modelContext.registerTool()` and `AbortSignal` ownership;
 - a host-supplied WebMCP bridge catalog that emits bounded summaries, executes only read-only-hinted tools and keeps every mutation offer-only;
 - a legacy DOM/accessibility fallback with explain-only ephemeral targets, offer-only stable targets, one-step semantic expansion and a 400×400 visual-region request contract;
-- a responsive FormBuilder showcase with attention controls, visible offers, receipts, presence, scoped solo work and an audio fallback.
+- a responsive FormBuilder showcase with attention controls, visible offers, causal change receipts, one-click feedback, presence, scoped solo work and an audio fallback.
 
 The native browser path has a tested registration contract and the showcase is served locally. A real WebMCP browser smoke, visual acceptance, microphone acceptance and deployment are still pending because no browser runtime was connected during the latest verification. This README does not claim those gates as complete.
 
@@ -47,7 +48,7 @@ npm run check:secrets
 
 The suite uses Node's built-in test runner and has no external runtime dependency.
 
-`npm run eval` measures adapter-produced characters, not browser or model tokens. It verifies the 350-character focus budget, the 160/161 selected-text boundary, silence and unchanged-state suppression, one-step expansion, and the bounded bridge summary without inventing unavailable host telemetry.
+`npm run eval` measures adapter-produced characters, not browser or model tokens. It verifies the 350-character focus, change and feedback budgets; the 160/161 selected-text boundary; silence and unchanged-state suppression; one-step expansion; latest-only event snapshots; and the bounded bridge summary without inventing unavailable host telemetry.
 
 ## Native WebMCP tools
 
@@ -55,15 +56,17 @@ The suite uses Node's built-in test runner and has no external runtime dependenc
 - `cowork_offer_action` creates a visible offer; it never authorizes or executes the change.
 - `cowork_read_presence` returns the explicit human/agent work mode.
 - `cowork_execute_solo` executes only inside a valid, scoped and unexpired solo lease.
+- `cowork_read_changes` returns only the latest digest-based causal change while the lens is enabled.
+- `cowork_read_feedback` returns only the latest bounded, click-authenticated human evaluation.
 
 ## Packages
 
-- `packages/core` — protocol packets, state decisions, authorizations and budgets.
+- `packages/core` — protocol packets, causal changes, human feedback, state decisions, authorizations and budgets.
 - `packages/formbuilder-connector` — maps a stable FormBuilder field into a native Cowork focus.
-- `packages/native-webmcp` — registers the four Cowork tools with the current WebMCP API.
+- `packages/native-webmcp` — registers the six Cowork tools with the current WebMCP API.
 - `packages/bridge` — adapts an explicit host tool catalog or bounded legacy semantic snapshots without claiming browser-wide discovery or image capture.
 - `packages/evals` — reproducible character-budget and silence evals with no host-token claim.
-- `apps/formbuilder-showcase` — visible reference journey for focus, offer, confirmation, receipt, presence, solo lease and audio controls.
+- `apps/formbuilder-showcase` — visible reference journey for focus, offer, confirmation, causal receipt, feedback, presence, solo lease and audio controls.
 - `apps/formbuilder-showcase/src/form-engine.mjs` — attributed web-only FormBuilder engine for required-field validation and JSON response export.
 
 See [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), [docs/evidence.md](docs/evidence.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).

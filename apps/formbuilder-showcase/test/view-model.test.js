@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { buildPanelViewModel } from "../src/view-model.js";
+import {
+  buildPanelViewModel,
+  buildReceiptViewModels
+} from "../src/view-model.js";
 import { createShowcaseSession, transitionShowcaseSession } from "../src/session.js";
 
 test("the panel view model exposes mode, token budget and at most three action chips", () => {
@@ -56,4 +59,49 @@ test("the panel view model exposes mode, token budget and at most three action c
     view.actionChips.map((chip) => chip.offerId),
     ["1", "2", "3"]
   );
+});
+
+test("receipt views expose one compact human feedback state per result", () => {
+  const views = buildReceiptViewModels({
+    receipts: [
+      {
+        offerId: "offer-1",
+        status: "verified",
+        verificationSummary: "Name now equals Lukas"
+      },
+      {
+        offerId: "offer-2",
+        status: "failed",
+        verificationSummary: "Expected value was not observed"
+      }
+    ],
+    feedbackEvents: [
+      {
+        relatedOfferId: "offer-1",
+        verdict: "accepted",
+        adjustment: ""
+      }
+    ]
+  });
+
+  assert.deepEqual(views, [
+    {
+      offerId: "offer-2",
+      status: "failed",
+      statusLabel: "Failed",
+      verificationSummary: "Expected value was not observed",
+      feedback: null
+    },
+    {
+      offerId: "offer-1",
+      status: "verified",
+      statusLabel: "Verified",
+      verificationSummary: "Name now equals Lukas",
+      feedback: {
+        verdict: "accepted",
+        verdictLabel: "Good",
+        adjustment: ""
+      }
+    }
+  ]);
 });

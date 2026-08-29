@@ -2,6 +2,7 @@ import {
   authorizeActionOffer,
   CoworkProtocolError,
   createActionOffer,
+  createFeedbackEvent,
   createPresenceEvent,
   createActionReceipt,
   routeContextSignal
@@ -17,7 +18,15 @@ import {
   SHOWCASE_SCHEMA
 } from "./formbuilder-use-case.js";
 import { createShowcaseSession, transitionShowcaseSession } from "./session.js";
-import { buildPanelViewModel } from "./view-model.js";
+import {
+  createChangeSnapshot,
+  createFeedbackSnapshot,
+  observeControlChange
+} from "./interaction-log.js";
+import {
+  buildPanelViewModel,
+  buildReceiptViewModels
+} from "./view-model.js";
 
 const $ = (selector) => document.querySelector(selector);
 const fields = [...document.querySelectorAll(".form-field[data-field-id]")];
@@ -36,13 +45,17 @@ let focusPacket = null;
 let focusedField = null;
 let offers = [];
 let receipts = [];
+let feedbackEvents = [];
+let changeEvents = [];
 let pageVersion = 1;
 let capabilityLevel = "unavailable";
 let registrationController = null;
 let offerCounter = 0;
+let changeCounter = 0;
 let recognition = null;
 let leaseCallsUsed = 0;
 let responseDownloadUrl = null;
+let pendingChangeCause = null;
 
 function setStatus(message) {
   $("#system-status").textContent = message;
@@ -60,6 +73,10 @@ function speak(message) {
 function currentControl(field = focusedField) {
   return field?.querySelector("input, textarea, select") ?? null;
 }
+
+const observedValues = new Map(
+  fields.map((field) => [field.dataset.fieldId, currentControl(field)?.value ?? ""])
+);
 
 function selectedTextFor(control) {
   if (!control) return "";
@@ -132,15 +149,83 @@ function renderOffers(view) {
 function renderReceipts() {
   const list = $("#receipt-list");
   list.textContent = "";
-  for (const receipt of receipts.slice(-4).reverse()) {
+  const views = buildReceiptViewModels({ receipts, feedbackEvents });
+  for (const view of views) {
+    const receipt = receipts.find((candidate) => candidate.offerId === view.offerId);
     const item = document.createElement("li");
-    item.className = receipt.status === "failed" ? "receipt-failed" : "";
+    item.className = view.status === "failed" ? "receipt-failed" : "";
     const status = document.createElement("strong");
-    status.textContent = receipt.status === "verified" ? "Verified: " : "Failed: ";
-    item.append(status, receipt.verificationSummary);
+    status.textContent = `${view.statusLabel}: `;
+    item.append(status, view.verificationSummary);
+
+    if (view.feedback) {
+      const recorded = document.createElement("p");
+      recorded.className = "feedback-recorded";
+      recorded.textContent = view.feedback.adjustment
+        ? `${view.feedback.verdictLabel}: ${view.feedback.adjustment}`
+        : view.feedback.verdictLabel;
+      item.append(recorded);
+    } else {
+      const controls = document.createElement("div");
+      controls.className = "feedback-controls";
+      controls.setAttribute("role", "group");
+      controls.setAttribute("aria-label", `Evaluate result ${view.offerId}`);
+
+      const adjustment = document.createElement("input");
+      adjustment.maxLength = 350;
+      adjustment.placeholder = "Optional direction, e.g. make it lighter";
+      adjustment.setAttribute("aria-label", "Optional feedback direction");
+
+      const buttons = document.createElement("div");
+      buttons.className = "feedback-buttons";
+      for (const [label, verdict] of [
+        ["Good", "accepted"],
+        ["Adjust", "revise"],
+        ["Different", "rejected"]
+      ]) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+        button.addEventListener("click", (event) =>
+          recordReceiptFeedback(event, receipt, verdict, adjustment.value)
+        );
+        buttons.append(button);
+      }
+      controls.append(adjustment, buttons);
+      item.append(controls);
+    }
     list.append(item);
   }
   $("#receipt-count").textContent = String(receipts.length);
+}
+
+function recordReceiptFeedback(event, receipt, verdict, adjustmentInput) {
+  if (!event.isTrusted) {
+    setStatus("HUMAN_CONFIRMATION_REQUIRED: synthetic feedback clicks are rejected.");
+    return;
+  }
+  if (feedbackEvents.some((feedback) => feedback.relatedOfferId === receipt.offerId)) {
+    setStatus("Feedback was already recorded for this result.");
+    return;
+  }
+
+  const adjustment =
+    verdict === "accepted"
+      ? ""
+      : adjustmentInput.trim() ||
+        (verdict === "revise" ? "Please adjust this result." : "Try a different approach.");
+  const feedback = createFeedbackEvent({
+    origin: "human-click",
+    relatedOfferId: receipt.offerId,
+    relatedChangeIds: receipt.observedChangeIds,
+    verdict,
+    adjustment,
+    pageVersion: receipt.pageVersion ?? pageVersion,
+    createdAt: new Date().toISOString()
+  });
+  feedbackEvents = [...feedbackEvents, feedback].slice(-20);
+  setStatus("Human feedback recorded. The agent can read only the latest bounded event.");
+  render();
 }
 
 function render() {
@@ -164,6 +249,19 @@ function render() {
 function newOfferId() {
   offerCounter += 1;
   return `offer-${Date.now()}-${offerCounter}`;
+}
+
+function applyControlValue(control, nextValue, cause) {
+  const previousChangeId = changeEvents.at(-1)?.changeId;
+  pendingChangeCause = cause;
+  try {
+    control.value = nextValue;
+    control.dispatchEvent(new Event("input", { bubbles: true }));
+  } finally {
+    pendingChangeCause = null;
+  }
+  const latest = changeEvents.at(-1);
+  return latest?.changeId !== previousChangeId ? latest : null;
 }
 
 function createVisibleOffer({ capabilityId, targetId, value, summary }) {
@@ -259,17 +357,21 @@ function executeOffer(event, offer) {
       currentValue: control.value
     });
 
-    control.value = plan.nextValue;
-    control.dispatchEvent(new Event("input", { bubbles: true }));
+    const change = applyControlValue(control, plan.nextValue, {
+      source: "agent",
+      refs: [`offer:${offer.offerId}`, "authorization:human-click"],
+      confidence: "high"
+    });
     const verified = control.value === plan.verificationExpected;
     const receipt = createActionReceipt({
       offerId: offer.offerId,
       verified,
-      observedChangeIds: verified ? [`form-page-${pageVersion}`] : [],
+      observedChangeIds: verified && change ? [change.changeId] : [],
       verificationSummary: verified
         ? `${focusedField?.dataset.label ?? "Field"} now equals ${control.value}`
         : "Expected value was not observed",
-      undoAvailable: plan.undoAvailable
+      undoAvailable: plan.undoAvailable,
+      pageVersion
     });
     receipts = [...receipts, receipt];
     offers = offers.filter((candidate) => candidate.offerId !== offer.offerId);
@@ -336,17 +438,21 @@ function executeSoloAction({ capabilityId, targetId, value }) {
     proposedArguments: { value },
     currentValue: control.value
   });
-  control.value = plan.nextValue;
-  control.dispatchEvent(new Event("input", { bubbles: true }));
+  const change = applyControlValue(control, plan.nextValue, {
+    source: "agent",
+    refs: [`lease:${session.lease.leaseId}`],
+    confidence: "high"
+  });
   const verified = control.value === plan.verificationExpected;
   const receipt = createActionReceipt({
     offerId: `lease:${session.lease.leaseId}:call-${leaseCallsUsed + 1}`,
     verified,
-    observedChangeIds: verified ? [`form-page-${pageVersion}`] : [],
+    observedChangeIds: verified && change ? [change.changeId] : [],
     verificationSummary: verified
       ? `${focusedField?.dataset.label ?? "Leased field"} updated during Agent Solo`
       : "Solo action could not be verified",
-    undoAvailable: plan.undoAvailable
+    undoAvailable: plan.undoAvailable,
+    pageVersion
   });
   if (verified) leaseCallsUsed += 1;
   receipts = [...receipts, receipt];
@@ -478,11 +584,14 @@ async function configureWebMcp() {
             session.lease !== null && Date.now() < Date.parse(session.lease.expiresAt),
           reason: session.lease?.goal ?? "Interactive Cowork session",
           changedBy: "human"
-        }),
-      executeSolo: executeSoloAction
+      }),
+      executeSolo: executeSoloAction,
+      readChanges: () =>
+        createChangeSnapshot(session.changeCausality ? changeEvents : []),
+      readFeedback: () => createFeedbackSnapshot(feedbackEvents)
     });
     capabilityLevel = "native";
-    setStatus("Native WebMCP tools registered: focus, presence, offers, and lease-scoped solo execution.");
+    setStatus("Native WebMCP tools registered: focus, causal changes, presence, offers, lease-scoped solo execution, and bounded feedback.");
     render();
   } catch (error) {
     capabilityLevel = "unavailable";
@@ -506,10 +615,25 @@ for (const field of fields) {
     if (session.attentionMode === "selection") setFocus(field);
   });
   control?.addEventListener("input", () => {
+    const previousValue = observedValues.get(field.dataset.fieldId) ?? "";
+    const nextValue = control.value;
+    if (previousValue === nextValue) return;
+    observedValues.set(field.dataset.fieldId, nextValue);
     pageVersion += 1;
     if (focusedField === field) focusPacket = buildFocus(field);
     if (session.changeCausality) {
-      setStatus(`Change ${pageVersion} observed on ${field.dataset.label}; no automatic model turn was created.`);
+      changeCounter += 1;
+      const change = observeControlChange({
+        changeId: `change-${pageVersion}-${changeCounter}`,
+        fieldId: field.dataset.fieldId,
+        label: field.dataset.label,
+        previousValue,
+        nextValue,
+        pageVersion,
+        cause: pendingChangeCause ?? undefined
+      });
+      if (change) changeEvents = [...changeEvents, change].slice(-20);
+      setStatus(`Change ${pageVersion} observed on ${field.dataset.label}; causes were recorded without creating a model turn.`);
     }
     render();
   });
@@ -530,6 +654,7 @@ $("#attention-mode").addEventListener("change", (event) => {
 
 $("#change-causality").addEventListener("change", (event) => {
   session = { ...session, changeCausality: event.target.checked };
+  if (!session.changeCausality) changeEvents = [];
   setStatus(event.target.checked ? "Change and causality lens enabled." : "Change and causality lens disabled.");
 });
 

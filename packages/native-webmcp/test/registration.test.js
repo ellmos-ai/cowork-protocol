@@ -4,6 +4,8 @@ import { test } from "node:test";
 import {
   createActionOffer,
   createActionReceipt,
+  createChangeEvent,
+  createFeedbackEvent,
   createPresenceEvent
 } from "../../core/src/index.js";
 import { buildFormBuilderFocus } from "../../formbuilder-connector/src/index.js";
@@ -55,10 +57,33 @@ test("native registration exposes a read-only focus tool backed by the real conn
         observedChangeIds: ["form-page-9"],
         verificationSummary: "Email updated inside the solo lease",
         undoAvailable: true
+      }),
+    readChanges: () =>
+      createChangeEvent({
+        changeId: "change-9",
+        source: "agent",
+        targetIds: ["form-field:email"],
+        pageVersion: 9,
+        beforeDigest: "before",
+        afterDigest: "after",
+        shortSummary: "Email changed",
+        causeRefs: ["lease:lease-1"],
+        causalityConfidence: "high",
+        reversible: true
+      }),
+    readFeedback: () =>
+      createFeedbackEvent({
+        origin: "human-click",
+        relatedOfferId: "browser-offer-1",
+        relatedChangeIds: ["form-page-9"],
+        verdict: "accepted",
+        adjustment: "",
+        pageVersion: 9,
+        createdAt: "2026-08-30T10:02:00.000Z"
       })
   });
 
-  assert.equal(registrations.length, 4);
+  assert.equal(registrations.length, 6);
   const { tool, options } = registrations.find(
     (registration) => registration.tool.name === "cowork_read_focus"
   );
@@ -133,11 +158,37 @@ test("native registration exposes a read-only focus tool backed by the real conn
   });
   assert.equal(soloResult.structuredContent.status, "verified");
 
+  const feedbackRegistration = registrations.find(
+    (registration) => registration.tool.name === "cowork_read_feedback"
+  );
+  assert.equal(feedbackRegistration.tool.title, "Read human feedback");
+  assert.deepEqual(feedbackRegistration.tool.annotations, {
+    readOnlyHint: true,
+    untrustedContentHint: false
+  });
+  const feedbackResult = await feedbackRegistration.tool.execute({});
+  assert.equal(feedbackResult.structuredContent.verdict, "accepted");
+  assert.equal(feedbackResult.structuredContent.source, "human");
+
+  const changesRegistration = registrations.find(
+    (registration) => registration.tool.name === "cowork_read_changes"
+  );
+  assert.equal(changesRegistration.tool.title, "Read latest causal change");
+  assert.deepEqual(changesRegistration.tool.annotations, {
+    readOnlyHint: true,
+    untrustedContentHint: false
+  });
+  const changesResult = await changesRegistration.tool.execute({});
+  assert.equal(changesResult.structuredContent.changeId, "change-9");
+  assert.deepEqual(changesResult.structuredContent.causeRefs, ["lease:lease-1"]);
+
   controller.abort();
   assert.equal(options.signal.aborted, true);
   assert.equal(offerRegistration.options.signal.aborted, true);
   assert.equal(presenceRegistration.options.signal.aborted, true);
   assert.equal(soloRegistration.options.signal.aborted, true);
+  assert.equal(feedbackRegistration.options.signal.aborted, true);
+  assert.equal(changesRegistration.options.signal.aborted, true);
 });
 
 test("missing document.modelContext reports an unavailable native capability", async () => {

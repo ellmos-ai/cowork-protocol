@@ -18,6 +18,8 @@ test("the token-economy eval covers every declared budget and silence invariant"
       "unchanged-no-packet",
       "context-one-step",
       "bridge-summary-350",
+      "change-latest-350",
+      "feedback-latest-350",
       "legacy-visual-160000"
     ]
   );

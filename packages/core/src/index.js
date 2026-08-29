@@ -1,7 +1,13 @@
 const SELECTED_TEXT_LIMIT = 160;
 const FOCUS_TEXT_LIMIT = 350;
+const EVENT_TEXT_LIMIT = 350;
+const EVENT_REFERENCE_LIMIT = 8;
+const EVENT_REFERENCE_TEXT_LIMIT = 120;
 const HUMAN_PRESENCE_VALUES = new Set(["present", "afk-short", "afk-long"]);
 const AGENT_PRESENCE_VALUES = new Set(["active", "paused"]);
+const CHANGE_SOURCE_VALUES = new Set(["human", "agent", "app", "bridge"]);
+const CAUSALITY_CONFIDENCE_VALUES = new Set(["low", "medium", "high"]);
+const FEEDBACK_VERDICT_VALUES = new Set(["accepted", "rejected", "revise"]);
 const SHA256_CONSTANTS = new Uint32Array([
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
   0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
@@ -109,6 +115,23 @@ function truncateWithEllipsis(text, limit) {
     return "";
   }
   return `${text.slice(0, limit - 1)}…`;
+}
+
+function assertBoundedReferences(references) {
+  if (
+    references.length > EVENT_REFERENCE_LIMIT ||
+    references.some(
+      (reference) =>
+        typeof reference !== "string" ||
+        reference.length === 0 ||
+        reference.length > EVENT_REFERENCE_TEXT_LIMIT
+    )
+  ) {
+    throw new CoworkProtocolError(
+      "CONTEXT_BUDGET_EXCEEDED",
+      `Event references are limited to ${EVENT_REFERENCE_LIMIT} values of ${EVENT_REFERENCE_TEXT_LIMIT} characters`
+    );
+  }
 }
 
 function normalizeSelection(selectedText) {
@@ -286,7 +309,102 @@ export function createActionReceipt(input) {
     observedChangeIds: input.observedChangeIds,
     verificationSummary: input.verificationSummary,
     undoAvailable: input.undoAvailable,
-    errorCode: input.verified ? null : "VERIFICATION_FAILED"
+    errorCode: input.verified ? null : "VERIFICATION_FAILED",
+    ...(input.pageVersion === undefined ? {} : { pageVersion: input.pageVersion })
+  };
+}
+
+export function createChangeEvent(input) {
+  if (!CHANGE_SOURCE_VALUES.has(input.source)) {
+    throw new CoworkProtocolError(
+      "INVALID_CHANGE_SOURCE",
+      `Unknown change source: ${input.source}`
+    );
+  }
+  if (!CAUSALITY_CONFIDENCE_VALUES.has(input.causalityConfidence)) {
+    throw new CoworkProtocolError(
+      "INVALID_CAUSALITY_CONFIDENCE",
+      `Unknown causality confidence: ${input.causalityConfidence}`
+    );
+  }
+  if (
+    typeof input.changeId !== "string" ||
+    input.changeId.length === 0 ||
+    !Array.isArray(input.targetIds) ||
+    input.targetIds.length === 0 ||
+    !Array.isArray(input.causeRefs) ||
+    typeof input.shortSummary !== "string" ||
+    !Number.isInteger(input.pageVersion)
+  ) {
+    throw new CoworkProtocolError("INVALID_CHANGE_EVENT", "Change event is incomplete");
+  }
+  assertBoundedReferences(input.targetIds);
+  assertBoundedReferences(input.causeRefs);
+
+  const shortSummary = truncateWithEllipsis(input.shortSummary, EVENT_TEXT_LIMIT);
+  return {
+    protocolVersion: "0.1",
+    type: "change",
+    changeId: input.changeId,
+    source: input.source,
+    targetIds: [...input.targetIds],
+    pageVersion: input.pageVersion,
+    beforeDigest: input.beforeDigest,
+    afterDigest: input.afterDigest,
+    shortSummary,
+    causeRefs: [...input.causeRefs],
+    causalityConfidence: input.causalityConfidence,
+    reversible: input.reversible,
+    undoCapabilityId: input.undoCapabilityId ?? null,
+    metrics: {
+      summaryCharacters: input.shortSummary.length,
+      summaryIncludedCharacters: shortSummary.length
+    }
+  };
+}
+
+export function createFeedbackEvent(input) {
+  if (input.origin !== "human-click") {
+    throw new CoworkProtocolError(
+      "HUMAN_CONFIRMATION_REQUIRED",
+      "Only a visible human click can create feedback"
+    );
+  }
+  if (!FEEDBACK_VERDICT_VALUES.has(input.verdict)) {
+    throw new CoworkProtocolError(
+      "INVALID_FEEDBACK_VERDICT",
+      `Unknown feedback verdict: ${input.verdict}`
+    );
+  }
+  const adjustmentInput = input.adjustment ?? "";
+  if (
+    typeof input.relatedOfferId !== "string" ||
+    input.relatedOfferId.length === 0 ||
+    !Array.isArray(input.relatedChangeIds) ||
+    typeof adjustmentInput !== "string" ||
+    !Number.isInteger(input.pageVersion)
+  ) {
+    throw new CoworkProtocolError("INVALID_FEEDBACK_EVENT", "Feedback event is incomplete");
+  }
+  assertBoundedReferences(input.relatedChangeIds);
+  assertBoundedReferences([input.relatedOfferId]);
+
+  const adjustment = truncateWithEllipsis(adjustmentInput, EVENT_TEXT_LIMIT);
+  return {
+    protocolVersion: "0.1",
+    type: "feedback",
+    source: "human",
+    origin: "human-click",
+    relatedOfferId: input.relatedOfferId,
+    relatedChangeIds: [...input.relatedChangeIds],
+    verdict: input.verdict,
+    adjustment,
+    pageVersion: input.pageVersion,
+    createdAt: input.createdAt,
+    metrics: {
+      adjustmentCharacters: adjustmentInput.length,
+      adjustmentIncludedCharacters: adjustment.length
+    }
   };
 }
 

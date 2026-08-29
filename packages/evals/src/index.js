@@ -2,7 +2,16 @@ import {
   negotiateWebMcpCatalog,
   requestLegacyContext
 } from "../../bridge/src/index.js";
-import { buildFocusPacket, routeContextSignal } from "../../core/src/index.js";
+import {
+  buildFocusPacket,
+  createChangeEvent,
+  createFeedbackEvent,
+  routeContextSignal
+} from "../../core/src/index.js";
+import {
+  createChangeSnapshot,
+  createFeedbackSnapshot
+} from "../../../apps/formbuilder-showcase/src/interaction-log.js";
 
 function focus({ label, selectedText }) {
   return buildFocusPacket({
@@ -63,6 +72,37 @@ export function runTokenEconomyEval() {
     }]
   });
   const bridgeCapability = bridgeCatalog.capabilities[0];
+  const changeSourceSummary = "C".repeat(500);
+  const changeEvent = createChangeEvent({
+    changeId: "change-eval-2",
+    source: "agent",
+    targetIds: ["form-field:eval"],
+    pageVersion: 2,
+    beforeDigest: "before",
+    afterDigest: "after",
+    shortSummary: changeSourceSummary,
+    causeRefs: ["offer:eval"],
+    causalityConfidence: "high",
+    reversible: true
+  });
+  const changeSnapshot = createChangeSnapshot([
+    { changeId: "change-eval-1" },
+    changeEvent
+  ]);
+  const feedbackSourceAdjustment = "F".repeat(500);
+  const feedbackEvent = createFeedbackEvent({
+    origin: "human-click",
+    relatedOfferId: "offer-eval",
+    relatedChangeIds: ["change-eval-2"],
+    verdict: "revise",
+    adjustment: feedbackSourceAdjustment,
+    pageVersion: 2,
+    createdAt: "2026-08-30T10:00:00.000Z"
+  });
+  const feedbackSnapshot = createFeedbackSnapshot([
+    { relatedOfferId: "offer-old" },
+    feedbackEvent
+  ]);
   const visualFallback = requestLegacyContext({
     currentLevel: 2,
     requestedLevel: 3,
@@ -129,6 +169,34 @@ export function runTokenEconomyEval() {
       },
       JSON.stringify(bridgeCapability).length <= 350 &&
         bridgeCapability.description.length === 160
+    ),
+    evaluatedCase(
+      "change-latest-350",
+      { maximumSummaryCharacters: 350, returnedEvents: 1 },
+      {
+        summaryCharacters: changeSnapshot.latest.shortSummary.length,
+        sourceSummaryCharacters: changeSourceSummary.length,
+        returnedEvents: changeSnapshot.latest ? 1 : 0,
+        omittedEvents: changeSnapshot.omittedCount,
+        avoidedSourceCharacters:
+          changeSourceSummary.length - changeSnapshot.latest.shortSummary.length
+      },
+      changeSnapshot.latest.shortSummary.length <= 350 &&
+        changeSnapshot.omittedCount === 1
+    ),
+    evaluatedCase(
+      "feedback-latest-350",
+      { maximumAdjustmentCharacters: 350, returnedEvents: 1 },
+      {
+        adjustmentCharacters: feedbackSnapshot.latest.adjustment.length,
+        sourceAdjustmentCharacters: feedbackSourceAdjustment.length,
+        returnedEvents: feedbackSnapshot.latest ? 1 : 0,
+        omittedEvents: feedbackSnapshot.omittedCount,
+        avoidedSourceCharacters:
+          feedbackSourceAdjustment.length - feedbackSnapshot.latest.adjustment.length
+      },
+      feedbackSnapshot.latest.adjustment.length <= 350 &&
+        feedbackSnapshot.omittedCount === 1
     ),
     evaluatedCase(
       "legacy-visual-160000",

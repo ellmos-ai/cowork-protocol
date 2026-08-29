@@ -7,8 +7,10 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | Focus packets enforce 160/161 and 350-character rules | `packages/core/test/focus-packet.test.js`; `npm run eval` | Local contract proven; no host-token claim |
 | Silence and unchanged state emit no packet | `packages/core/test/context-router.test.js`; eval cases | Local contract proven |
 | Agent offers cannot authorize themselves | `packages/core/test/action-authorization.test.js` | Local negative path proven; trusted browser click acceptance open |
+| Change causality is explicit, reference-bounded and latest-only | `packages/core/test/change-feedback.test.js`; `interaction-log.test.js`; eval case | Local delta/digest contract proven; live browser observation open |
+| Feedback requires a human click and exposes only the latest event | `change-feedback.test.js`; `interaction-log.test.js`; eval case | Local negative/budget path proven; trusted browser click acceptance open |
 | Solo work is lease-scoped | `packages/core/test/solo-lease.test.js`; FormBuilder connector action tests | Local limits proven; background/browser continuity open |
-| Four Native WebMCP tools register and clean up | `packages/native-webmcp/test/registration.test.js` | Contract fake proven; real client discovery/invocation open |
+| Six Native WebMCP tools register and clean up | `packages/native-webmcp/test/registration.test.js` | Contract fake proven; real client discovery/invocation open |
 | FormBuilder web validation/export is retained | attributed engine, `formbuilder-use-case.test.js`; upstream Web Companion 48/48 tests | Web logic proven; visual browser flow open |
 | WebMCP Bridge is bounded and fail-closed | `packages/bridge/test/webmcp-bridge.test.js` | Explicit host-catalog adapter proven; foreign discovery open |
 | Legacy fallback is bounded | `packages/bridge/test/legacy-bridge.test.js`; visual eval | Request contract proven; DOM snapshot/image capture open |

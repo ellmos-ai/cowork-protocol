@@ -12,7 +12,9 @@ export async function registerNativeCoworkTools({
   readFocus,
   offerAction,
   readPresence,
-  executeSolo
+  executeSolo,
+  readChanges,
+  readFeedback
 }) {
   if (!modelContext || typeof modelContext.registerTool !== "function") {
     throw new CoworkProtocolError(
@@ -144,6 +146,54 @@ export async function registerNativeCoworkTools({
           },
           async execute(arguments_) {
             return toolResult(await executeSolo(arguments_));
+          }
+        },
+        { signal: controller.signal }
+      );
+    }
+
+    if (typeof readChanges === "function") {
+      await modelContext.registerTool(
+        {
+          name: "cowork_read_changes",
+          title: "Read latest causal change",
+          description:
+            "Read only the latest token-bounded change event, including explicit cause references and confidence.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            additionalProperties: false
+          },
+          annotations: {
+            readOnlyHint: true,
+            untrustedContentHint: false
+          },
+          async execute() {
+            return toolResult(await readChanges());
+          }
+        },
+        { signal: controller.signal }
+      );
+    }
+
+    if (typeof readFeedback === "function") {
+      await modelContext.registerTool(
+        {
+          name: "cowork_read_feedback",
+          title: "Read human feedback",
+          description:
+            "Read the latest click-authenticated, token-bounded human evaluation of a verified result.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            additionalProperties: false
+          },
+          annotations: {
+            readOnlyHint: true,
+            untrustedContentHint: false
+          },
+          async execute() {
+            return toolResult(await readFeedback());
           }
         },
         { signal: controller.signal }

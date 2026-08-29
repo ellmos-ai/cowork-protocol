@@ -42,3 +42,32 @@ export function buildPanelViewModel({ session, focusPacket, offers, capabilityLe
     }))
   };
 }
+
+const FEEDBACK_LABELS = {
+  accepted: "Good",
+  revise: "Adjust",
+  rejected: "Different"
+};
+
+export function buildReceiptViewModels({ receipts, feedbackEvents }) {
+  const feedbackByOfferId = new Map(
+    feedbackEvents.map((event) => [event.relatedOfferId, event])
+  );
+
+  return receipts.slice(-4).reverse().map((receipt) => {
+    const feedbackEvent = feedbackByOfferId.get(receipt.offerId);
+    return {
+      offerId: receipt.offerId,
+      status: receipt.status,
+      statusLabel: receipt.status === "verified" ? "Verified" : "Failed",
+      verificationSummary: receipt.verificationSummary,
+      feedback: feedbackEvent
+        ? {
+            verdict: feedbackEvent.verdict,
+            verdictLabel: FEEDBACK_LABELS[feedbackEvent.verdict],
+            adjustment: feedbackEvent.adjustment
+          }
+        : null
+    };
+  });
+}
