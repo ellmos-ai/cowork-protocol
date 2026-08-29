@@ -40,10 +40,13 @@ Then open `http://127.0.0.1:4173/apps/formbuilder-showcase/` in a WebMCP-capable
 
 ```powershell
 npm test
+npm run eval
 npm run check:secrets
 ```
 
 The suite uses Node's built-in test runner and has no external runtime dependency.
+
+`npm run eval` measures adapter-produced characters, not browser or model tokens. It verifies the 350-character focus budget, the 160/161 selected-text boundary, silence and unchanged-state suppression, one-step expansion, and the bounded bridge summary without inventing unavailable host telemetry.
 
 ## Native WebMCP tools
 
@@ -58,6 +61,7 @@ The suite uses Node's built-in test runner and has no external runtime dependenc
 - `packages/formbuilder-connector` — maps a stable FormBuilder field into a native Cowork focus.
 - `packages/native-webmcp` — registers the four Cowork tools with the current WebMCP API.
 - `packages/bridge` — adapts an explicit host tool catalog without claiming browser-wide discovery.
+- `packages/evals` — reproducible character-budget and silence evals with no host-token claim.
 - `apps/formbuilder-showcase` — visible reference journey for focus, offer, confirmation, receipt, presence, solo lease and audio controls.
 - `apps/formbuilder-showcase/src/form-engine.mjs` — attributed web-only FormBuilder engine for required-field validation and JSON response export.
 

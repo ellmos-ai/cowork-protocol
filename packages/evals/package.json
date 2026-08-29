@@ -1,0 +1,10 @@
+{
+  "name": "@cowork-protocol/evals",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@cowork-protocol/bridge": "0.1.0",
+    "@cowork-protocol/core": "0.1.0"
+  }
+}

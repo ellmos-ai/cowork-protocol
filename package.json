@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "check:secrets": "node scripts/check-secrets.mjs .",
+    "eval": "node packages/evals/src/cli.js",
     "start": "node scripts/serve.mjs",
     "test": "node --test"
   },

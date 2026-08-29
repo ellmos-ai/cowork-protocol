@@ -8,6 +8,7 @@ Run on every local change and future commit:
 
 ```powershell
 npm test
+npm run eval
 ```
 
 This gate contains:
@@ -21,6 +22,8 @@ This gate contains:
 - bridge tests for bounded host catalogs, missing schemas, required arguments and offer-only mutation handling.
 
 Tests use the real protocol and connector. Only the browser-owned `ModelContext` boundary is represented by a small contract fake, because Node does not implement WebMCP.
+
+The eval output deliberately uses `adapter-characters`. It does not convert characters to tokens or claim visibility into a browser/agent host. A passing run covers seven named cases and reports both included and avoided source characters where meaningful.
 
 ## Still required before acceptance
 
