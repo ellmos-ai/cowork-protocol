@@ -18,12 +18,14 @@ This gate contains:
 - context-router tests for silence, unchanged state and one-step escalation;
 - an integration test from the real FormBuilder connector output through the WebMCP tool callback;
 - a registration contract test for the current `document.modelContext.registerTool()` shape.
+- bridge tests for bounded host catalogs, missing schemas, required arguments and offer-only mutation handling.
 
 Tests use the real protocol and connector. Only the browser-owned `ModelContext` boundary is represented by a small contract fake, because Node does not implement WebMCP.
 
 ## Still required before acceptance
 
 - Browser system test in ChatGPT's in-app browser or supported Chrome with WebMCP enabled.
+- Host-level proof that a foreign WebMCP tool catalog can actually be supplied and invoked; the local bridge test is not discovery evidence.
 - Visible human-click test proving an agent tool argument cannot authorize a mutation.
 - FormBuilder end-to-end focus → offer → click → verified receipt.
 - AFK return, lease expiry and pause paths in the visible panel.

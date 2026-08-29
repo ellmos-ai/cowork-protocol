@@ -15,6 +15,7 @@ The repository currently contains:
 - a FormBuilder connector using stable field IDs;
 - the pre-existing MIT-licensed FormBuilder web schema/validation/response engine, explicitly attributed and isolated to the showcase;
 - a current WebMCP registration adapter using `document.modelContext.registerTool()` and `AbortSignal` ownership;
+- a host-supplied WebMCP bridge catalog that emits bounded summaries, executes only read-only-hinted tools and keeps every mutation offer-only;
 - a responsive FormBuilder showcase with attention controls, visible offers, receipts, presence, scoped solo work and an audio fallback.
 
 The native browser path has a tested registration contract and the showcase is served locally. A real WebMCP browser smoke, visual acceptance, microphone acceptance and deployment are still pending because no browser runtime was connected during the latest verification. This README does not claim those gates as complete.
@@ -56,6 +57,7 @@ The suite uses Node's built-in test runner and has no external runtime dependenc
 - `packages/core` — protocol packets, state decisions, authorizations and budgets.
 - `packages/formbuilder-connector` — maps a stable FormBuilder field into a native Cowork focus.
 - `packages/native-webmcp` — registers the four Cowork tools with the current WebMCP API.
+- `packages/bridge` — adapts an explicit host tool catalog without claiming browser-wide discovery.
 - `apps/formbuilder-showcase` — visible reference journey for focus, offer, confirmation, receipt, presence, solo lease and audio controls.
 - `apps/formbuilder-showcase/src/form-engine.mjs` — attributed web-only FormBuilder engine for required-field validation and JSON response export.
 

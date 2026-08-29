@@ -26,6 +26,12 @@ flowchart TB
 
 Text alternative: the panel is the human control surface, the core enforces context and authority, and connectors translate application or browser data into the same protocol. Only the native FormBuilder connector can promise stable targets and application-level verification. Bridge connectors must expose their reduced capability level.
 
+## WebMCP bridge boundary
+
+`packages/bridge` does not scrape a page or pretend that a producer-side API can enumerate every registered tool. A host must explicitly supply the tool catalog and executor. The bridge exposes only bounded summaries: tool identity, at most 160 description characters and at most 12 parameter names. Tools marked read-only by the host can cross the read executor; all other tools remain `offer-only` and must return to a visible human-authorization path. Missing schemas, duplicate names and malformed catalogs fail closed.
+
+This completes a portable adapter contract, not a live foreign-site discovery result. Host discovery and invocation still require a browser-owned integration and an acceptance test.
+
 ## Source and scope
 
 - Source IDs: package paths in this repository.
