@@ -11,7 +11,7 @@ The repository currently contains:
 - a protocol core for character-bounded focus packets that reduce unnecessary model context;
 - bounded `ChangeEvent` and click-authenticated `FeedbackEvent` contracts;
 - explicit human-click authorization for proposed actions;
-- exact human-visible offer values capped at 350 characters for meaningful review;
+- exact human-visible offer values capped at 350 Unicode code points for meaningful review;
 - presence modes and fail-closed solo leases;
 - a one-step context escalation router that emits nothing for silence or unchanged state;
 - a FormBuilder connector using stable field IDs;
@@ -27,7 +27,7 @@ Only the browser-based FormBuilder use case belongs to the publication scope. De
 
 ## Why WebMCP
 
-The agent reads a structured `cowork_read_focus` tool instead of guessing from the whole interface. FormBuilder contributes a stable target ID and only the capabilities relevant to that field. User-authored text is marked untrusted, selected text over 160 characters becomes a length plus digest, and normal focus text is capped at 350 characters.
+The agent reads a structured `cowork_read_focus` tool instead of guessing from the whole interface. FormBuilder contributes a stable target ID and only the capabilities relevant to that field. User-authored text is marked untrusted, selected text over 160 JavaScript UTF-16 code units becomes a length plus digest, and normal focus text is capped at 350 code units.
 
 ## Run the local showcase
 
@@ -50,7 +50,7 @@ npm run check:secrets
 
 The suite uses Node's built-in test runner and has no external runtime dependency.
 
-`npm run eval` measures adapter-produced characters, not browser or model tokens. It verifies the 350-character focus, change and feedback budgets; the 160/161 selected-text boundary; silence and unchanged-state suppression; one-step expansion; latest-only event snapshots; the bounded bridge catalog summary; and the 1,200-character bridge read-result preview without inventing unavailable host telemetry.
+`npm run eval` reports `adapter-characters`, defined here as JavaScript UTF-16 code units rather than browser or model tokens. It verifies the 350-unit focus, change and feedback budgets; the 160/161 selected-text boundary; silence and unchanged-state suppression; one-step expansion; latest-only event snapshots; the bounded bridge catalog summary; and the 1,200-unit bridge read-result preview without inventing unavailable host telemetry.
 
 `npm run proof` is a deterministic six-step juror dry-run. It exercises the real focus, offer, human-click authorization, verified change and feedback, scoped AFK lease and FormBuilder export contracts in seconds. Its output explicitly sets `browserClaim: false` and `hostTokenClaim: false`; it is reproducible core evidence, not a substitute for the required live WebMCP browser demonstration.
 

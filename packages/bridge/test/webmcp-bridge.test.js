@@ -275,6 +275,67 @@ test("every bridge capability summary stays within 350 characters", () => {
   assert.ok(catalog.capabilities[0].parameterNames.length <= 12);
 });
 
+test("parameter-name truncation never emits half of a Unicode surrogate pair", () => {
+  const catalog = negotiateWebMcpCatalog({
+    tools: [{
+      name: "read_unicode_parameter",
+      description: "",
+      inputSchema: {
+        type: "object",
+        properties: {
+          [`${"p".repeat(46)}😀tail`]: { type: "string" }
+        }
+      },
+      annotations: { readOnlyHint: true }
+    }]
+  });
+
+  assert.deepEqual(
+    catalog.capabilities[0].parameterNames,
+    [`${"p".repeat(46)}…`]
+  );
+});
+
+test("dynamic capability fitting never splits a description surrogate pair", () => {
+  const catalog = negotiateWebMcpCatalog({
+    tools: [{
+      name: "n".repeat(64),
+      description: `${"d".repeat(115)}😀tail`,
+      inputSchema: { type: "object", properties: {} },
+      annotations: { readOnlyHint: true }
+    }]
+  });
+
+  assert.equal(catalog.capabilities[0].description, `${"d".repeat(115)}…`);
+  assert.ok(JSON.stringify(catalog.capabilities[0]).length <= 350);
+});
+
+test("an identity that cannot fit the summary budget rejects only that host tool", () => {
+  const oversizedSerializedName = '"'.repeat(64);
+  const catalog = negotiateWebMcpCatalog({
+    tools: [
+      {
+        name: oversizedSerializedName,
+        description: "Cannot fit after JSON escaping.",
+        inputSchema: { type: "object", properties: {} },
+        annotations: { readOnlyHint: true }
+      },
+      hostTools[0]
+    ]
+  });
+
+  assert.deepEqual(
+    catalog.capabilities.map(({ hostToolName }) => hostToolName),
+    ["calendar_read_slots"]
+  );
+  assert.deepEqual(catalog.rejected, [
+    {
+      hostToolName: oversizedSerializedName,
+      reason: "CAPABILITY_SUMMARY_EXCEEDS_BUDGET"
+    }
+  ]);
+});
+
 test("non-JSON host read values fail with the protocol error type", async () => {
   const bridge = createWebMcpBridge({
     tools: hostTools,

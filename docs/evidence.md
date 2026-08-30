@@ -4,7 +4,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 
 | Claim | Local evidence | Status boundary |
 |---|---|---|
-| Focus packets enforce 160/161 and 350-character rules | `packages/core/test/focus-packet.test.js`; `npm run eval` | Local contract proven; no host-token claim |
+| Focus packets enforce 160/161 and 350-code-unit rules | `packages/core/test/focus-packet.test.js`; `npm run eval` | Local contract proven; no host-token claim |
 | Silence and unchanged state emit no packet | `packages/core/test/context-router.test.js`; eval cases | Local contract proven |
 | Agent offers cannot authorize themselves | `packages/core/test/action-authorization.test.js` | Local negative path proven; trusted browser click acceptance open |
 | Change causality is explicit, reference-bounded and latest-only | `packages/core/test/change-feedback.test.js`; `interaction-log.test.js`; eval case | Local delta/digest contract proven; live browser observation open |

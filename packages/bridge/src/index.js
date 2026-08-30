@@ -65,7 +65,7 @@ function boundedCapabilitySummary(tool, access) {
       continue;
     }
     throw new CoworkProtocolError(
-      "INVALID_BRIDGE_CATALOG",
+      "CAPABILITY_SUMMARY_EXCEEDS_BUDGET",
       "Host tool identity exceeds the bridge capability budget"
     );
   }
@@ -148,9 +148,20 @@ export function negotiateWebMcpCatalog({ tools }) {
     }
 
     const readOnly = tool.annotations?.readOnlyHint === true;
-    capabilities.push(
-      boundedCapabilitySummary(tool, readOnly ? "read-execute" : "offer-only")
-    );
+    try {
+      capabilities.push(
+        boundedCapabilitySummary(tool, readOnly ? "read-execute" : "offer-only")
+      );
+    } catch (error) {
+      if (
+        error instanceof CoworkProtocolError &&
+        error.code === "CAPABILITY_SUMMARY_EXCEEDS_BUDGET"
+      ) {
+        rejected.push(reject(name, "CAPABILITY_SUMMARY_EXCEEDS_BUDGET"));
+        continue;
+      }
+      throw error;
+    }
   }
 
   return {

@@ -54,6 +54,28 @@ test("visible offers reject values too long for meaningful human review", () => 
   );
 });
 
+test("visible offer limits count Unicode code points like the WebMCP schema", () => {
+  const boundary = prepareVisibleActionOffer({
+    capabilityId: "form.set_value",
+    targetId: "form-field:notes",
+    proposedArguments: { value: "😀".repeat(350) },
+    summary: "Set notes"
+  });
+  assert.equal(boundary.proposedValue, "😀".repeat(350));
+
+  assert.throws(
+    () =>
+      prepareVisibleActionOffer({
+        capabilityId: "form.set_value",
+        targetId: "form-field:notes",
+        proposedArguments: { value: "😀".repeat(351) },
+        summary: "Set notes"
+      }),
+    (error) =>
+      error instanceof CoworkProtocolError && error.code === "INVALID_ARGUMENTS"
+  );
+});
+
 test("the panel view model exposes mode, token budget and at most three action chips", () => {
   const initial = createShowcaseSession();
   assert.deepEqual(

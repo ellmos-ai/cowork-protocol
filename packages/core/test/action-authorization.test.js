@@ -90,7 +90,8 @@ test("argument digests reject values that JSON would silently discard or rewrite
     () => "hidden",
     { value: undefined },
     [undefined],
-    { value: Number.NaN }
+    { value: Number.NaN },
+    { value: -0 }
   ]) {
     assert.throws(
       () => digestArguments(value),

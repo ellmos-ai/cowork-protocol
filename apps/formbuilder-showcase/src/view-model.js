@@ -16,7 +16,16 @@ const CAPABILITY_LABELS = {
 };
 
 const MUTATING_FORM_CAPABILITIES = new Set(["form.set_value", "form.clear_value"]);
-const MAX_VISIBLE_OFFER_VALUE_CHARS = 350;
+const MAX_VISIBLE_OFFER_VALUE_CODE_POINTS = 350;
+
+function exceedsCodePointLimit(value, limit) {
+  let codePoints = 0;
+  for (const _character of value) {
+    codePoints += 1;
+    if (codePoints > limit) return true;
+  }
+  return false;
+}
 
 export function prepareVisibleActionOffer(offer) {
   if (!MUTATING_FORM_CAPABILITIES.has(offer.capabilityId)) {
@@ -32,10 +41,10 @@ export function prepareVisibleActionOffer(offer) {
       "A visible FormBuilder offer requires a string value"
     );
   }
-  if (proposedValue.length > MAX_VISIBLE_OFFER_VALUE_CHARS) {
+  if (exceedsCodePointLimit(proposedValue, MAX_VISIBLE_OFFER_VALUE_CODE_POINTS)) {
     throw new CoworkProtocolError(
       "INVALID_ARGUMENTS",
-      "A visible FormBuilder offer value cannot exceed 350 characters"
+      "A visible FormBuilder offer value cannot exceed 350 Unicode code points"
     );
   }
   if (offer.capabilityId === "form.clear_value" && proposedValue !== "") {
