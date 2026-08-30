@@ -52,13 +52,15 @@ The same Chrome build exposed `SpeechRecognition`, `speechSynthesis` and 22 synt
 
 A separate Chrome 152 accessibility pass found 19 interactive accessibility-tree nodes and no unnamed control. Real Tab key dispatch followed the skip link, four FormBuilder controls, export, every Cowork attention/action/handoff control, Speak replies, Push to talk and Stop voice; each active control was visible and had a 3-pixel focus outline. Human and agent presence were expressed as `Human present` and `Agent active` text in addition to color. At a 390×844 viewport the document had zero horizontal overflow and no control crossed the viewport edge. The pass confirms the current keyboard, name, focus, non-color status, reduced-motion and narrow-layout contracts; it is not a substitute for screen-reader practice, 200% zoom or pixel-based contrast review.
 
+The showcase visual direction is a light editorial surface with restrained gold decision accents, deep blue actions and teal status cues. A source-level contrast test checks six foreground/background variable pairs, including primary copy, secondary copy and the gold, coral and primary-action controls, against the WCAG AA 4.5:1 threshold. Chrome screenshots at 1440×1200 and 390×844 were inspected for hierarchy, clipping and color balance. This is a bounded theme acceptance, not a claim that every composited pixel or browser state has received a complete contrast audit.
+
 ## Still required before acceptance
 
 - Connected ChatGPT/in-app-agent discovery and invocation; the current Chrome smoke is an in-page WebMCP client, not an agent conversation.
 - Host-level proof that a foreign WebMCP tool catalog can actually be supplied and invoked; the local bridge test is not discovery evidence.
 - Latest-only change and feedback readback through a real WebMCP client.
 - Real microphone permission, captured speech, silence handling and transcript quality. Rapid repeated activation is now accepted in Chrome 152.
-- Screen-reader practice, 200% zoom and pixel-based contrast review. Current names, Tab order, focus indicators, reduced motion, non-color presence text and 390-pixel layout are accepted in Chrome 152.
+- Screen-reader practice, 200% zoom and a complete pixel-based contrast review. Current names, Tab order, focus indicators, reduced motion, non-color presence text, 390-pixel layout and six core theme contrast pairs are accepted in Chrome 152 or source-level checks.
 - License, live URL and video readbacks before submission. The local clean-clone, native Chrome WebMCP smoke, secret-scan and dependency-audit gates are complete for `release/public-preview` at `a1b2bc0`.
 
 The connected Edge result proves only the local fallback interaction path. The isolated Chrome result separately proves native WebMCP browser registration, discovery and read-only invocation, but not a connected ChatGPT-agent journey.

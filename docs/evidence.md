@@ -21,6 +21,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | Local browser fallback is interactive | connected Edge extension plus isolated headless Edge smoke against the local showcase | Exact-value offer, real click, page-version change, verified receipt, Adjust feedback, brief/longer AFK fail-closed/delegated/return, visible lease expiry, agent pause/Human Solo, first 12 keyboard focus stops, and context-preview fail-closed/success states accepted; `document.modelContext` absent, so no WebMCP claim |
 | Audio controls fail safely under rapid activation | speech-controller tests plus isolated Chrome 152 SpeechRecognition/synthesis smoke | Two immediate activations produce no uncaught error; 22 synthesis voices and active synthesis observed; fake device returned `audio-capture`, so real microphone and audible output remain open |
 | Current interaction surface is keyboard and narrow-layout coherent | Chrome 152 accessibility tree, real Tab dispatch, reduced-motion emulation and 390×844 viewport pass | 19 named interactive nodes, 0 unnamed, visible 3px focus, text presence cues and no horizontal/control overflow proven; screen reader, 200% zoom and pixel contrast remain open |
+| Showcase has an accepted light, premium visual direction | `visual-theme.test.js`; inspected Chrome 152 captures at 1440×1200 and 390×844 | Six core text/control pairs meet the 4.5:1 source-level threshold; restrained gold, blue and teal hierarchy accepted; complete composited-pixel contrast review remains open |
 
 ## Commit trail
 
@@ -44,7 +45,7 @@ The independent Fable reviews reproduced the release-relevant capability, state,
 
 ## Explicitly not yet evidenced
 
-- screen-reader practice, 200% zoom, pixel-based contrast and final branded visual quality;
+- screen-reader practice, 200% zoom, complete pixel-based contrast and final submission-asset branding;
 - connected ChatGPT-agent WebMCP discovery and invocation beyond the accepted Chrome in-page client;
 - real microphone permission, captured speech and audibly confirmed spoken output;
 - public GitHub repository and license detection;
