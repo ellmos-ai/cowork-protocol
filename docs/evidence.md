@@ -46,8 +46,9 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 - `09962c4` — Browser-host bridge acceptance with bounded reads, a 1,200-character preview and fail-closed offer-only mutation.
 - `6b0473a5a755ccd7fc149ce48f6b94fbe5b3b94d` — Ten-state rendered contrast audit plus an opaque FormBuilder reading surface above decorative gradients.
 - `bff18ed` — Provider-neutral bounded conversation transport, typed/audio showcase bridge, click-gated local helper and Chrome conversation acceptance.
+- `e7020098bdc240b162ff299ffa2ab7713ef73cd3` — Latest-only WebMCP conversation inbox, exact-id bounded replies, inert visible reply offers and Chrome pull/reply acceptance.
 
-Local release preparation: feature commit `bff18ed` passed 128/128 Node tests, 11/11 character evals, 7/7 proof steps, native Chrome 152 WebMCP plus local conversation/browser-host/200%-zoom smoke, the 10-state rendered contrast smoke, an 18-file Pages build and 0 secret findings. This commit is local and has not been pushed during this gate.
+Local release preparation: feature commit `e7020098bdc240b162ff299ffa2ab7713ef73cd3` passed 132/132 Node tests, 12/12 character evals, 8/8 proof steps, native Chrome 152 discovery of nine Cowork tools plus local helper/WebMCP-reply/browser-host/200%-zoom smokes, the 10-state rendered contrast smoke with 649 audited text items, an 18-file Pages build and 0 secret findings. This commit is local and has not been pushed during this gate.
 
 The independent Fable reviews reproduced the release-relevant capability, state, budget, lease, offer and JSON/Unicode boundary failures before their fixes. The resulting tests now cover read-only capability rejection, exact visible click arguments, core-level offer-summary bounds, attempt-based Solo accounting, bounded receipts, lease-expiry presentation, enforced action-mode rights, isolated over-budget tool identities, lossless JSON arguments and Unicode-safe truncation. The final Fable follow-up found no Critical or Important issue.
 
