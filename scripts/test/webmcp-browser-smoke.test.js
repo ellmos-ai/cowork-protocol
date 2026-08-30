@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   validateBrowserHostBridgeObservation,
+  validateConversationObservation,
   validateNativeWebMcpObservation,
   validateZoomReflowObservation
 } from "../webmcp-browser-smoke-lib.mjs";
@@ -196,6 +197,40 @@ test("native WebMCP browser evidence rejects an unbounded or reusable context ex
   );
 });
 
+test("conversation browser evidence requires a bounded turn and a trusted click before change", () => {
+  const summary = validateConversationObservation({
+    transportLabel: "Local demo helper",
+    transcriptText:
+      "You: Can you fill this for me?\nHelper: I can set Full name to Lukas. Click the visible offer to approve it.",
+    visibleOfferValue: "Lukas",
+    valueBeforeHumanClick: "Lukas Geiger",
+    inputValueAfterClick: "Lukas",
+    receiptStatusText: "Verified: Full name now equals Lukas"
+  });
+
+  assert.deepEqual(summary, {
+    conversationClaim: true,
+    connectedModelClaim: false,
+    transport: "local-demo",
+    clickGatedOffer: true
+  });
+});
+
+test("conversation browser evidence rejects a helper that changes the field before approval", () => {
+  assert.throws(
+    () =>
+      validateConversationObservation({
+        transportLabel: "Local demo helper",
+        transcriptText: "You: Fill it\nHelper: Click the visible offer.",
+        visibleOfferValue: "Lukas",
+        valueBeforeHumanClick: "Lukas",
+        inputValueAfterClick: "Lukas",
+        receiptStatusText: "Verified: Full name now equals Lukas"
+      }),
+    /conversation offer must remain inert until the human click/
+  );
+});
+
 function validZoomObservation() {
   return {
     requestedZoomPercent: 200,
@@ -209,10 +244,10 @@ function validZoomObservation() {
     viewportPhysicalWidth: 1424,
     viewportPhysicalHeight: 1048,
     documentHorizontalOverflow: 0,
-    interactiveControlCount: 19,
-    reachableControlCount: 19,
-    focusVisibleControlCount: 19,
-    tabSequence: Array.from({ length: 19 }, (_, index) => `control-${index + 1}`),
+    interactiveControlCount: 21,
+    reachableControlCount: 21,
+    focusVisibleControlCount: 21,
+    tabSequence: Array.from({ length: 21 }, (_, index) => `control-${index + 1}`),
     unreachableControls: [],
     horizontallyClippedControls: [],
     textClippedControls: []
@@ -226,16 +261,16 @@ test("200-percent browser zoom evidence requires reflow and every control to rem
     browserZoomFactor: 2,
     viewportCssWidth: 712,
     viewportPhysicalWidth: 1424,
-    interactiveControls: 19,
-    reachableControls: 19,
-    focusVisibleControls: 19,
+    interactiveControls: 21,
+    reachableControls: 21,
+    focusVisibleControls: 21,
     horizontalOverflow: 0
   });
 });
 
 test("200-percent browser zoom evidence rejects clipped or unreachable controls", () => {
   const observed = validZoomObservation();
-  observed.reachableControlCount = 18;
+  observed.reachableControlCount = 20;
   observed.unreachableControls = ["stop-speech"];
   observed.horizontallyClippedControls = ["stop-speech"];
 

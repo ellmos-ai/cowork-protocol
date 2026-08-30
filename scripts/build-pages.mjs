@@ -12,10 +12,12 @@ const PUBLIC_FILES = [
   "apps/formbuilder-showcase/src/form-engine.mjs",
   "apps/formbuilder-showcase/src/formbuilder-use-case.js",
   "apps/formbuilder-showcase/src/interaction-log.js",
+  "apps/formbuilder-showcase/src/local-conversation.js",
   "apps/formbuilder-showcase/src/session.js",
   "apps/formbuilder-showcase/src/speech-controller.js",
   "apps/formbuilder-showcase/src/view-model.js",
   "packages/core/src/index.js",
+  "packages/conversation/src/index.js",
   "packages/formbuilder-connector/src/index.js",
   "packages/native-webmcp/src/index.js"
 ];

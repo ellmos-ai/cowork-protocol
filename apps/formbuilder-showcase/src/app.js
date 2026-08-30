@@ -13,6 +13,7 @@ import {
   planSoloFormBuilderMutation
 } from "../../../packages/formbuilder-connector/src/index.js";
 import { registerNativeCoworkTools } from "../../../packages/native-webmcp/src/index.js";
+import { createConversationClient } from "../../../packages/conversation/src/index.js";
 import {
   createShowcaseSubmission,
   SHOWCASE_SCHEMA
@@ -37,6 +38,7 @@ import {
   prepareVisibleActionOffer
 } from "./view-model.js";
 import { createRecognitionSession } from "./speech-controller.js";
+import { replyToShowcaseTurn } from "./local-conversation.js";
 
 const $ = (selector) => document.querySelector(selector);
 const fields = [...document.querySelectorAll(".form-field[data-field-id]")];
@@ -68,6 +70,15 @@ let responseDownloadUrl = null;
 let pendingChangeCause = null;
 let leaseExpiryTimer = null;
 let offerExpiryTimer = null;
+let conversationBusy = false;
+
+const hostModelTransport = window.coworkModelTransport;
+const hasHostModelTransport = typeof hostModelTransport?.sendTurn === "function";
+const conversationClient = createConversationClient({
+  sendTurn: hasHostModelTransport
+    ? hostModelTransport.sendTurn.bind(hostModelTransport)
+    : replyToShowcaseTurn
+});
 
 function setStatus(message) {
   $("#system-status").textContent = message;
@@ -318,6 +329,9 @@ function render() {
   $("#focus-label").textContent = view.focusLabel;
   $("#context-label").textContent = view.contextLabel;
   $("#capability-badge").textContent = view.capabilityLabel;
+  $("#model-transport-badge").textContent = hasHostModelTransport
+    ? "Connected model bridge"
+    : "Local demo helper";
   $("#page-version").textContent = String(pageVersion);
   $("#toggle-agent").textContent =
     session.agentPresence === "paused" ? "Resume agent" : "Pause agent";
@@ -326,6 +340,75 @@ function render() {
   dot.className = `presence-dot tone-${view.humanTone}`;
   renderOffers(view);
   renderReceipts();
+}
+
+async function sendConversationTurn(transcriptInput) {
+  if (conversationBusy) return;
+  const input = $("#conversation-input");
+  const sendButton = $("#send-conversation");
+  const transcript = typeof transcriptInput === "string" ? transcriptInput.trim() : "";
+  if (transcript === "") {
+    $("#transcript").textContent = "Silence detected. No model turn created.";
+    return;
+  }
+
+  conversationBusy = true;
+  sendButton.disabled = true;
+  sendButton.setAttribute("aria-busy", "true");
+  $("#transcript").textContent = `You: ${transcript}\nHelper: Thinking with bounded context…`;
+  try {
+    const result = await conversationClient.submit({
+      transcript,
+      focusPacket,
+      presence: {
+        humanPresence: session.humanPresence,
+        agentPresence: session.agentPresence,
+        mode: session.effectiveMode
+      }
+    });
+    if (!result.sent) {
+      $("#transcript").textContent =
+        result.status === "agent-paused"
+          ? "Agent paused. This turn stayed on the page and was not sent."
+          : "Silence detected. No model turn created.";
+      return;
+    }
+
+    let createdOffers = 0;
+    let rejectedOffers = 0;
+    for (const offer of result.reply.offers) {
+      try {
+        createVisibleOffer({
+          capabilityId: offer.capabilityId,
+          targetId: offer.targetId,
+          value: offer.value,
+          summary: offer.summary
+        });
+        createdOffers += 1;
+      } catch {
+        rejectedOffers += 1;
+      }
+    }
+    input.value = "";
+    $("#transcript").textContent = `You: ${result.turn.transcript}\nHelper: ${result.reply.message}`;
+    setStatus(
+      createdOffers > 0
+        ? `${createdOffers} model suggestion${createdOffers === 1 ? "" : "s"} added as click-gated offer${createdOffers === 1 ? "" : "s"}.`
+        : rejectedOffers > 0
+          ? "The reply was shown, but its action offer was outside the current focus or action rights."
+          : hasHostModelTransport
+            ? "Connected model reply received through the bounded conversation bridge."
+            : "Local demo reply created from the bounded conversation turn."
+    );
+    speak(result.reply.speak || result.reply.message);
+  } catch (error) {
+    $("#transcript").textContent = `Conversation unavailable: ${error.message}`;
+    setStatus(`${error.code ?? "CONVERSATION_ERROR"}: ${error.message}`);
+  } finally {
+    conversationBusy = false;
+    sendButton.disabled = false;
+    sendButton.setAttribute("aria-busy", "false");
+  }
 }
 
 function newOfferId() {
@@ -674,9 +757,8 @@ function configureSpeech() {
     },
     onResult: (event) => {
       const transcript = event.results?.[0]?.[0]?.transcript?.trim() ?? "";
-      $("#transcript").textContent = transcript
-        ? `You: ${transcript}`
-        : "Silence detected. No model turn created.";
+      $("#conversation-input").value = transcript;
+      void sendConversationTurn(transcript);
     },
     onError: (event) => {
       $("#transcript").textContent =
@@ -813,6 +895,10 @@ $("#expand-context").addEventListener("click", () => {
 });
 
 $("#demo-offer").addEventListener("click", addDemoOffer);
+$("#conversation-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  void sendConversationTurn($("#conversation-input").value);
+});
 $("#away-short").addEventListener("click", () => startAway("short"));
 $("#away-long").addEventListener("click", () => startAway("long"));
 $("#return-human").addEventListener("click", returnHuman);

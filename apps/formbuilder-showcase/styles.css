@@ -200,7 +200,10 @@ textarea { resize: vertical; }
 .empty-state, .transcript, .system-status { margin: .65rem 0 0; color: var(--muted); font-size: .77rem; line-height: 1.45; }
 .button-row { justify-content: flex-start; flex-wrap: wrap; margin-top: .7rem; }
 .button-row button { flex: 1 1 auto; }
-.transcript { min-height: 2.2rem; padding: .65rem; border-left: 2px solid var(--blue); background: rgba(39,94,170,.055); }
+.conversation-form { display: grid; gap: .45rem; margin-top: .7rem; }
+.conversation-form label { font-size: .78rem; }
+.speak-replies { margin-top: .65rem; }
+.transcript { min-height: 2.2rem; padding: .65rem; border-left: 2px solid var(--blue); background: rgba(39,94,170,.055); white-space: pre-line; }
 
 .receipt-list { display: grid; gap: .45rem; margin: .7rem 0 0; padding-left: 1.3rem; }
 .receipt-list li { padding-left: .2rem; color: var(--muted); font-size: .75rem; }

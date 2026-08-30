@@ -158,15 +158,21 @@
       <section class="panel-section" aria-labelledby="audio-heading">
         <div class="section-row">
           <h3 id="audio-heading">Conversation</h3>
-          <label class="check-row compact-check">
-            <input id="speak-output" type="checkbox" checked>
-            <span>Speak replies</span>
-          </label>
+          <span class="badge" id="model-transport-badge">Local demo helper</span>
         </div>
-        <div class="button-row">
-          <button class="audio-button" id="talk" type="button"><span aria-hidden="true">●</span> Push to talk</button>
-          <button class="quiet-button" id="stop-speech" type="button">Stop voice</button>
-        </div>
+        <form id="conversation-form" class="conversation-form">
+          <label for="conversation-input">Talk or type to the helper</label>
+          <input id="conversation-input" maxlength="350" autocomplete="off" placeholder="Ask about the focused field">
+          <div class="button-row">
+            <button class="primary-small" id="send-conversation" type="submit">Send bounded turn</button>
+            <button class="audio-button" id="talk" type="button"><span aria-hidden="true">●</span> Push to talk</button>
+            <button class="quiet-button" id="stop-speech" type="button">Stop voice</button>
+          </div>
+        </form>
+        <label class="check-row compact-check speak-replies">
+          <input id="speak-output" type="checkbox" checked>
+          <span>Speak replies</span>
+        </label>
         <p id="transcript" class="transcript" aria-live="polite">Waiting quietly. Silence creates no model turn.</p>
       </section>
 

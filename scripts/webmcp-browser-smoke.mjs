@@ -6,6 +6,7 @@ import path from "node:path";
 import { createStaticServer } from "./serve.mjs";
 import {
   validateBrowserHostBridgeObservation,
+  validateConversationObservation,
   validateNativeWebMcpObservation,
   validateZoomReflowObservation
 } from "./webmcp-browser-smoke-lib.mjs";
@@ -429,6 +430,30 @@ try {
     call,
     toolExecutionExpression("cowork_read_feedback", {})
   );
+  await evaluateValue(call, `(() => {
+    document.querySelector("#conversation-input").value = "Can you fill this for me?";
+    document.querySelector("#speak-output").checked = false;
+    return true;
+  })()`);
+  await dispatchTrustedClick(call, 'document.querySelector("#send-conversation")', "Bounded conversation send");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const conversationBeforeClick = await evaluateValue(call, `(() => ({
+    transportLabel: document.querySelector("#model-transport-badge")?.textContent.trim(),
+    transcriptText: document.querySelector("#transcript")?.textContent.trim(),
+    visibleOfferValue: document.querySelector(".offer-chip")?.dataset.offerValue,
+    visibleOfferCount: document.querySelectorAll(".offer-chip").length,
+    valueBeforeHumanClick: document.querySelector("#full-name")?.value
+  }))()`);
+  if (conversationBeforeClick.visibleOfferCount !== 1) {
+    throw new Error("Expected exactly one conversation offer before the trusted click");
+  }
+  await dispatchTrustedClick(call, 'document.querySelector(".offer-chip")', "Conversation action offer");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const conversationAfterClick = await evaluateValue(call, `(() => ({
+    inputValueAfterClick: document.querySelector("#full-name")?.value,
+    receiptStatusText: document.querySelector("#receipt-list li")?.textContent.trim()
+  }))()`);
+  const conversationObserved = { ...conversationBeforeClick, ...conversationAfterClick };
   const bridgeObserved = await evaluateValue(call, `(async () => {
     const { negotiateCoworkRuntime } = await import("/packages/bridge/src/index.js");
     const tools = [
@@ -501,10 +526,12 @@ try {
     };
   })()`);
   const summary = validateNativeWebMcpObservation(observed);
+  const conversationSummary = validateConversationObservation(conversationObserved);
   const bridgeSummary = validateBrowserHostBridgeObservation(bridgeObserved);
   const zoomSummary = validateZoomReflowObservation(zoomObserved);
   console.log(JSON.stringify({
     ...summary,
+    conversation: conversationSummary,
     bridge: bridgeSummary,
     zoom: zoomSummary,
     hostTokenClaim: false,

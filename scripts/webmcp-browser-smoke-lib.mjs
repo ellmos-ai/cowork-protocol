@@ -16,6 +16,46 @@ function isNonNegativeInteger(value) {
   return Number.isInteger(value) && value >= 0;
 }
 
+export function validateConversationObservation(observed) {
+  requireCondition(
+    observed && typeof observed === "object",
+    "Conversation browser observation is required"
+  );
+  const transport =
+    observed.transportLabel === "Connected model bridge" ? "connected-model" : "local-demo";
+  requireCondition(
+    observed.transportLabel === "Local demo helper" || transport === "connected-model",
+    "Conversation transport label is missing or unknown"
+  );
+  requireCondition(
+    typeof observed.transcriptText === "string" &&
+      observed.transcriptText.includes("You:") &&
+      observed.transcriptText.includes("Helper:") &&
+      observed.transcriptText.length <= 900,
+    "Conversation transcript does not show a bounded human and helper exchange"
+  );
+  requireCondition(
+    typeof observed.visibleOfferValue === "string" && observed.visibleOfferValue.length > 0,
+    "Conversation reply did not create a visible action offer"
+  );
+  requireCondition(
+    observed.valueBeforeHumanClick !== observed.visibleOfferValue,
+    "conversation offer must remain inert until the human click"
+  );
+  requireCondition(
+    observed.inputValueAfterClick === observed.visibleOfferValue &&
+      typeof observed.receiptStatusText === "string" &&
+      observed.receiptStatusText.includes("Verified"),
+    "Conversation offer was not verified after the human click"
+  );
+  return {
+    conversationClaim: true,
+    connectedModelClaim: transport === "connected-model",
+    transport,
+    clickGatedOffer: true
+  };
+}
+
 export function validateNativeWebMcpObservation(observed) {
   requireCondition(observed && typeof observed === "object", "Browser observation is required");
   requireCondition(observed.secureContext === true, "WebMCP smoke requires a secure context");
@@ -304,7 +344,7 @@ export function validateZoomReflowObservation(observed) {
   const tabSequence = Array.isArray(observed.tabSequence) ? observed.tabSequence : [];
   requireCondition(
     isNonNegativeInteger(observed.interactiveControlCount) &&
-      observed.interactiveControlCount === 19 &&
+      observed.interactiveControlCount === 21 &&
       observed.reachableControlCount === observed.interactiveControlCount &&
       observed.focusVisibleControlCount === observed.interactiveControlCount &&
       tabSequence.length === observed.interactiveControlCount &&
