@@ -15,6 +15,8 @@ const expectedTools = [
   "cowork_read_feedback",
   "cowork_read_focus",
   "cowork_read_presence",
+  "cowork_read_turn",
+  "cowork_reply_turn",
   "cowork_request_context"
 ];
 
@@ -139,7 +141,7 @@ test("native WebMCP browser evidence requires the complete click-gated human loo
     browserClaim: true,
     agentClientClaim: false,
     browserVersion: "Chrome/152.0.7977.64",
-    discoveredTools: 7,
+    discoveredTools: 9,
     focusContextCharacters: 9,
     expandedContextCharacters: 110,
     verifiedHumanClicks: 2,
@@ -182,7 +184,7 @@ test("native WebMCP browser evidence rejects a partial catalog", () => {
 
   assert.throws(
     () => validateNativeWebMcpObservation(observed),
-    /Expected exactly the seven Cowork tools/
+    /Expected exactly the nine Cowork tools/
   );
 });
 
@@ -205,14 +207,42 @@ test("conversation browser evidence requires a bounded turn and a trusted click 
     visibleOfferValue: "Lukas",
     valueBeforeHumanClick: "Lukas Geiger",
     inputValueAfterClick: "Lukas",
-    receiptStatusText: "Verified: Full name now equals Lukas"
+    receiptStatusText: "Verified: Full name now equals Lukas",
+    webMcpInbox: {
+      readPacket: {
+        type: "conversation-inbox",
+        protocolVersion: "0.1",
+        latest: {
+          turnId: "turn-browser-1",
+          turn: {
+            type: "conversation-turn",
+            protocolVersion: "0.1",
+            transcript: "Can you fill this for me?"
+          }
+        },
+        totalCount: 1,
+        omittedCount: 0
+      },
+      replyPacket: {
+        type: "conversation-reply",
+        protocolVersion: "0.1",
+        turnId: "turn-browser-1",
+        requiresHumanConfirmation: true,
+        presentation: { visibleOffers: 1, rejectedOffers: 0 }
+      },
+      visibleOfferValue: "Ada Byron",
+      valueBeforeHumanClick: "Lukas",
+      inputValueAfterClick: "Ada Byron",
+      receiptStatusText: "Verified: Full name now equals Ada Byron"
+    }
   });
 
   assert.deepEqual(summary, {
     conversationClaim: true,
     connectedModelClaim: false,
     transport: "local-demo",
-    clickGatedOffer: true
+    clickGatedOffer: true,
+    webMcpReplyClaim: true
   });
 });
 
@@ -228,6 +258,49 @@ test("conversation browser evidence rejects a helper that changes the field befo
         receiptStatusText: "Verified: Full name now equals Lukas"
       }),
     /conversation offer must remain inert until the human click/
+  );
+});
+
+test("conversation browser evidence rejects a WebMCP reply for another turn", () => {
+  const observed = {
+    transportLabel: "Local demo helper",
+    transcriptText: "You: Fill it\nHelper: Click the visible offer.",
+    visibleOfferValue: "Lukas",
+    valueBeforeHumanClick: "Lukas Geiger",
+    inputValueAfterClick: "Lukas",
+    receiptStatusText: "Verified: Full name now equals Lukas",
+    webMcpInbox: {
+      readPacket: {
+        type: "conversation-inbox",
+        protocolVersion: "0.1",
+        latest: {
+          turnId: "turn-current",
+          turn: {
+            type: "conversation-turn",
+            protocolVersion: "0.1",
+            transcript: "Fill it"
+          }
+        },
+        totalCount: 1,
+        omittedCount: 0
+      },
+      replyPacket: {
+        type: "conversation-reply",
+        protocolVersion: "0.1",
+        turnId: "turn-stale",
+        requiresHumanConfirmation: true,
+        presentation: { visibleOffers: 1, rejectedOffers: 0 }
+      },
+      visibleOfferValue: "Ada Byron",
+      valueBeforeHumanClick: "Lukas",
+      inputValueAfterClick: "Ada Byron",
+      receiptStatusText: "Verified: Full name now equals Ada Byron"
+    }
+  };
+
+  assert.throws(
+    () => validateConversationObservation(observed),
+    /WebMCP reply must match the latest pending conversation turn/
   );
 });
 

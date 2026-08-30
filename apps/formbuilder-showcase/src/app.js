@@ -13,7 +13,10 @@ import {
   planSoloFormBuilderMutation
 } from "../../../packages/formbuilder-connector/src/index.js";
 import { registerNativeCoworkTools } from "../../../packages/native-webmcp/src/index.js";
-import { createConversationClient } from "../../../packages/conversation/src/index.js";
+import {
+  createConversationClient,
+  createConversationInbox
+} from "../../../packages/conversation/src/index.js";
 import {
   createShowcaseSubmission,
   SHOWCASE_SCHEMA
@@ -79,6 +82,10 @@ const conversationClient = createConversationClient({
     ? hostModelTransport.sendTurn.bind(hostModelTransport)
     : replyToShowcaseTurn
 });
+const conversationInbox = createConversationInbox();
+let conversationTransportLabel = hasHostModelTransport
+  ? "Connected model bridge"
+  : "Local demo helper";
 
 function setStatus(message) {
   $("#system-status").textContent = message;
@@ -329,9 +336,7 @@ function render() {
   $("#focus-label").textContent = view.focusLabel;
   $("#context-label").textContent = view.contextLabel;
   $("#capability-badge").textContent = view.capabilityLabel;
-  $("#model-transport-badge").textContent = hasHostModelTransport
-    ? "Connected model bridge"
-    : "Local demo helper";
+  $("#model-transport-badge").textContent = conversationTransportLabel;
   $("#page-version").textContent = String(pageVersion);
   $("#toggle-agent").textContent =
     session.agentPresence === "paused" ? "Resume agent" : "Pause agent";
@@ -340,6 +345,40 @@ function render() {
   dot.className = `presence-dot tone-${view.humanTone}`;
   renderOffers(view);
   renderReceipts();
+}
+
+function presentConversationReply({ turn, reply, transportLabel }) {
+  conversationTransportLabel = transportLabel;
+  let createdOffers = 0;
+  let rejectedOffers = 0;
+  for (const offer of reply.offers) {
+    try {
+      createVisibleOffer({
+        capabilityId: offer.capabilityId,
+        targetId: offer.targetId,
+        value: offer.value,
+        summary: offer.summary
+      });
+      createdOffers += 1;
+    } catch {
+      rejectedOffers += 1;
+    }
+  }
+  $("#transcript").textContent = `You: ${turn.transcript}\nHelper: ${reply.message}`;
+  setStatus(
+    createdOffers > 0
+      ? `${createdOffers} model suggestion${createdOffers === 1 ? "" : "s"} added as click-gated offer${createdOffers === 1 ? "" : "s"}.`
+      : rejectedOffers > 0
+        ? "The reply was shown, but its action offer was outside the current focus or action rights."
+        : transportLabel === "Connected model bridge"
+          ? "Connected model reply received through the bounded conversation bridge."
+          : transportLabel === "WebMCP agent reply"
+            ? "WebMCP agent reply received for the latest bounded human turn."
+            : "Local demo reply created from the bounded conversation turn."
+  );
+  speak(reply.speak || reply.message);
+  render();
+  return { visibleOffers: createdOffers, rejectedOffers };
 }
 
 async function sendConversationTurn(transcriptInput) {
@@ -374,33 +413,17 @@ async function sendConversationTurn(transcriptInput) {
       return;
     }
 
-    let createdOffers = 0;
-    let rejectedOffers = 0;
-    for (const offer of result.reply.offers) {
-      try {
-        createVisibleOffer({
-          capabilityId: offer.capabilityId,
-          targetId: offer.targetId,
-          value: offer.value,
-          summary: offer.summary
-        });
-        createdOffers += 1;
-      } catch {
-        rejectedOffers += 1;
-      }
+    if (!hasHostModelTransport) {
+      conversationInbox.publish(result.turn);
     }
     input.value = "";
-    $("#transcript").textContent = `You: ${result.turn.transcript}\nHelper: ${result.reply.message}`;
-    setStatus(
-      createdOffers > 0
-        ? `${createdOffers} model suggestion${createdOffers === 1 ? "" : "s"} added as click-gated offer${createdOffers === 1 ? "" : "s"}.`
-        : rejectedOffers > 0
-          ? "The reply was shown, but its action offer was outside the current focus or action rights."
-          : hasHostModelTransport
-            ? "Connected model reply received through the bounded conversation bridge."
-            : "Local demo reply created from the bounded conversation turn."
-    );
-    speak(result.reply.speak || result.reply.message);
+    presentConversationReply({
+      turn: result.turn,
+      reply: result.reply,
+      transportLabel: hasHostModelTransport
+        ? "Connected model bridge"
+        : "Local demo helper"
+    });
   } catch (error) {
     $("#transcript").textContent = `Conversation unavailable: ${error.message}`;
     setStatus(`${error.code ?? "CONVERSATION_ERROR"}: ${error.message}`);
@@ -805,10 +828,36 @@ async function configureWebMcp() {
       executeSolo: executeSoloAction,
       readChanges: () =>
         createChangeSnapshot(session.changeCausality ? changeEvents : []),
-      readFeedback: () => createFeedbackSnapshot(feedbackEvents)
+      readFeedback: () => createFeedbackSnapshot(feedbackEvents),
+      readTurn: () => conversationInbox.read(),
+      replyTurn: (input) => {
+        if (session.agentPresence === "paused") {
+          throw new CoworkProtocolError(
+            "SESSION_PAUSED",
+            "Agent replies are paused while the human works solo"
+          );
+        }
+        const pending = conversationInbox.read().latest;
+        if (
+          pending?.turn.focus &&
+          pending.turn.focus.pageVersion !== pageVersion
+        ) {
+          throw new CoworkProtocolError(
+            "STALE_FOCUS",
+            "The page changed after this conversation turn was created"
+          );
+        }
+        const response = conversationInbox.respond(input);
+        const presentation = presentConversationReply({
+          turn: pending.turn,
+          reply: response.reply,
+          transportLabel: "WebMCP agent reply"
+        });
+        return { ...response, presentation };
+      }
     });
     capabilityLevel = "native";
-    setStatus("Native WebMCP tools registered: focus, one-shot related context, causal changes, presence, offers, lease-scoped solo execution, and bounded feedback.");
+    setStatus("Nine Native WebMCP tools registered: focus, context, causal changes, presence, offers, solo execution, feedback, conversation inbox, and bounded reply.");
     render();
   } catch (error) {
     capabilityLevel = "unavailable";

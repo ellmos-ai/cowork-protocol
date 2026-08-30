@@ -453,7 +453,59 @@ try {
     inputValueAfterClick: document.querySelector("#full-name")?.value,
     receiptStatusText: document.querySelector("#receipt-list li")?.textContent.trim()
   }))()`);
-  const conversationObserved = { ...conversationBeforeClick, ...conversationAfterClick };
+  await evaluateValue(call, `(() => {
+    document.querySelector("#conversation-input").value = "Use a different name.";
+    return true;
+  })()`);
+  await dispatchTrustedClick(call, 'document.querySelector("#send-conversation")', "Second bounded conversation send");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const turnExecution = await evaluateValue(
+    call,
+    toolExecutionExpression("cowork_read_turn", {})
+  );
+  const replyExecution = await evaluateValue(
+    call,
+    toolExecutionExpression("cowork_reply_turn", {
+      turnId: turnExecution.packet.latest.turnId,
+      message: "I can use a different name. Click the exact offer to approve it.",
+      offers: [
+        {
+          capabilityId: "form.set_value",
+          targetId: "form-field:full-name",
+          value: "Ada Byron",
+          summary: "Set Full name to Ada Byron"
+        }
+      ]
+    })
+  );
+  const webMcpReplyBeforeClick = await evaluateValue(call, `(() => {
+    const offer = [...document.querySelectorAll(".offer-chip")]
+      .find((candidate) => candidate.dataset.offerValue === "Ada Byron");
+    return {
+      visibleOfferValue: offer?.dataset.offerValue,
+      valueBeforeHumanClick: document.querySelector("#full-name")?.value
+    };
+  })()`);
+  await dispatchTrustedClick(
+    call,
+    '[...document.querySelectorAll(".offer-chip")].find((candidate) => candidate.dataset.offerValue === "Ada Byron")',
+    "WebMCP conversation reply offer"
+  );
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const webMcpReplyAfterClick = await evaluateValue(call, `(() => ({
+    inputValueAfterClick: document.querySelector("#full-name")?.value,
+    receiptStatusText: document.querySelector("#receipt-list li")?.textContent.trim()
+  }))()`);
+  const conversationObserved = {
+    ...conversationBeforeClick,
+    ...conversationAfterClick,
+    webMcpInbox: {
+      readPacket: turnExecution.packet,
+      replyPacket: replyExecution.packet,
+      ...webMcpReplyBeforeClick,
+      ...webMcpReplyAfterClick
+    }
+  };
   const bridgeObserved = await evaluateValue(call, `(async () => {
     const { negotiateCoworkRuntime } = await import("/packages/bridge/src/index.js");
     const tools = [

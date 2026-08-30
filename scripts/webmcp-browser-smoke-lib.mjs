@@ -5,6 +5,8 @@ const EXPECTED_TOOL_NAMES = Object.freeze([
   "cowork_read_feedback",
   "cowork_read_focus",
   "cowork_read_presence",
+  "cowork_read_turn",
+  "cowork_reply_turn",
   "cowork_request_context"
 ]);
 
@@ -48,11 +50,49 @@ export function validateConversationObservation(observed) {
       observed.receiptStatusText.includes("Verified"),
     "Conversation offer was not verified after the human click"
   );
+  const inbox = observed.webMcpInbox;
+  const readPacket = inbox?.readPacket;
+  const replyPacket = inbox?.replyPacket;
+  requireCondition(
+    readPacket?.type === "conversation-inbox" &&
+      readPacket.protocolVersion === "0.1" &&
+      typeof readPacket.latest?.turnId === "string" &&
+      readPacket.latest.turn?.type === "conversation-turn" &&
+      readPacket.latest.turn.protocolVersion === "0.1" &&
+      typeof readPacket.latest.turn.transcript === "string" &&
+      readPacket.latest.turn.transcript.length > 0 &&
+      readPacket.latest.turn.transcript.length <= 350 &&
+      isNonNegativeInteger(readPacket.totalCount) &&
+      isNonNegativeInteger(readPacket.omittedCount),
+    "WebMCP conversation inbox is missing or unbounded"
+  );
+  requireCondition(
+    replyPacket?.type === "conversation-reply" &&
+      replyPacket.protocolVersion === "0.1" &&
+      replyPacket.turnId === readPacket.latest.turnId,
+    "WebMCP reply must match the latest pending conversation turn"
+  );
+  requireCondition(
+    replyPacket.requiresHumanConfirmation === true &&
+      replyPacket.presentation?.visibleOffers === 1 &&
+      replyPacket.presentation?.rejectedOffers === 0 &&
+      typeof inbox.visibleOfferValue === "string" &&
+      inbox.visibleOfferValue.length > 0 &&
+      inbox.valueBeforeHumanClick !== inbox.visibleOfferValue,
+    "WebMCP conversation reply must create one inert visible offer"
+  );
+  requireCondition(
+    inbox.inputValueAfterClick === inbox.visibleOfferValue &&
+      typeof inbox.receiptStatusText === "string" &&
+      inbox.receiptStatusText.includes("Verified"),
+    "WebMCP conversation offer was not verified after the human click"
+  );
   return {
     conversationClaim: true,
     connectedModelClaim: transport === "connected-model",
     transport,
-    clickGatedOffer: true
+    clickGatedOffer: true,
+    webMcpReplyClaim: true
   };
 }
 
@@ -71,7 +111,7 @@ export function validateNativeWebMcpObservation(observed) {
   const toolNames = Array.isArray(observed.toolNames) ? [...observed.toolNames].sort() : [];
   requireCondition(
     JSON.stringify(toolNames) === JSON.stringify(EXPECTED_TOOL_NAMES),
-    "Expected exactly the seven Cowork tools"
+    "Expected exactly the nine Cowork tools"
   );
 
   const focus = observed.focusExecution?.packet;

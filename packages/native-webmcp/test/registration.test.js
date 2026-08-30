@@ -101,10 +101,33 @@ test("native registration exposes a read-only focus tool backed by the real conn
         adjustment: "",
         pageVersion: 9,
         createdAt: "2026-08-30T10:02:00.000Z"
-      })
+      }),
+    readTurn: () => ({
+      type: "conversation-inbox",
+      protocolVersion: "0.1",
+      latest: {
+        turnId: "turn-browser-1",
+        turn: {
+          type: "conversation-turn",
+          protocolVersion: "0.1",
+          transcript: "Can you fill this field?",
+          focus: { targetId: "form-field:field-name" },
+          presence: { humanPresence: "present", agentPresence: "active", mode: "cowork" }
+        }
+      },
+      totalCount: 1,
+      omittedCount: 0
+    }),
+    replyTurn: ({ turnId, message, offers }) => ({
+      type: "conversation-reply",
+      protocolVersion: "0.1",
+      turnId,
+      reply: { message, speak: "", offers, omittedOffers: 0 },
+      requiresHumanConfirmation: offers.length > 0
+    })
   });
 
-  assert.equal(registrations.length, 7);
+  assert.equal(registrations.length, 9);
   const { tool, options } = registrations.find(
     (registration) => registration.tool.name === "cowork_read_focus"
   );
@@ -224,6 +247,51 @@ test("native registration exposes a read-only focus tool backed by the real conn
   assert.equal(changesResult.structuredContent.changeId, "change-9");
   assert.deepEqual(changesResult.structuredContent.causeRefs, ["lease:lease-1"]);
 
+  const turnRegistration = registrations.find(
+    (registration) => registration.tool.name === "cowork_read_turn"
+  );
+  assert.equal(turnRegistration.tool.title, "Read latest human conversation turn");
+  assert.deepEqual(turnRegistration.tool.annotations, {
+    readOnlyHint: true,
+    untrustedContentHint: true
+  });
+  const turnResult = await turnRegistration.tool.execute({});
+  assert.equal(turnResult.structuredContent.latest.turnId, "turn-browser-1");
+  assert.equal(
+    turnResult.structuredContent.latest.turn.transcript,
+    "Can you fill this field?"
+  );
+
+  const replyRegistration = registrations.find(
+    (registration) => registration.tool.name === "cowork_reply_turn"
+  );
+  assert.equal(replyRegistration.tool.title, "Reply to the human conversation turn");
+  assert.deepEqual(replyRegistration.tool.annotations, {
+    readOnlyHint: false,
+    untrustedContentHint: true
+  });
+  assert.deepEqual(replyRegistration.tool.inputSchema.required, ["turnId", "message"]);
+  assert.equal(replyRegistration.tool.inputSchema.properties.message.maxLength, 350);
+  assert.equal(replyRegistration.tool.inputSchema.properties.offers.maxItems, 3);
+  assert.equal(
+    replyRegistration.tool.inputSchema.properties.offers.items.properties.value.maxLength,
+    350
+  );
+  const replyResult = await replyRegistration.tool.execute({
+    turnId: "turn-browser-1",
+    message: "I can fill it. Click the visible offer.",
+    offers: [
+      {
+        capabilityId: "form.set_value",
+        targetId: "form-field:field-name",
+        value: "Ada Byron",
+        summary: "Set Name to Ada Byron"
+      }
+    ]
+  });
+  assert.equal(replyResult.structuredContent.turnId, "turn-browser-1");
+  assert.equal(replyResult.structuredContent.requiresHumanConfirmation, true);
+
   controller.abort();
   assert.equal(options.signal.aborted, true);
   assert.equal(offerRegistration.options.signal.aborted, true);
@@ -232,6 +300,8 @@ test("native registration exposes a read-only focus tool backed by the real conn
   assert.equal(feedbackRegistration.options.signal.aborted, true);
   assert.equal(changesRegistration.options.signal.aborted, true);
   assert.equal(contextRegistration.options.signal.aborted, true);
+  assert.equal(turnRegistration.options.signal.aborted, true);
+  assert.equal(replyRegistration.options.signal.aborted, true);
 });
 
 test("missing document.modelContext reports an unavailable native capability", async () => {

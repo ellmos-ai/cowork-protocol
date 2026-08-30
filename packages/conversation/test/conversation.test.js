@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   ConversationProtocolError,
   createConversationClient,
+  createConversationInbox,
   createConversationTurn,
   normalizeConversationReply
 } from "../src/index.js";
@@ -152,4 +153,117 @@ test("an overlong proposed value is rejected instead of being silently changed",
     (error) =>
       error instanceof ConversationProtocolError && error.code === "REPLY_VALUE_TOO_LONG"
   );
+});
+
+test("the WebMCP inbox exposes only the latest bounded human turn", () => {
+  const inbox = createConversationInbox({
+    createTurnId: (sequence) => `turn-${sequence}`
+  });
+  const first = createConversationTurn({
+    transcript: "Explain this field",
+    focusPacket,
+    presence: activePresence
+  });
+  const second = createConversationTurn({
+    transcript: "Fill it with my name",
+    focusPacket,
+    presence: activePresence
+  });
+
+  assert.equal(inbox.publish(first).turnId, "turn-1");
+  assert.equal(inbox.publish(second).turnId, "turn-2");
+
+  assert.deepEqual(inbox.read(), {
+    type: "conversation-inbox",
+    protocolVersion: "0.1",
+    latest: {
+      turnId: "turn-2",
+      turn: second
+    },
+    totalCount: 2,
+    omittedCount: 1
+  });
+});
+
+test("a WebMCP reply must match the pending turn and remains an unexecuted offer", () => {
+  const inbox = createConversationInbox({
+    createTurnId: (sequence) => `turn-${sequence}`
+  });
+  const turn = createConversationTurn({
+    transcript: "Fill it with my name",
+    focusPacket,
+    presence: activePresence
+  });
+  const published = inbox.publish(turn);
+
+  assert.throws(
+    () =>
+      inbox.respond({
+        turnId: "turn-stale",
+        message: "Stale reply",
+        offers: []
+      }),
+    (error) =>
+      error instanceof ConversationProtocolError &&
+      error.code === "STALE_CONVERSATION_TURN"
+  );
+
+  const response = inbox.respond({
+    turnId: published.turnId,
+    message: "I can fill the field. Click the offer to approve.",
+    speak: "I have one suggestion.",
+    offers: [
+      {
+        capabilityId: "form.set_value",
+        targetId: "form-field:full-name",
+        value: "Ada Byron",
+        summary: "Set Full name to Ada Byron"
+      }
+    ]
+  });
+
+  assert.equal(response.type, "conversation-reply");
+  assert.equal(response.turnId, "turn-1");
+  assert.equal(response.requiresHumanConfirmation, true);
+  assert.equal(response.reply.offers[0].value, "Ada Byron");
+  assert.equal(Object.hasOwn(response, "executed"), false);
+  assert.deepEqual(inbox.read(), {
+    type: "conversation-inbox",
+    protocolVersion: "0.1",
+    latest: null,
+    totalCount: 1,
+    omittedCount: 0
+  });
+  assert.throws(
+    () => inbox.respond({ turnId: published.turnId, message: "Replay", offers: [] }),
+    (error) =>
+      error instanceof ConversationProtocolError &&
+      error.code === "STALE_CONVERSATION_TURN"
+  );
+});
+
+test("the inbox rejects a reused turn id so an old agent reply cannot match a new turn", () => {
+  const inbox = createConversationInbox({ createTurnId: () => "turn-reused" });
+  const turn = createConversationTurn({
+    transcript: "First request",
+    focusPacket,
+    presence: activePresence
+  });
+  inbox.publish(turn);
+
+  assert.throws(
+    () =>
+      inbox.publish(
+        createConversationTurn({
+          transcript: "Second request",
+          focusPacket,
+          presence: activePresence
+        })
+      ),
+    (error) =>
+      error instanceof ConversationProtocolError &&
+      error.code === "DUPLICATE_CONVERSATION_TURN"
+  );
+  assert.equal(inbox.read().latest.turn.transcript, "First request");
+  assert.equal(inbox.read().totalCount, 1);
 });

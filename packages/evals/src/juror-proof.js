@@ -11,6 +11,10 @@ import {
   planAuthorizedFormBuilderMutation,
   planSoloFormBuilderMutation
 } from "../../formbuilder-connector/src/index.js";
+import {
+  createConversationInbox,
+  createConversationTurn
+} from "../../conversation/src/index.js";
 import { createShowcaseSubmission } from "../../../apps/formbuilder-showcase/src/formbuilder-use-case.js";
 import { observeControlChange } from "../../../apps/formbuilder-showcase/src/interaction-log.js";
 
@@ -37,6 +41,32 @@ export function runJurorProof() {
     helpText: "Required. Used in the generated FormBuilder response.",
     options: [],
     reason: "Need the field requirement before proposing a value"
+  });
+  const conversationTurn = createConversationTurn({
+    transcript: "Can you use a different name for this field?",
+    focusPacket: focus,
+    presence: {
+      humanPresence: "present",
+      agentPresence: "active",
+      mode: "cowork"
+    }
+  });
+  const conversationInbox = createConversationInbox({
+    createTurnId: () => "proof-turn-1"
+  });
+  conversationInbox.publish(conversationTurn);
+  const conversationRead = conversationInbox.read();
+  const conversationReply = conversationInbox.respond({
+    turnId: conversationRead.latest.turnId,
+    message: "I can use a different name. Click the offer to approve it.",
+    offers: [
+      {
+        capabilityId: "form.set_value",
+        targetId: focus.targetId,
+        value: "Ada Byron",
+        summary: "Set Full name to Ada Byron"
+      }
+    ]
   });
 
   const values = {
@@ -177,6 +207,20 @@ export function runJurorProof() {
       }
     ),
     proofStep(
+      "conversation",
+      JSON.stringify(conversationTurn).length <= 1200 &&
+        conversationRead.latest?.turnId === "proof-turn-1" &&
+        conversationRead.omittedCount === 0 &&
+        conversationReply.requiresHumanConfirmation === true &&
+        conversationReply.reply.offers[0]?.value === "Ada Byron",
+      {
+        packetCharacters: JSON.stringify(conversationTurn).length,
+        returnedTurns: conversationRead.latest ? 1 : 0,
+        requiresHumanConfirmation: conversationReply.requiresHumanConfirmation,
+        proposedValue: conversationReply.reply.offers[0]?.value ?? null
+      }
+    ),
+    proofStep(
       "offer-only",
       offer.requiresHumanConfirmation === true &&
         valueBeforeHumanClick === "Ada Lovelace" &&
@@ -229,7 +273,7 @@ export function runJurorProof() {
   ];
 
   return {
-    proofVersion: "cowork-juror-proof-v2",
+    proofVersion: "cowork-juror-proof-v3",
     browserClaim: false,
     hostTokenClaim: false,
     steps,

@@ -7,10 +7,10 @@ test("the juror proof exercises human authorization, scoped solo work and the re
   const proof = runJurorProof();
   const steps = Object.fromEntries(proof.steps.map((step) => [step.id, step]));
 
-  assert.equal(proof.proofVersion, "cowork-juror-proof-v2");
+  assert.equal(proof.proofVersion, "cowork-juror-proof-v3");
   assert.equal(proof.browserClaim, false);
   assert.equal(proof.hostTokenClaim, false);
-  assert.deepEqual(proof.summary, { passed: 7, failed: 0 });
+  assert.deepEqual(proof.summary, { passed: 8, failed: 0 });
 
   assert.equal(steps.focus.evidence.targetId, "form-field:full-name");
   assert.equal(steps.focus.evidence.contextCharacters <= 350, true);
@@ -24,6 +24,11 @@ test("the juror proof exercises human authorization, scoped solo work and the re
   assert.equal(steps["context-request"].evidence.level, 3);
   assert.equal(steps["context-request"].evidence.oneShot, true);
   assert.equal(steps["context-request"].evidence.includedContextCharacters <= 1200, true);
+
+  assert.equal(steps.conversation.evidence.packetCharacters <= 1200, true);
+  assert.equal(steps.conversation.evidence.returnedTurns, 1);
+  assert.equal(steps.conversation.evidence.requiresHumanConfirmation, true);
+  assert.equal(steps.conversation.evidence.proposedValue, "Ada Byron");
 
   assert.equal(steps["offer-only"].evidence.valueBeforeHumanClick, "Ada Lovelace");
   assert.equal(

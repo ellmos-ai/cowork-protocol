@@ -9,6 +9,10 @@ import {
   createFeedbackEvent,
   routeContextSignal
 } from "../../core/src/index.js";
+import {
+  createConversationInbox,
+  createConversationTurn
+} from "../../conversation/src/index.js";
 import { buildFormBuilderContextExpansion } from "../../formbuilder-connector/src/index.js";
 import {
   createChangeSnapshot,
@@ -67,6 +71,23 @@ export function runTokenEconomyEval() {
     options: [],
     reason: "Need the related validation rule"
   });
+  const conversationInbox = createConversationInbox({
+    createTurnId: (sequence) => `eval-turn-${sequence}`
+  });
+  conversationInbox.publish(
+    createConversationTurn({
+      transcript: "Earlier request",
+      focusPacket: normalFocus,
+      presence: { humanPresence: "present", agentPresence: "active", mode: "cowork" }
+    })
+  );
+  const conversationTurn = createConversationTurn({
+    transcript: "T".repeat(500),
+    focusPacket: normalFocus,
+    presence: { humanPresence: "present", agentPresence: "active", mode: "cowork" }
+  });
+  conversationInbox.publish(conversationTurn);
+  const conversationSnapshot = conversationInbox.read();
   const sourceDescription = "D".repeat(500);
   const bridgeCatalog = negotiateWebMcpCatalog({
     tools: [{
@@ -182,6 +203,29 @@ export function runTokenEconomyEval() {
         expanded.level === 3 &&
         expanded.oneShot === true &&
         expanded.metrics.includedContextCharacters <= 1200
+    ),
+    evaluatedCase(
+      "conversation-turn-1200-latest",
+      {
+        maximumTurnCharacters: 1200,
+        maximumTranscriptCharacters: 350,
+        returnedTurns: 1
+      },
+      {
+        packetCharacters: JSON.stringify(conversationTurn).length,
+        includedTranscriptCharacters:
+          conversationTurn.metrics.includedTranscriptCharacters,
+        sourceTranscriptCharacters:
+          conversationTurn.metrics.sourceTranscriptCharacters,
+        returnedTurns: conversationSnapshot.latest ? 1 : 0,
+        omittedTurns: conversationSnapshot.omittedCount,
+        pageHtmlIncluded: Object.hasOwn(conversationTurn, "pageHtml")
+      },
+      JSON.stringify(conversationTurn).length <= 1200 &&
+        conversationTurn.metrics.includedTranscriptCharacters === 350 &&
+        conversationSnapshot.latest?.turn.transcript === conversationTurn.transcript &&
+        conversationSnapshot.omittedCount === 1 &&
+        !Object.hasOwn(conversationTurn, "pageHtml")
     ),
     evaluatedCase(
       "bridge-summary-350",

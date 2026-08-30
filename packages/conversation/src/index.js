@@ -140,3 +140,80 @@ export function createConversationClient({ sendTurn }) {
     }
   };
 }
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+export function createConversationInbox({
+  createTurnId = (sequence) => `conversation-turn-${Date.now()}-${sequence}`
+} = {}) {
+  if (typeof createTurnId !== "function") {
+    throw new TypeError("createTurnId must be a function");
+  }
+  let totalCount = 0;
+  let pending = null;
+  const seenTurnIds = new Set();
+
+  return {
+    publish(turn) {
+      if (
+        !turn ||
+        turn.type !== "conversation-turn" ||
+        turn.protocolVersion !== "0.1" ||
+        JSON.stringify(turn).length > TURN_PACKET_LIMIT
+      ) {
+        throw new ConversationProtocolError(
+          "INVALID_CONVERSATION_TURN",
+          "Inbox accepts only a bounded Cowork conversation turn"
+        );
+      }
+      const nextSequence = totalCount + 1;
+      const turnId = requiredText(createTurnId(nextSequence), "turnId", 200);
+      if (seenTurnIds.has(turnId)) {
+        throw new ConversationProtocolError(
+          "DUPLICATE_CONVERSATION_TURN",
+          "Conversation turn ids must remain unique for the inbox lifetime"
+        );
+      }
+      seenTurnIds.add(turnId);
+      totalCount = nextSequence;
+      pending = {
+        turnId,
+        turn: cloneJson(turn)
+      };
+      return { turnId };
+    },
+    read() {
+      return {
+        type: "conversation-inbox",
+        protocolVersion: "0.1",
+        latest: pending === null ? null : cloneJson(pending),
+        totalCount,
+        omittedCount: pending === null ? 0 : Math.max(0, totalCount - 1)
+      };
+    },
+    respond(input) {
+      if (
+        pending === null ||
+        typeof input?.turnId !== "string" ||
+        input.turnId !== pending.turnId
+      ) {
+        throw new ConversationProtocolError(
+          "STALE_CONVERSATION_TURN",
+          "Reply does not match the latest pending human turn"
+        );
+      }
+      const reply = normalizeConversationReply(input);
+      const turnId = pending.turnId;
+      pending = null;
+      return {
+        type: "conversation-reply",
+        protocolVersion: "0.1",
+        turnId,
+        reply,
+        requiresHumanConfirmation: reply.offers.length > 0
+      };
+    }
+  };
+}
