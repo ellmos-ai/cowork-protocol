@@ -67,3 +67,9 @@ test("the bright theme's primary text and button pairs retain WCAG AA contrast",
     assert.ok(ratio >= 4.5, `${foreground}/${background} contrast was ${ratio.toFixed(2)}`);
   }
 });
+
+test("the main reading surface stays opaque above decorative page gradients", async () => {
+  const css = await readFile(cssPath, "utf8");
+
+  assert.match(css, /\.form-surface\s*\{[^}]*background:\s*var\(--panel\)/s);
+});
