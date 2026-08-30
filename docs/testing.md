@@ -24,6 +24,7 @@ This gate contains:
 - target-bound native context-request tests for the 200-character reason and 1,200-character one-shot expansion boundaries;
 - speech-controller tests proving rapid repeated activation starts only one recognition session, idle stop is a no-op and synchronous start failure unlocks retry;
 - conversation tests proving silence and Human Solo make no host call, turns contain only bounded utterance/focus/presence data, the inbox exposes one latest unique turn, stale/replayed replies fail closed, replies never execute offers and overlong proposed values fail closed;
+- model-host tests proving exact turn validation, same-origin discovery, server-only credentials, generic failure messages and OpenAI-compatible reply normalization;
 - native browser-evidence validation that rejects a partial tool catalog, an unbounded/reusable context expansion, a prematurely applied offer or feedback not bound to the latest verified offer;
 - rendered-contrast validation that rejects missing interaction states, unresolved backgrounds and any text/background range below an unrounded 4.5:1 ratio;
 - current-surface accessibility validation that rejects unnamed browser AX controls, duplicate DOM identities, an incomplete Tab path or narrow-layout clipping/overflow;
@@ -61,6 +62,10 @@ The same Chrome build exposed `SpeechRecognition`, `speechSynthesis` and 22 synt
 
 The current Chrome smoke submits typed turns through the real conversation UI. Only the compact full-name focus and presence cross the provider-neutral transport. The local demo helper first returns `Lukas` as an exact visible offer; the field remains `Lukas Geiger` until a trusted browser click applies and verifies the suggestion. A later turn is pulled through the two conversation WebMCP tools, and its `Ada Byron` reply offer also remains inert until a trusted click. The report sets `conversationClaim: true`, `webMcpReplyClaim: true`, `connectedModelClaim: false` and `transport: local-demo`.
 
+## Same-origin model-host browser snapshot
+
+`npm run smoke:model-host` used Chrome 152.0.7977.64 with a fresh profile and the production status/turn routes. The page discovered `Connected model bridge`, delivered one exact 468-character turn with compact full-name focus, and sent neither an authorization header nor provider configuration. A deterministic server fixture returned `Grace Hopper` as an offer. The field stayed empty before the trusted browser click, changed only after that click, and produced a verified receipt. This establishes `modelHostClaim: true` and `browserCredentials: false`, while deliberately retaining `externalModelClaim: false` and `connectedModelClaim: false`; no external provider was contacted.
+
 `npm run smoke:accessibility` refreshed the current Chrome 152 surface after the typed conversation controls were added. At an exact 390×844 CSS viewport, the browser accessibility tree contained 21 non-ignored interactive nodes and no unnamed control: 10 buttons, 2 checkboxes, 3 comboboxes, 1 link and 5 textboxes. Twenty-one real Tab events followed the skip link, four FormBuilder controls, export, every Cowork attention/action/handoff/conversation/audio control and Speak replies in DOM order; every stop was visible and matched `:focus-visible`. The document had zero horizontal overflow and no control or button/select/link text was horizontally clipped. Human and agent presence remain expressed as text in addition to color. This is current browser AX/keyboard/narrow-layout evidence, not screen-reader practice.
 
 The true-browser-zoom portion of `npm run smoke:webmcp` sets Chrome page zoom to 200%, rather than emulating pinch zoom or merely shrinking the viewport. Chrome reported a 712×524 CSS viewport over 1424×1048 physical pixels. All 21 controls remained visible and reachable; the only reported overflow delta was one pixel of layout rounding, within the gate's explicit bound.
@@ -72,6 +77,7 @@ The showcase visual direction is a light editorial surface with restrained gold 
 ## Still required before acceptance
 
 - Connected ChatGPT/in-app-agent discovery and invocation; the current Chrome smoke is an in-page WebMCP client, not an agent conversation.
+- A live preferred-model response through the same-origin host; the deterministic Chrome fixture proves the path but does not contact an external model.
 - Discovery and invocation of an unrelated live website's WebMCP catalog. The isolated Chrome host fixture proves adapter execution but explicitly sets `foreignLiveSiteClaim: false`.
 - A real browser extension or equivalent host transport supplying semantic snapshots, visual-region delivery and trusted-click callbacks on websites that expose neither Cowork Protocol nor WebMCP. The package contract and deterministic host harness are implemented; browser-wide attachment and acceptance remain open.
 - Real microphone permission, captured speech, silence handling and transcript quality. Rapid repeated activation is now accepted in Chrome 152.

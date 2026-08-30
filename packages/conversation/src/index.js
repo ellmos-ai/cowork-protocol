@@ -82,6 +82,91 @@ export function createConversationTurn({ transcript, focusPacket = null, presenc
   return turn;
 }
 
+function hasExactKeys(value, keys) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const actual = Object.keys(value);
+  return actual.length === keys.length && keys.every((key) => actual.includes(key));
+}
+
+function invalidConversationTurn() {
+  throw new ConversationProtocolError(
+    "INVALID_CONVERSATION_TURN",
+    "Host transport accepts only an exact bounded Cowork conversation turn"
+  );
+}
+
+export function normalizeConversationTurn(input) {
+  if (
+    !hasExactKeys(input, [
+      "type",
+      "protocolVersion",
+      "transcript",
+      "focus",
+      "presence",
+      "metrics"
+    ]) ||
+    input.type !== "conversation-turn" ||
+    input.protocolVersion !== "0.1" ||
+    typeof input.transcript !== "string" ||
+    input.transcript.trim() !== input.transcript ||
+    input.transcript.length === 0 ||
+    input.transcript.length > TRANSCRIPT_LIMIT ||
+    !hasExactKeys(input.presence, ["humanPresence", "agentPresence", "mode"]) ||
+    ![input.presence.humanPresence, input.presence.agentPresence, input.presence.mode]
+      .every((value) => typeof value === "string" && value.length > 0 && value.length <= 40) ||
+    !hasExactKeys(input.metrics, [
+      "sourceTranscriptCharacters",
+      "includedTranscriptCharacters",
+      "omittedTranscriptCharacters"
+    ]) ||
+    ![
+      input.metrics.sourceTranscriptCharacters,
+      input.metrics.includedTranscriptCharacters,
+      input.metrics.omittedTranscriptCharacters
+    ].every((value) => Number.isInteger(value) && value >= 0) ||
+    input.metrics.includedTranscriptCharacters !== input.transcript.length ||
+    input.metrics.sourceTranscriptCharacters - input.metrics.includedTranscriptCharacters !==
+      input.metrics.omittedTranscriptCharacters
+  ) {
+    invalidConversationTurn();
+  }
+
+  if (input.focus !== null) {
+    if (
+      !hasExactKeys(input.focus, [
+        "targetId",
+        "pageVersion",
+        "kind",
+        "label",
+        "selectedText",
+        "capabilityIds"
+      ]) ||
+      typeof input.focus.targetId !== "string" ||
+      input.focus.targetId.trim() === "" ||
+      input.focus.targetId.length > 200 ||
+      !Number.isInteger(input.focus.pageVersion) ||
+      input.focus.pageVersion < 0 ||
+      typeof input.focus.kind !== "string" ||
+      input.focus.kind.length > 40 ||
+      typeof input.focus.label !== "string" ||
+      input.focus.label.length > 350 ||
+      typeof input.focus.selectedText !== "string" ||
+      input.focus.selectedText.length > 160 ||
+      !Array.isArray(input.focus.capabilityIds) ||
+      input.focus.capabilityIds.length > 12 ||
+      !input.focus.capabilityIds.every(
+        (value) => typeof value === "string" && value.length > 0 && value.length <= 80
+      )
+    ) {
+      invalidConversationTurn();
+    }
+  }
+
+  const serialized = JSON.stringify(input);
+  if (serialized.length > TURN_PACKET_LIMIT) invalidConversationTurn();
+  return JSON.parse(serialized);
+}
+
 function normalizeOffer(offer) {
   if (!offer || typeof offer !== "object" || Array.isArray(offer)) {
     throw new ConversationProtocolError("INVALID_REPLY", "Every offer must be an object");

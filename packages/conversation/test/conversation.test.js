@@ -6,6 +6,7 @@ import {
   createConversationClient,
   createConversationInbox,
   createConversationTurn,
+  normalizeConversationTurn,
   normalizeConversationReply
 } from "../src/index.js";
 
@@ -97,6 +98,49 @@ test("a model receives only a bounded utterance, compact focus and presence", as
   assert.deepEqual(packet.presence, activePresence);
   assert.equal(Object.hasOwn(packet, "pageHtml"), false);
   assert.ok(JSON.stringify(packet).length <= 1200);
+});
+
+test("a host accepts the exact bounded turn but rejects extra page context", () => {
+  const packet = createConversationTurn({
+    transcript: "Please help with this field",
+    focusPacket,
+    presence: activePresence
+  });
+
+  assert.deepEqual(normalizeConversationTurn(packet), packet);
+  assert.throws(
+    () => normalizeConversationTurn({ ...packet, pageHtml: "<main>secret</main>" }),
+    (error) =>
+      error instanceof ConversationProtocolError &&
+      error.code === "INVALID_CONVERSATION_TURN"
+  );
+});
+
+test("a host rejects rewritten conversation metrics and over-budget packets", () => {
+  const packet = createConversationTurn({
+    transcript: "Please help with this field",
+    focusPacket,
+    presence: activePresence
+  });
+
+  assert.throws(
+    () => normalizeConversationTurn({
+      ...packet,
+      metrics: { ...packet.metrics, omittedTranscriptCharacters: 99 }
+    }),
+    (error) =>
+      error instanceof ConversationProtocolError &&
+      error.code === "INVALID_CONVERSATION_TURN"
+  );
+  assert.throws(
+    () => normalizeConversationTurn({
+      ...packet,
+      transcript: "x".repeat(351)
+    }),
+    (error) =>
+      error instanceof ConversationProtocolError &&
+      error.code === "INVALID_CONVERSATION_TURN"
+  );
 });
 
 test("the client returns a bounded reply without executing its visible offers", async () => {

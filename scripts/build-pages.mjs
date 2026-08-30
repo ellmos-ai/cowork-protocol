@@ -19,6 +19,7 @@ const PUBLIC_FILES = [
   "packages/core/src/index.js",
   "packages/conversation/src/index.js",
   "packages/formbuilder-connector/src/index.js",
+  "packages/model-transport/src/browser.js",
   "packages/native-webmcp/src/index.js"
 ];
 

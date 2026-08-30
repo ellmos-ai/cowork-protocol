@@ -18,6 +18,10 @@ import {
   createConversationInbox
 } from "../../../packages/conversation/src/index.js";
 import {
+  discoverHttpModelTransport,
+  selectModelTransport
+} from "../../../packages/model-transport/src/browser.js";
+import {
   createShowcaseSubmission,
   SHOWCASE_SCHEMA
 } from "./formbuilder-use-case.js";
@@ -75,7 +79,15 @@ let leaseExpiryTimer = null;
 let offerExpiryTimer = null;
 let conversationBusy = false;
 
-const hostModelTransport = window.coworkModelTransport;
+const injectedHostModelTransport = window.coworkModelTransport;
+const discoveredHostModelTransport =
+  typeof injectedHostModelTransport?.sendTurn === "function"
+    ? null
+    : await discoverHttpModelTransport();
+const hostModelTransport = selectModelTransport({
+  injected: injectedHostModelTransport,
+  discovered: discoveredHostModelTransport
+});
 const hasHostModelTransport = typeof hostModelTransport?.sendTurn === "function";
 const conversationClient = createConversationClient({
   sendTurn: hasHostModelTransport
@@ -84,7 +96,7 @@ const conversationClient = createConversationClient({
 });
 const conversationInbox = createConversationInbox();
 let conversationTransportLabel = hasHostModelTransport
-  ? "Connected model bridge"
+  ? hostModelTransport.label ?? "Connected model bridge"
   : "Local demo helper";
 
 function setStatus(message) {

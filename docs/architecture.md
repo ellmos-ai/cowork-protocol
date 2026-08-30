@@ -10,6 +10,7 @@ flowchart TB
   PANEL["Cowork Panel\nmodes, offers, feedback, receipts"]
   CORE["Protocol Core\ncausal events, budgets, rights, leases"]
   CONVERSATION["Conversation Transport\nbounded turn and normalized reply"]
+  MODELHOST["Same-origin Model Host\nserver-side provider gateway"]
   INBOX["Conversation Inbox\nlatest pending turn"]
   LOCAL["Local Demo Helper\ndeterministic fallback"]
   NATIVE["Native WebMCP Connector"]
@@ -19,7 +20,9 @@ flowchart TB
 
   HUMAN -->|"authorizes and evaluates"| PANEL
   PANEL -->|"utterance, compact focus and presence"| CONVERSATION
-  CONVERSATION <-->|"host-supplied sendTurn"| AGENT
+  CONVERSATION <-->|"injected sendTurn"| AGENT
+  CONVERSATION -->|"exact bounded turn; no browser key"| MODELHOST
+  MODELHOST <-->|"server-side provider request"| AGENT
   CONVERSATION -->|"publish latest turn"| INBOX
   INBOX <-->|"latest turn and exact-id reply"| NATIVE
   LOCAL -.->|"fallback reply, no model claim"| CONVERSATION
@@ -37,7 +40,7 @@ flowchart TB
   FORM -->|"observed ChangeEvent with cause refs"| CORE
 ```
 
-Text alternative: the panel is the human control surface, the core enforces context and authority, and connectors translate application or browser data into the same protocol. A WebMCP-capable browser mediates discovery and invocation between the web agent and the native connector. The conversation transport accepts typed or spoken input through either a host-supplied push adapter or a latest-only WebMCP pull inbox; the showcase uses a labeled deterministic helper when no host transport exists. Replies may describe offers, but only the panel can render them and only a human click can authorize them. FormBuilder reports value deltas as digest-based change events with explicit cause references. Only the native FormBuilder connector can promise stable targets and application-level verification. Bridge connectors must expose their reduced capability level.
+Text alternative: the panel is the human control surface, the core enforces context and authority, and connectors translate application or browser data into the same protocol. A WebMCP-capable browser mediates discovery and invocation between the web agent and the native connector. The conversation transport accepts typed or spoken input through an injected host adapter, the same-origin model host, or a latest-only WebMCP pull inbox; the showcase uses a labeled deterministic helper when no host transport exists. The same-origin host validates the exact bounded turn and keeps provider endpoint, model ID and key on the server. Replies may describe offers, but only the panel can render them and only a human click can authorize them. FormBuilder reports value deltas as digest-based change events with explicit cause references. Only the native FormBuilder connector can promise stable targets and application-level verification. Bridge connectors must expose their reduced capability level.
 
 The human authorization surface accepts only losslessly JSON-serializable action arguments. A FormBuilder offer displays the exact proposed value, limits it to 350 Unicode code points in both its WebMCP schema and runtime guard, and expires it from the DOM on a scheduled render; agent-generated events cannot authorize it.
 
@@ -60,8 +63,8 @@ sequenceDiagram
     Panel-->>Human: no transport call
   else bounded turn
     Panel->>Conversation: utterance + compact focus + presence (<=1,200 chars)
-    alt host push adapter available
-      Conversation->>Host: sendTurn(turn)
+    alt injected or same-origin host available
+      Conversation->>Host: sendTurn(exact turn)
       Host->>Model: provider-specific request
       Model-->>Host: message + optional offers
       Host-->>Conversation: provider-neutral reply
@@ -82,11 +85,11 @@ sequenceDiagram
   end
 ```
 
-Text alternative: silence and Human Solo stop before the model boundary. An active turn contains only the utterance, current compact focus and presence, never page HTML. A host adapter may push the turn to a preferred model. Otherwise an in-page WebMCP agent can pull only the latest pending turn and reply against its exact unique id; stale and replayed replies fail closed. With neither path, the labeled local helper exercises the same visible loop without claiming a connected external model. Every reply is capped and can describe at most three offers; an overlong proposed value fails closed. The FormBuilder changes only after the human clicks the exact visible offer and the result verifies.
+Text alternative: silence and Human Solo stop before the model boundary. An active turn contains only the utterance, current compact focus and presence, never page HTML. An injected adapter or same-origin server host may push the exact turn to a preferred model; provider configuration and credentials remain outside the browser. Otherwise an in-page WebMCP agent can pull only the latest pending turn and reply against its exact unique id; stale and replayed replies fail closed. With neither path, the labeled local helper exercises the same visible loop without claiming a connected external model. Every reply is capped and can describe at most three offers; an overlong proposed value fails closed. The FormBuilder changes only after the human clicks the exact visible offer and the result verifies.
 
 The current [WebMCP draft specification](https://webmachinelearning.github.io/webmcp/) standardizes page tool registration and invocation, while browser-agent observation timing remains implementation-defined. It does not define a page-to-agent push-turn API. Cowork therefore keeps provider push behind the optional host `sendTurn` seam and uses the two ordinary WebMCP tools as its standards-shaped pull path.
 
-Diagram type: UML sequence diagram. Source and renderer: the Mermaid block above. Scope: runtime conversation and authorization, not provider deployment. Source IDs: `packages/conversation/src/index.js`, `packages/native-webmcp/src/index.js`, `apps/formbuilder-showcase/src/app.js`, and `apps/formbuilder-showcase/src/local-conversation.js`.
+Diagram type: UML sequence diagram. Source and renderer: the Mermaid block above. Scope: runtime conversation and authorization, not provider deployment. Source IDs: `packages/conversation/src/index.js`, `packages/model-transport/src/browser.js`, `packages/model-transport/src/openai-compatible.js`, `scripts/serve.mjs`, `packages/native-webmcp/src/index.js`, `apps/formbuilder-showcase/src/app.js`, and `apps/formbuilder-showcase/src/local-conversation.js`.
 
 ## One-shot adaptive context request
 

@@ -15,6 +15,7 @@ The repository currently contains:
 - presence modes and fail-closed solo leases;
 - a one-step context escalation router that emits nothing for silence or unchanged state and exposes one bounded, reasoned WebMCP context request;
 - a provider-neutral conversation package that turns speech or typed text into a maximum 1,200-character adapter packet containing only the utterance, compact focus and presence;
+- an optional same-origin model host that discovers itself without browser configuration, keeps provider credentials on the server and translates bounded turns to an OpenAI-compatible chat-completions endpoint;
 - a latest-only WebMCP conversation inbox and bounded reply tool, so an in-page agent can pull one human turn and return text or visible offers without executing them;
 - a FormBuilder connector using stable field IDs;
 - the pre-existing MIT-licensed FormBuilder web schema/validation/response engine, explicitly attributed and isolated to the showcase;
@@ -24,7 +25,7 @@ The repository currently contains:
 - a legacy DOM/accessibility host companion with explain-only ephemeral targets, offer-only stable targets, one-step semantic expansion, an explicit 400×400 visual-region delivery callback, and a click-confirmed host action callback;
 - a responsive FormBuilder showcase with attention controls, exact-value action offers, enforced explain/suggest/delegated/paused rights, causal change receipts, one-click feedback, presence, scoped solo work, typed/audio conversation and spoken replies.
 
-The native browser path now has both contract and browser evidence. An isolated Chrome 152 run with WebMCP testing enabled discovered all nine tools through `document.modelContext.getTools()`. It invoked focus and one-shot context, created two visible offers through `cowork_offer_action`, verified that neither offer changed the field, then used trusted browser clicks to apply both exact values and record human feedback. Native change and feedback reads returned only the second event with `omittedCount: 1`. The same run sent bounded typed turns to the honestly labeled local demo helper, pulled the latest one through `cowork_read_turn`, returned a bounded reply through `cowork_reply_turn`, and proved that both the helper offer and WebMCP reply offer remained inert until trusted clicks. The reproducible smoke explicitly reports `browserClaim: true`, `conversationClaim: true`, `webMcpReplyClaim: true`, `connectedModelClaim: false`, `agentClientClaim: false` and `hostTokenClaim: false`: it proves Chrome mediation and both local/WebMCP human loops, not a connected ChatGPT-agent journey. The browser gate keeps all 21 controls reachable at true 200% browser zoom. A separate current-surface accessibility smoke finds 21/21 named browser AX controls, 21/21 unique visible Tab stops and zero horizontal overflow at an emulated 390×844 browser viewport. The rendered-contrast smoke audits 649 visible text items across ten interaction states with no unsupported range and a 4.5656:1 minimum. A connected Edge session separately accepted AFK handoff/return and Human Solo. Real microphone input, screen-reader practice in the intended client, deployment and a connected-agent invocation remain pending.
+The native browser path now has both contract and browser evidence. An isolated Chrome 152 run with WebMCP testing enabled discovered all nine tools through `document.modelContext.getTools()`. It invoked focus and one-shot context, created two visible offers through `cowork_offer_action`, verified that neither offer changed the field, then used trusted browser clicks to apply both exact values and record human feedback. Native change and feedback reads returned only the second event with `omittedCount: 1`. The same run sent bounded typed turns to the honestly labeled local demo helper, pulled the latest one through `cowork_read_turn`, returned a bounded reply through `cowork_reply_turn`, and proved that both the helper offer and WebMCP reply offer remained inert until trusted clicks. The reproducible smoke explicitly reports `browserClaim: true`, `conversationClaim: true`, `webMcpReplyClaim: true`, `connectedModelClaim: false`, `agentClientClaim: false` and `hostTokenClaim: false`: it proves Chrome mediation and both local/WebMCP human loops, not a connected ChatGPT-agent journey. A separate Chrome 152 smoke proves the new same-origin model-host plumbing with one 468-character turn, no browser credential, and a model fixture whose offer remains inert until a trusted click; it deliberately keeps `externalModelClaim` and `connectedModelClaim` false. The browser gate keeps all 21 controls reachable at true 200% browser zoom. A separate current-surface accessibility smoke finds 21/21 named browser AX controls, 21/21 unique visible Tab stops and zero horizontal overflow at an emulated 390×844 browser viewport. The rendered-contrast smoke audits 649 visible text items across ten interaction states with no unsupported range and a 4.5656:1 minimum. A connected Edge session separately accepted AFK handoff/return and Human Solo. Real microphone input, screen-reader practice in the intended client, deployment and a connected external-model invocation remain pending.
 
 Only the browser-based FormBuilder use case belongs to the publication scope. Desktop, Python and native packaging code from the pre-existing FormBuilder repository are intentionally excluded. The showcase remains in this repository so the protocol, application and deployment form one reproducible submission.
 
@@ -42,6 +43,19 @@ npm start
 
 Then open `http://127.0.0.1:4173/apps/formbuilder-showcase/` in a WebMCP-capable browser.
 
+### Connect a preferred model without browser secrets
+
+The optional host accepts an OpenAI-compatible chat-completions endpoint. Provider behavior may vary, so a real endpoint still needs its own acceptance run.
+
+```powershell
+$env:COWORK_MODEL_ENDPOINT='http://127.0.0.1:11434/v1/chat/completions'
+$env:COWORK_MODEL_ID='your-model-id'
+$env:COWORK_MODEL_API_KEY='optional-server-only-key'
+npm run start:model
+```
+
+Open the same local URL. The panel changes from `Local demo helper` to `Connected model bridge` only after same-origin discovery succeeds. The browser sends just `{ protocolVersion, turn }`; endpoint, model ID and API key stay in the server process. See [docs/model-host.md](docs/model-host.md).
+
 ## Verify the slice
 
 ```powershell
@@ -49,6 +63,7 @@ npm test
 npm run demo:adapter
 npm run eval
 npm run proof
+npm run smoke:model-host
 npm run smoke:webmcp
 npm run smoke:accessibility
 npm run smoke:contrast
@@ -64,6 +79,8 @@ The suite uses Node's built-in test runner and has no external runtime dependenc
 `npm run proof` is a deterministic eight-step juror dry-run. It exercises the real focus, one-shot related-context request, latest-only conversation inbox and bounded reply, offer, human-click authorization, verified change and feedback, scoped AFK lease and FormBuilder export contracts in seconds. Its output explicitly sets `browserClaim: false` and `hostTokenClaim: false`; it is reproducible core evidence, not a substitute for the required live WebMCP browser demonstration.
 
 `npm run smoke:webmcp` starts the showcase and an isolated Chrome profile, enables the current Chrome WebMCP testing features, and discovers exactly the nine Cowork tools. It executes eight tool calls: focus, one-shot context, two inert visible offers, latest change, latest feedback, latest conversation turn and one bounded reply. Chrome DevTools dispatches trusted clicks that authorize the exact visible field values, human feedback, the local helper offer and the WebMCP reply offer; neither offer tool nor reply tool authorizes or applies a value. In the same browser runtime, a host-supplied two-tool calendar fixture proves the portable bridge: two read calls execute, an oversized result becomes a 1,200-character preview, and the booking mutation remains `offer-only` without reaching the host executor. The report distinguishes `browserHostClaim: true` from `foreignLiveSiteClaim: false`. It requires Chrome 150 or newer; set `COWORK_CHROME_PATH` when Chrome is installed outside the usual Windows, macOS or Linux locations. It never uses a personal browser profile or a non-local page.
+
+`npm run smoke:model-host` starts the real same-origin host route with a deterministic reply fixture and a fresh Chrome profile. It requires the browser to discover the bridge, deliver exactly one bounded turn without page HTML or authorization credentials, display `Grace Hopper` as an inert offer, and change the field only after a trusted click. Its output explicitly keeps external- and connected-model claims false; this proves the host plumbing, not a provider response.
 
 `npm run smoke:accessibility` opens another isolated Chrome profile at an exact 390×844 CSS viewport. It requires exactly 21 non-ignored interactive browser accessibility nodes with non-empty names and unique DOM identities, then drives 21 real Tab events and requires every stop to remain visible with `:focus-visible`. Horizontal control/text clipping and more than one pixel of document overflow fail the gate. This is browser accessibility-tree and keyboard/layout evidence, not screen-reader practice.
 
@@ -94,6 +111,7 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 
 - `packages/core` — protocol packets, causal changes, human feedback, state decisions, authorizations and budgets.
 - `packages/conversation` — provider-neutral bounded turns and replies plus a latest-only pull inbox; silence and a paused agent never call the host model transport.
+- `packages/model-transport` — browser discovery plus a server-side OpenAI-compatible gateway; the browser sees neither provider configuration nor credentials.
 - `packages/formbuilder-connector` — maps a stable FormBuilder field into a native Cowork focus.
 - `packages/native-webmcp` — registers the nine Cowork tools with the current WebMCP API.
 - `packages/bridge` — negotiates native → generic WebMCP → no-WebMCP host companion, while adapting explicit host catalogs and bounded legacy semantic/visual-delivery callbacks without claiming browser-wide discovery or built-in image capture.
