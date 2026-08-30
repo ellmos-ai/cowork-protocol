@@ -23,7 +23,7 @@ This gate contains:
 - context-router tests for silence, unchanged state and one-step escalation;
 - target-bound native context-request tests for the 200-character reason and 1,200-character one-shot expansion boundaries;
 - speech-controller tests proving rapid repeated activation starts only one recognition session, idle stop is a no-op and synchronous start failure unlocks retry;
-- native browser-evidence validation that rejects a partial tool catalog or an unbounded/reusable context expansion;
+- native browser-evidence validation that rejects a partial tool catalog, an unbounded/reusable context expansion, a prematurely applied offer or feedback not bound to the latest verified offer;
 - an integration test from the real FormBuilder connector output through the WebMCP tool callback;
 - a registration contract test for the current `document.modelContext.registerTool()` shape, including the latest-only change and feedback tools;
 - bridge tests for 350-code-unit host capability summaries, isolated rejection of an identity that cannot fit after JSON escaping, JSON-normalized small results and read-result previews, malformed or duplicate declarations, unserializable results, required arguments and offer-only mutation handling;
@@ -46,7 +46,7 @@ A connected Edge extension session loaded the local showcase and explicitly repo
 
 ## Native WebMCP browser snapshot
 
-`npm run smoke:webmcp` used Chrome 152.0.7977.64 with the current WebMCP testing features and a fresh temporary profile. The secure local origin exposed `registerTool`, `getTools` and `executeTool`; the showcase reported `Native WebMCP`; Chrome discovered exactly seven Cowork tools and executed the read-only focus and context-request tools. The observed focus contained 9 adapter characters and the target-bound one-shot expansion contained 110. Chrome 152 accepted JSON-string arguments through its current in-page execution surface after rejecting the newer object form, and the smoke records that compatibility fact. The report sets `browserClaim: true`, `agentClientClaim: false` and `hostTokenClaim: false`.
+`npm run smoke:webmcp` used Chrome 152.0.7977.64 with the current WebMCP testing features and a fresh temporary profile. The secure local origin exposed `registerTool`, `getTools` and `executeTool`; the showcase reported `Native WebMCP`; Chrome discovered exactly seven Cowork tools and completed six tool calls. Focus contained 9 adapter characters and the target-bound one-shot expansion contained 110. Two native offer calls exposed `Ada Lovelace` and then `Lukas Geiger` while leaving the field unchanged. Two trusted browser clicks applied and verified those exact values; two further trusted clicks recorded `Good`. Native change and feedback reads each returned only the second of two events with `omittedCount: 1`, while retaining the offer, trusted-click and observed-change references. Chrome 152 accepted JSON-string arguments through its current in-page execution surface after rejecting the newer object form, and the smoke records that compatibility fact. The report sets `browserClaim: true`, `agentClientClaim: false` and `hostTokenClaim: false`.
 
 The same Chrome build exposed `SpeechRecognition`, `speechSynthesis` and 22 synthesis voices. After the guarded-session fix, two immediate Push-to-talk activations produced no uncaught exception; Reduced Motion reduced the control transition to 0.01 ms, and the three audio controls were present in Chrome's accessibility tree. The isolated fake device returned `audio-capture`, so this proves API wiring and rapid-activation safety, not microphone capture, transcript quality or audible speaker output.
 
@@ -58,9 +58,8 @@ The showcase visual direction is a light editorial surface with restrained gold 
 
 - Connected ChatGPT/in-app-agent discovery and invocation; the current Chrome smoke is an in-page WebMCP client, not an agent conversation.
 - Host-level proof that a foreign WebMCP tool catalog can actually be supplied and invoked; the local bridge test is not discovery evidence.
-- Latest-only change and feedback readback through a real WebMCP client.
 - Real microphone permission, captured speech, silence handling and transcript quality. Rapid repeated activation is now accepted in Chrome 152.
 - Screen-reader practice, 200% zoom and a complete pixel-based contrast review. Current names, Tab order, focus indicators, reduced motion, non-color presence text, 390-pixel layout and six core theme contrast pairs are accepted in Chrome 152 or source-level checks.
 - License, live URL and video readbacks before submission. The local clean-clone, native Chrome WebMCP smoke, secret-scan and dependency-audit gates are complete for the theme-bearing tree at `0bac68c`.
 
-The connected Edge result proves only the local fallback interaction path. The isolated Chrome result separately proves native WebMCP browser registration, discovery and read-only invocation, but not a connected ChatGPT-agent journey.
+The connected Edge result proves only the local fallback interaction path. The isolated Chrome result separately proves native WebMCP browser registration, discovery, click-gated action and latest-only readback, but not a connected ChatGPT-agent journey.

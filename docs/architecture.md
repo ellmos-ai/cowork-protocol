@@ -61,6 +61,34 @@ The request is read-only, must include a reason of at most 200 JavaScript UTF-16
 
 Diagram type: UML-like sequence diagram. Source and renderer: the Mermaid block above, rendered by compatible Markdown hosts. Fallback: the adjacent prose contract if Mermaid is unavailable. Scope: runtime interaction, not deployment topology.
 
+## Click-gated native action and latest-only readback
+
+```mermaid
+sequenceDiagram
+  actor Human
+  participant Agent as Web agent
+  participant WebMCP as Native WebMCP Connector
+  participant Panel as Cowork Panel
+  participant Form as FormBuilder
+  participant Core as Protocol Core
+
+  Agent->>WebMCP: cowork_offer_action(exact value)
+  WebMCP->>Panel: render visible offer
+  Note over Panel,Form: field remains unchanged
+  Human->>Panel: trusted click on exact visible offer
+  Panel->>Form: apply value and observe result
+  Form->>Core: ChangeEvent with offer and click causes
+  Core-->>Panel: verified receipt
+  Human->>Panel: trusted feedback click
+  Panel->>Core: FeedbackEvent bound to receipt
+  Agent->>WebMCP: cowork_read_changes()
+  WebMCP-->>Agent: latest event plus omittedCount
+  Agent->>WebMCP: cowork_read_feedback()
+  WebMCP-->>Agent: latest event plus omittedCount
+```
+
+The offer call can render intent but cannot grant authority. The visible value, target and page version must still match when the human clicks. The FormBuilder mutation is successful only after the observed value verifies; feedback is accepted only from a trusted click and carries the resulting change reference. Read tools return one latest event rather than replaying the collaboration history. The reproducible Chrome smoke performs this cycle twice and requires `omittedCount: 1` on both readbacks, proving that the browser path actually omits the older event.
+
 ## WebMCP bridge boundary
 
 `packages/bridge` does not scrape a page or pretend that a producer-side API can enumerate every registered tool. A host must explicitly supply the tool catalog and executor. The bridge exposes only bounded summaries: at most 350 serialized JavaScript UTF-16 code units per capability, including a 160-code-unit description, at most 12 parameter names and at most 48 code units per included parameter name. If even an escaped tool identity cannot fit, only that declaration is rejected; valid neighboring tools remain available. Tools marked read-only by the host can cross the read executor; all other tools remain `offer-only` and must return to a visible human-authorization path. Small read results are normalized through a JSON round trip. A result larger than 1,200 adapter code units becomes a labeled JSON preview with source and included-unit metrics; the unbounded object is not forwarded. Missing schemas, duplicate names, malformed catalogs and unserializable results fail closed.

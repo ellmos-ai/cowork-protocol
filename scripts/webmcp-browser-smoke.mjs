@@ -93,6 +93,77 @@ function cdpClient(socket) {
   };
 }
 
+async function evaluateValue(call, expression) {
+  const evaluation = await call("Runtime.evaluate", {
+    expression,
+    awaitPromise: true,
+    returnByValue: true
+  });
+  if (evaluation.exceptionDetails) throw new Error(JSON.stringify(evaluation.exceptionDetails));
+  return evaluation.result.value;
+}
+
+function toolExecutionExpression(toolName, input) {
+  return `(async () => {
+    const modelContext = document.modelContext;
+    const tools = await modelContext.getTools();
+    const tool = tools.find((candidate) => candidate.name === ${JSON.stringify(toolName)});
+    if (!tool) throw new Error("Native tool not found: " + ${JSON.stringify(toolName)});
+    const input = ${JSON.stringify(input)};
+    function parsePacket(result) {
+      const envelope = typeof result === "string" ? JSON.parse(result) : result;
+      return envelope.structuredContent;
+    }
+    try {
+      const result = await modelContext.executeTool(tool, input);
+      return { argumentKind: "object", packet: parsePacket(result) };
+    } catch (objectError) {
+      const result = await modelContext.executeTool(tool, JSON.stringify(input));
+      return {
+        argumentKind: "json-string",
+        objectAttempt: objectError.name + ": " + objectError.message,
+        packet: parsePacket(result)
+      };
+    }
+  })()`;
+}
+
+async function dispatchTrustedClick(call, elementExpression, label) {
+  const point = await evaluateValue(call, `(() => {
+    const element = ${elementExpression};
+    if (!element) return null;
+    element.scrollIntoView({ block: "center", inline: "center" });
+    const rect = element.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+      visible: rect.width > 0 && rect.height > 0
+    };
+  })()`);
+  if (!point?.visible) throw new Error(`${label} is not visible for a trusted browser click`);
+  await call("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: point.x,
+    y: point.y
+  });
+  await call("Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    x: point.x,
+    y: point.y,
+    button: "left",
+    buttons: 1,
+    clickCount: 1
+  });
+  await call("Input.dispatchMouseEvent", {
+    type: "mouseReleased",
+    x: point.x,
+    y: point.y,
+    button: "left",
+    buttons: 0,
+    clickCount: 1
+  });
+}
+
 try {
   const chromePath = await resolveChromePath();
   server = createStaticServer({ root: process.cwd() });
@@ -155,7 +226,7 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       function parsePacket(result) {
-        const envelope = JSON.parse(result);
+        const envelope = typeof result === "string" ? JSON.parse(result) : result;
         return envelope.structuredContent;
       }
       async function executeReadOnly(tool, input) {
@@ -191,6 +262,54 @@ try {
     browserVersion: version.Browser,
     ...evaluation.result.value
   };
+  observed.offerExecutions = [];
+  observed.humanClickObservations = [];
+
+  for (const value of ["Ada Lovelace", "Lukas Geiger"]) {
+    const offerExecution = await evaluateValue(
+      call,
+      toolExecutionExpression("cowork_offer_action", {
+        capabilityId: "form.set_value",
+        targetId: "form-field:full-name",
+        value,
+        summary: `Set Full name to ${value}`
+      })
+    );
+    observed.offerExecutions.push(offerExecution);
+
+    const beforeClick = await evaluateValue(call, `(() => ({
+      valueBeforeHumanClick: document.querySelector("#full-name")?.value,
+      visibleOfferValue: document.querySelector(".offer-chip")?.dataset.offerValue,
+      visibleOfferCount: document.querySelectorAll(".offer-chip").length
+    }))()`);
+    if (beforeClick.visibleOfferCount !== 1) {
+      throw new Error("Expected exactly one visible offer before the trusted click");
+    }
+
+    await dispatchTrustedClick(call, 'document.querySelector(".offer-chip")', "Visible action offer");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const afterClick = await evaluateValue(call, `(() => ({
+      inputValueAfterClick: document.querySelector("#full-name")?.value,
+      receiptStatusText: document.querySelector("#receipt-list .feedback-controls")?.closest("li")?.textContent.trim()
+    }))()`);
+    observed.humanClickObservations.push({ ...beforeClick, ...afterClick });
+
+    await dispatchTrustedClick(
+      call,
+      '[...document.querySelectorAll("#receipt-list .feedback-buttons button")].find((button) => button.textContent.trim() === "Good")',
+      `Human feedback control after ${JSON.stringify(afterClick)}`
+    );
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  observed.changeExecution = await evaluateValue(
+    call,
+    toolExecutionExpression("cowork_read_changes", {})
+  );
+  observed.feedbackExecution = await evaluateValue(
+    call,
+    toolExecutionExpression("cowork_read_feedback", {})
+  );
   const summary = validateNativeWebMcpObservation(observed);
   console.log(JSON.stringify({
     ...summary,
