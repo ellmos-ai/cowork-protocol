@@ -63,6 +63,16 @@ $env:COWORK_COMPANION_BROWSER_PATH='C:\path\to\chrome-for-testing\chrome.exe'
 npm run smoke:companion
 ```
 
+Chrome builds that do not load extensions in headless mode can run the same
+gate in a real browser surface. Visual capture needs the temporary window to
+remain on-screen:
+
+```powershell
+$env:COWORK_COMPANION_HEADFUL='1'
+$env:COWORK_COMPANION_VISIBLE='1'
+npm run smoke:companion
+```
+
 To capture the two real proof frames used by release media, add an output
 directory. The ordinary smoke remains write-free when this variable is absent:
 

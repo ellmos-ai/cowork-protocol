@@ -85,6 +85,22 @@ async function waitForJson(url, attempts = 80) {
   throw new Error(`Timed out waiting for ${url}`);
 }
 
+async function waitForPageTarget(debugPort, predicate, attempts = 80) {
+  let lastTargets = [];
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const targets = await waitForJson(`http://127.0.0.1:${debugPort}/json`, 1);
+    lastTargets = targets.map(({ id, title, type, url }) => ({ id, title, type, url }));
+    const target = targets.find(
+      (candidate) => candidate.type === "page" && predicate(candidate)
+    );
+    if (target) return target;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(
+    `No-WebMCP companion fixture target not found: ${JSON.stringify(lastTargets)}`
+  );
+}
+
 async function waitForDevToolsPort(attempts = 80) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
@@ -155,7 +171,7 @@ async function captureEvidenceFrame(call, filename) {
 
 async function waitForExtensionContext(contexts, attempts = 80) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const context = contexts.find(
+    const context = [...contexts.values()].find(
       (candidate) =>
         candidate.auxData?.type === "isolated" &&
         (candidate.origin?.startsWith("chrome-extension://") ||
@@ -166,7 +182,12 @@ async function waitForExtensionContext(contexts, attempts = 80) {
   }
   throw new Error(
     `Extension content context not found: ${JSON.stringify(
-      contexts.map(({ id, name, origin, auxData }) => ({ id, name, origin, type: auxData?.type }))
+      [...contexts.values()].map(({ id, name, origin, auxData }) => ({
+        id,
+        name,
+        origin,
+        type: auxData?.type
+      }))
     )}`
   );
 }
@@ -244,8 +265,12 @@ try {
     chromePath,
     [
       ...(process.env.COWORK_COMPANION_HEADFUL === "1"
-        ? ["--window-position=-32000,-32000"]
+        ? process.env.COWORK_COMPANION_VISIBLE === "1"
+          ? []
+          : ["--window-position=-32000,-32000"]
         : ["--headless=new"]),
+      "--no-first-run",
+      "--no-default-browser-check",
       "--disable-gpu",
       "--disable-features=WebMCP,WebMCPTesting",
       "--disable-blink-features=WebMCP",
@@ -257,26 +282,33 @@ try {
       `--user-data-dir=${profilePath}`,
       fixtureUrl
     ],
-    { windowsHide: true, stdio: "ignore" }
+    {
+      windowsHide: process.env.COWORK_COMPANION_VISIBLE !== "1",
+      stdio: "ignore"
+    }
   );
 
   const debugPort = await waitForDevToolsPort();
   const version = await waitForJson(`http://127.0.0.1:${debugPort}/json/version`);
-  const targets = await waitForJson(`http://127.0.0.1:${debugPort}/json`);
-  const target = targets.find(
-    (candidate) => candidate.type === "page" && candidate.url.includes("fixture.html")
+  const target = await waitForPageTarget(
+    debugPort,
+    (candidate) => candidate.url.includes("fixture.html")
   );
-  if (!target) throw new Error("No-WebMCP companion fixture target not found");
 
-  const contexts = [];
+  const contexts = new Map();
   const socket = await connect(target.webSocketDebuggerUrl);
   const call = cdpClient(socket, (event) => {
     if (event.method === "Runtime.executionContextCreated") {
-      contexts.push(event.params.context);
+      contexts.set(event.params.context.id, event.params.context);
+    } else if (event.method === "Runtime.executionContextDestroyed") {
+      contexts.delete(event.params.executionContextId);
+    } else if (event.method === "Runtime.executionContextsCleared") {
+      contexts.clear();
     }
   });
   await call("Runtime.enable");
   await call("Page.bringToFront");
+  await call("Page.reload", { ignoreCache: true });
   const extensionContextId = await waitForExtensionContext(contexts);
   const extensionState = (expression) =>
     evaluateValue(
