@@ -20,6 +20,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | Public-preview tree is reproducible | clean clone of local `release/public-preview` at `a1b2bc0` | `npm ci`, 89/89 tests, 11/11 character evals, 7/7 proof steps, native Chrome 152 WebMCP smoke, 16-file Pages build, 43 syntax checks, 0 vulnerabilities, 0 secret findings and clean scoped history |
 | Local browser fallback is interactive | connected Edge extension plus isolated headless Edge smoke against the local showcase | Exact-value offer, real click, page-version change, verified receipt, Adjust feedback, brief/longer AFK fail-closed/delegated/return, visible lease expiry, agent pause/Human Solo, first 12 keyboard focus stops, and context-preview fail-closed/success states accepted; `document.modelContext` absent, so no WebMCP claim |
 | Audio controls fail safely under rapid activation | speech-controller tests plus isolated Chrome 152 SpeechRecognition/synthesis smoke | Two immediate activations produce no uncaught error; 22 synthesis voices and active synthesis observed; fake device returned `audio-capture`, so real microphone and audible output remain open |
+| Current interaction surface is keyboard and narrow-layout coherent | Chrome 152 accessibility tree, real Tab dispatch, reduced-motion emulation and 390×844 viewport pass | 19 named interactive nodes, 0 unnamed, visible 3px focus, text presence cues and no horizontal/control overflow proven; screen reader, 200% zoom and pixel contrast remain open |
 
 ## Commit trail
 
@@ -43,7 +44,7 @@ The independent Fable reviews reproduced the release-relevant capability, state,
 
 ## Explicitly not yet evidenced
 
-- complete visual and accessibility quality in a WebMCP-supporting browser;
+- screen-reader practice, 200% zoom, pixel-based contrast and final branded visual quality;
 - connected ChatGPT-agent WebMCP discovery and invocation beyond the accepted Chrome in-page client;
 - real microphone permission, captured speech and audibly confirmed spoken output;
 - public GitHub repository and license detection;
