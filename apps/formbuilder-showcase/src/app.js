@@ -19,7 +19,9 @@ import {
 } from "./formbuilder-use-case.js";
 import {
   actionModeAllows,
+  buildLeaseExpiryEffect,
   createShowcaseSession,
+  nextLeaseExpiryDelay,
   transitionShowcaseSession
 } from "./session.js";
 import {
@@ -68,6 +70,19 @@ let offerExpiryTimer = null;
 
 function setStatus(message) {
   $("#system-status").textContent = message;
+}
+
+function scheduleLeaseExpiry(nowMilliseconds) {
+  clearTimeout(leaseExpiryTimer);
+  const delay = nextLeaseExpiryDelay(session.lease, nowMilliseconds);
+  if (delay === null) {
+    leaseExpiryTimer = null;
+    return;
+  }
+  leaseExpiryTimer = setTimeout(() => {
+    leaseExpiryTimer = null;
+    render();
+  }, delay);
 }
 
 function speak(message) {
@@ -240,10 +255,20 @@ function recordReceiptFeedback(event, receipt, verdict, adjustmentInput) {
 
 function render() {
   const now = new Date().toISOString();
+  const leaseBeforeTick = session.lease;
   session = transitionShowcaseSession(session, {
     type: "CLOCK_TICK",
     now
   });
+  const expiryEffect = buildLeaseExpiryEffect(leaseBeforeTick, session.lease);
+  if (expiryEffect !== null) {
+    clearTimeout(leaseExpiryTimer);
+    leaseExpiryTimer = null;
+    leaseCallsUsed = expiryEffect.leaseCallsUsed;
+    // Lease expiry outranks a same-tick handler message because it changes action rights.
+    setStatus(expiryEffect.status);
+  }
+  scheduleLeaseExpiry(Date.parse(now));
   offers = currentActionOffers({ offers, now, pageVersion });
   clearTimeout(offerExpiryTimer);
   const nextOfferExpiry = nextActionOfferExpiry(offers);
@@ -476,8 +501,6 @@ function startAway(duration) {
     lease,
     now: new Date(now).toISOString()
   });
-  clearTimeout(leaseExpiryTimer);
-  leaseExpiryTimer = setTimeout(() => render(), 120_010);
   setStatus("Agent Solo is active only inside the displayed two-minute field lease.");
   render();
 }
@@ -497,8 +520,10 @@ function executeSoloAction({ capabilityId, targetId, value }) {
     throw new CoworkProtocolError("STALE_FOCUS", "The leased field no longer exists");
   }
 
+  const activeLease = session.lease;
+  const leaseId = activeLease.leaseId;
   const plan = planSoloFormBuilderMutation({
-    lease: session.lease,
+    lease: activeLease,
     now: new Date().toISOString(),
     humanPresence: session.humanPresence,
     agentPresence: session.agentPresence,
@@ -514,12 +539,12 @@ function executeSoloAction({ capabilityId, targetId, value }) {
   const callNumber = leaseCallsUsed;
   const change = applyControlValue(control, plan.nextValue, {
     source: "agent",
-    refs: [`lease:${session.lease.leaseId}`],
+    refs: [`lease:${leaseId}`],
     confidence: "high"
   });
   const verified = control.value === plan.verificationExpected;
   const receipt = createActionReceipt({
-    offerId: `lease:${session.lease.leaseId}:call-${callNumber}`,
+    offerId: `lease:${leaseId}:call-${callNumber}`,
     verified,
     observedChangeIds: verified && change ? [change.changeId] : [],
     verificationSummary: verified

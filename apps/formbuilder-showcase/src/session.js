@@ -42,6 +42,32 @@ function withEffectiveMode(state, now = new Date().toISOString()) {
   };
 }
 
+function leaseHasExpired(lease, now) {
+  if (lease == null) return false;
+  const currentTime = Date.parse(now);
+  const leaseExpiry = Date.parse(lease.expiresAt);
+  return (
+    !Number.isFinite(currentTime) ||
+    !Number.isFinite(leaseExpiry) ||
+    currentTime >= leaseExpiry
+  );
+}
+
+export function nextLeaseExpiryDelay(lease, nowMilliseconds, graceMilliseconds = 10) {
+  if (lease == null) return null;
+  const leaseExpiry = Date.parse(lease.expiresAt);
+  if (!Number.isFinite(nowMilliseconds) || !Number.isFinite(leaseExpiry)) return 0;
+  return Math.max(0, leaseExpiry - nowMilliseconds + graceMilliseconds);
+}
+
+export function buildLeaseExpiryEffect(leaseBeforeTick, leaseAfterTick) {
+  if (leaseBeforeTick == null || leaseAfterTick != null) return null;
+  return {
+    leaseCallsUsed: 0,
+    status: "Solo lease expired. Agent work stopped; the human is still away."
+  };
+}
+
 export function transitionShowcaseSession(state, event) {
   if (event.type === "SILENCE") {
     return state;
@@ -83,7 +109,10 @@ export function transitionShowcaseSession(state, event) {
   }
 
   if (event.type === "CLOCK_TICK") {
-    return withEffectiveMode(state, event.now);
+    const nextState = state.lease === undefined || leaseHasExpired(state.lease, event.now)
+      ? { ...state, lease: null, leaseCallsUsed: 0 }
+      : state;
+    return withEffectiveMode(nextState, event.now);
   }
 
   if (event.type === "SOLO_ATTEMPT_STARTED") {
