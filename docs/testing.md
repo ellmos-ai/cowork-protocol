@@ -57,6 +57,6 @@ The same Chrome build exposed `SpeechRecognition`, `speechSynthesis` and 22 synt
 - Latest-only change and feedback readback through a real WebMCP client.
 - Real microphone permission, captured speech, silence handling and transcript quality. Rapid repeated activation is now accepted in Chrome 152.
 - Complete accessibility acceptance for all focus states, reduced motion and non-color status cues in the intended browser/client.
-- License, live URL and video readbacks before submission. The local clean-clone, secret-scan and dependency-audit gates are complete for `release/public-preview` at `54661ee`.
+- License, live URL and video readbacks before submission. The local clean-clone, native Chrome WebMCP smoke, secret-scan and dependency-audit gates are complete for `release/public-preview` at `a1b2bc0`.
 
 The connected Edge result proves only the local fallback interaction path. The isolated Chrome result separately proves native WebMCP browser registration, discovery and read-only invocation, but not a connected ChatGPT-agent journey.
