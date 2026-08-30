@@ -6,17 +6,18 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 |---|---|---|
 | Focus packets enforce 160/161 and 350-code-unit rules | `packages/core/test/focus-packet.test.js`; `npm run eval` | Local contract proven; no host-token claim |
 | Silence and unchanged state emit no packet | `packages/core/test/context-router.test.js`; eval cases | Local contract proven |
-| Agent offers cannot authorize themselves | `packages/core/test/action-authorization.test.js` | Local negative path proven; trusted browser click acceptance open |
+| Agent offers cannot authorize themselves | `packages/core/test/action-authorization.test.js`; connected Edge fallback interaction | Local negative path and real local click path proven; WebMCP-hosted click acceptance open |
 | Change causality is explicit, reference-bounded and latest-only | `packages/core/test/change-feedback.test.js`; `interaction-log.test.js`; eval case | Local delta/digest contract proven; live browser observation open |
-| Feedback requires a human click and exposes only the latest event | `change-feedback.test.js`; `interaction-log.test.js`; eval case | Local negative/budget path proven; trusted browser click acceptance open |
-| Solo work is lease-scoped | `packages/core/test/solo-lease.test.js`; FormBuilder connector action tests | Local limits proven; background/browser continuity open |
+| Feedback requires a human click and exposes only the latest event | `change-feedback.test.js`; `interaction-log.test.js`; eval case; connected Edge fallback interaction | Local negative/budget path and real feedback click proven; WebMCP readback open |
+| Solo work is lease-scoped | `packages/core/test/solo-lease.test.js`; FormBuilder connector action tests; connected Edge fallback interaction | Local limits, delegated AFK and return summary proven; expiry/background continuity open |
 | Six Native WebMCP tools register and clean up | `packages/native-webmcp/test/registration.test.js` | Contract fake proven; real client discovery/invocation open |
-| FormBuilder web validation/export is retained | attributed engine, `formbuilder-use-case.test.js`; upstream Web Companion 48/48 tests | Web logic proven; visual browser flow open |
+| FormBuilder web validation/export is retained | attributed engine, `formbuilder-use-case.test.js`; upstream Web Companion 48/48 tests; connected Edge fallback interaction | Web logic and click-gated field change proven; full visual/WebMCP flow open |
 | WebMCP Bridge is bounded and fail-closed | `packages/bridge/test/webmcp-bridge.test.js` | Explicit host-catalog adapter proven; foreign discovery open |
 | Legacy fallback is bounded | `packages/bridge/test/legacy-bridge.test.js`; visual eval | Request contract proven; DOM snapshot/image capture open |
 | Core jury journey is reproducible without credentials | `npm run proof`; `packages/evals/test/juror-proof.test.js` | Six deterministic integration steps proven; output explicitly denies browser and host-token claims |
 | Independent code review closed the release-relevant findings | Claude Code 2.1.251 with the Fable model reviewed the full tree and the bounded follow-up diffs | Initial verdict `With fixes`; all Critical/Important paths and four final minors fixed test-first; final follow-up verdict `Ready to publish code: Yes` with no Critical or Important findings |
 | Public-preview tree is reproducible | clean clone of local `release/public-preview` at `dda2db652cb2f12bfe9fbd0ef29fbd49a2f449a6` | `npm ci`, 77/77 tests, 11/11 character evals, 6/6 proof steps, 15-file Pages build, 38 syntax checks, 0 vulnerabilities, 0 secret findings, HTTP 200 for root/showcase/showcase module |
+| Local browser fallback is interactive | connected Edge extension against the local showcase | Exact-value offer, real click, page-version change, verified receipt, Adjust feedback, AFK fail-closed/delegated/return and first 12 keyboard focus stops accepted; `document.modelContext` absent, so no WebMCP claim |
 
 ## Commit trail
 
@@ -38,7 +39,7 @@ The independent Fable reviews reproduced the release-relevant capability, state,
 
 ## Explicitly not yet evidenced
 
-- visual quality in a supported browser;
+- complete visual and accessibility quality in a WebMCP-supporting browser;
 - live WebMCP client discovery and invocation;
 - microphone permission, speech recognition and spoken output;
 - public GitHub repository and license detection;
