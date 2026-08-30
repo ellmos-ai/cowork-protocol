@@ -39,14 +39,14 @@ Run `npm run proof` for a compact integration journey through the actual protoco
 
 ## Connected-browser acceptance snapshot
 
-A connected Edge extension session loaded the local showcase and explicitly reported that `document.modelContext` was unavailable. Within that honest fallback boundary, a real browser click selected a field, created an exact-value offer, authorized it, changed page version 1 to 2 and produced one verified receipt. A subsequent `Adjust` click recorded bounded human feedback. Brief AFK failed closed outside delegated mode; delegated mode switched the panel to Agent Solo, and return restored Cowork with the summary `1 verified, 0 failed`. Twelve consecutive Tab presses followed the skip link, the four form controls, export, attention controls, action mode, offer and pause controls in logical order.
+A connected Edge extension session loaded the local showcase and explicitly reported that `document.modelContext` was unavailable. Within that honest fallback boundary, a real browser click selected a field, created an exact-value offer, authorized it, changed page version 1 to 2 and produced one verified receipt. A subsequent `Adjust` click recorded bounded human feedback. Brief and longer AFK both failed closed until delegated mode and a focus existed, then exposed distinct presence text and an Agent Solo lease; return restored Cowork with a bounded summary. Pausing the agent switched the visible mode to Human Solo, and resume restored the agent. Twelve consecutive Tab presses followed the skip link, the four form controls, export, attention controls, action mode, offer and pause controls in logical order.
 
 ## Still required before acceptance
 
 - Browser system test in ChatGPT's in-app browser or supported Chrome with WebMCP enabled.
 - Host-level proof that a foreign WebMCP tool catalog can actually be supplied and invoked; the local bridge test is not discovery evidence.
 - Latest-only change and feedback readback through a real WebMCP client.
-- Lease expiry and agent-pause paths in the visible panel.
+- Lease expiry in the visible panel.
 - Microphone acceptance including rapid repeated push-to-talk activation in a real SpeechRecognition host.
 - Complete accessibility acceptance for all focus states, reduced motion and non-color status cues in the intended browser/client.
 - Clean-clone, license, secret-scan, live URL and video readbacks before submission.
