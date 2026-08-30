@@ -211,6 +211,9 @@ function validZoomObservation() {
     documentHorizontalOverflow: 0,
     interactiveControlCount: 19,
     reachableControlCount: 19,
+    focusVisibleControlCount: 19,
+    tabSequence: Array.from({ length: 19 }, (_, index) => `control-${index + 1}`),
+    unreachableControls: [],
     horizontallyClippedControls: [],
     textClippedControls: []
   };
@@ -225,6 +228,7 @@ test("200-percent browser zoom evidence requires reflow and every control to rem
     viewportPhysicalWidth: 1424,
     interactiveControls: 19,
     reachableControls: 19,
+    focusVisibleControls: 19,
     horizontalOverflow: 0
   });
 });
@@ -232,6 +236,7 @@ test("200-percent browser zoom evidence requires reflow and every control to rem
 test("200-percent browser zoom evidence rejects clipped or unreachable controls", () => {
   const observed = validZoomObservation();
   observed.reachableControlCount = 18;
+  observed.unreachableControls = ["stop-speech"];
   observed.horizontallyClippedControls = ["stop-speech"];
 
   assert.throws(

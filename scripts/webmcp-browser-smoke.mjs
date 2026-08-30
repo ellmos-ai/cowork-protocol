@@ -168,6 +168,17 @@ async function dispatchTrustedClick(call, elementExpression, label) {
   });
 }
 
+async function dispatchTrustedTab(call) {
+  const key = {
+    key: "Tab",
+    code: "Tab",
+    windowsVirtualKeyCode: 9,
+    nativeVirtualKeyCode: 9
+  };
+  await call("Input.dispatchKeyEvent", { type: "rawKeyDown", ...key });
+  await call("Input.dispatchKeyEvent", { type: "keyUp", ...key });
+}
+
 try {
   const chromePath = await resolveChromePath();
   const zoomLevel = Math.log(2) / Math.log(1.2);
@@ -216,9 +227,12 @@ try {
   const socket = await connect(target.webSocketDebuggerUrl);
   const call = cdpClient(socket);
   await call("Runtime.enable");
+  await call("Page.bringToFront");
+  await call("Emulation.setFocusEmulationEnabled", { enabled: true });
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
   const zoomObserved = await evaluateValue(call, `(async () => {
+    await document.fonts?.ready;
     const selector = [
       "a[href]",
       "button:not([disabled])",
@@ -232,31 +246,6 @@ try {
       const rect = element.getBoundingClientRect();
       return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
     });
-    const horizontallyClippedControls = [];
-    const textClippedControls = [];
-    let reachableControlCount = 0;
-
-    for (const [index, element] of controls.entries()) {
-      const label = element.id || element.getAttribute("name") || element.getAttribute("aria-label") ||
-        element.textContent.trim().slice(0, 60) || "control-" + index;
-      element.focus({ preventScroll: false });
-      element.scrollIntoView({ block: "center", inline: "nearest" });
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const rect = element.getBoundingClientRect();
-      const horizontallyVisible = rect.left >= -1 && rect.right <= window.innerWidth + 1;
-      const verticallyVisible = rect.top < window.innerHeight && rect.bottom > 0;
-      if (horizontallyVisible && verticallyVisible && document.activeElement === element) {
-        reachableControlCount += 1;
-      }
-      if (!horizontallyVisible) horizontallyClippedControls.push(label);
-      const style = getComputedStyle(element);
-      if (
-        element.scrollWidth > element.clientWidth + 1 &&
-        (style.overflowX === "hidden" || style.overflowX === "clip")
-      ) {
-        textClippedControls.push(label);
-      }
-    }
 
     const viewportCssWidth = window.innerWidth;
     const viewportCssHeight = window.innerHeight;
@@ -276,12 +265,63 @@ try {
         document.documentElement.scrollWidth,
         document.body.scrollWidth
       ) - document.documentElement.clientWidth,
-      interactiveControlCount: controls.length,
-      reachableControlCount,
-      horizontallyClippedControls,
-      textClippedControls
+      interactiveControlCount: controls.length
     };
   })()`);
+
+  await evaluateValue(call, `(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    window.scrollTo(0, 0);
+    return document.activeElement?.tagName ?? null;
+  })()`);
+  zoomObserved.reachableControlCount = 0;
+  zoomObserved.focusVisibleControlCount = 0;
+  zoomObserved.tabSequence = [];
+  zoomObserved.unreachableControls = [];
+  zoomObserved.horizontallyClippedControls = [];
+  zoomObserved.textClippedControls = [];
+
+  for (let index = 0; index < zoomObserved.interactiveControlCount; index += 1) {
+    await dispatchTrustedTab(call);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const focus = await evaluateValue(call, `(() => {
+      const element = document.activeElement;
+      if (!(element instanceof HTMLElement)) return null;
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      const label = element.id || element.getAttribute("name") || element.getAttribute("aria-label") ||
+        element.textContent.trim().slice(0, 60) || element.tagName;
+      const horizontallyVisible = rect.left >= -1 && rect.right <= window.innerWidth + 1;
+      const verticallyVisible = rect.top < window.innerHeight && rect.bottom > 0;
+      return {
+        label,
+        horizontallyVisible,
+        verticallyVisible,
+        focus: element.matches(":focus"),
+        focusVisible: element.matches(":focus-visible"),
+        rectTop: rect.top,
+        rectBottom: rect.bottom,
+        transform: style.transform,
+        position: style.position,
+        textClipped: ["A", "BUTTON", "SELECT"].includes(element.tagName) &&
+          element.scrollWidth > element.clientWidth + 1 &&
+          (style.overflowX === "hidden" || style.overflowX === "clip")
+      };
+    })()`);
+    if (!focus) {
+      zoomObserved.unreachableControls.push({ label: `tab-${index + 1}`, reason: "no active element" });
+      continue;
+    }
+    zoomObserved.tabSequence.push(focus.label);
+    if (focus.focusVisible) zoomObserved.focusVisibleControlCount += 1;
+    if (focus.horizontallyVisible && focus.verticallyVisible) {
+      zoomObserved.reachableControlCount += 1;
+    } else {
+      zoomObserved.unreachableControls.push(focus);
+    }
+    if (!focus.horizontallyVisible) zoomObserved.horizontallyClippedControls.push(focus.label);
+    if (focus.textClipped) zoomObserved.textClippedControls.push(focus.label);
+  }
 
   const evaluation = await call("Runtime.evaluate", {
     expression: `(async () => {

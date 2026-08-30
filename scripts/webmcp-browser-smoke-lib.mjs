@@ -296,15 +296,27 @@ export function validateZoomReflowObservation(observed) {
   const textClippedControls = Array.isArray(observed.textClippedControls)
     ? observed.textClippedControls
     : [];
+  const unreachableControls = Array.isArray(observed.unreachableControls)
+    ? observed.unreachableControls
+    : [];
+  const tabSequence = Array.isArray(observed.tabSequence) ? observed.tabSequence : [];
   requireCondition(
     isNonNegativeInteger(observed.interactiveControlCount) &&
-      observed.interactiveControlCount > 0 &&
+      observed.interactiveControlCount === 19 &&
       observed.reachableControlCount === observed.interactiveControlCount &&
+      observed.focusVisibleControlCount === observed.interactiveControlCount &&
+      tabSequence.length === observed.interactiveControlCount &&
+      new Set(tabSequence).size === observed.interactiveControlCount &&
+      unreachableControls.length === 0 &&
       clippedControls.length === 0 &&
       textClippedControls.length === 0 &&
       typeof observed.documentHorizontalOverflow === "number" &&
       observed.documentHorizontalOverflow <= 1,
-    "Every interactive control must remain horizontally visible and reachable at 200-percent zoom"
+    "Every interactive control must remain horizontally visible and reachable at 200-percent zoom " +
+      `(reachable ${observed.reachableControlCount}/${observed.interactiveControlCount}, ` +
+      `horizontal overflow ${observed.documentHorizontalOverflow}, ` +
+      `unreachable ${JSON.stringify(unreachableControls)}, clipped ${JSON.stringify(clippedControls)}, ` +
+      `text-clipped ${JSON.stringify(textClippedControls)})`
   );
 
   return {
@@ -315,6 +327,7 @@ export function validateZoomReflowObservation(observed) {
     viewportPhysicalWidth: observed.viewportPhysicalWidth,
     interactiveControls: observed.interactiveControlCount,
     reachableControls: observed.reachableControlCount,
+    focusVisibleControls: observed.focusVisibleControlCount,
     horizontalOverflow: observed.documentHorizontalOverflow
   };
 }
