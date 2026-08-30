@@ -43,12 +43,15 @@ Then open `http://127.0.0.1:4173/apps/formbuilder-showcase/` in a WebMCP-capable
 ```powershell
 npm test
 npm run eval
+npm run proof
 npm run check:secrets
 ```
 
 The suite uses Node's built-in test runner and has no external runtime dependency.
 
 `npm run eval` measures adapter-produced characters, not browser or model tokens. It verifies the 350-character focus, change and feedback budgets; the 160/161 selected-text boundary; silence and unchanged-state suppression; one-step expansion; latest-only event snapshots; and the bounded bridge summary without inventing unavailable host telemetry.
+
+`npm run proof` is a deterministic six-step juror dry-run. It exercises the real focus, offer, human-click authorization, verified change and feedback, scoped AFK lease and FormBuilder export contracts in seconds. Its output explicitly sets `browserClaim: false` and `hostTokenClaim: false`; it is reproducible core evidence, not a substitute for the required live WebMCP browser demonstration.
 
 ## Build the web-only release
 

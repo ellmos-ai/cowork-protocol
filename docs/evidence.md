@@ -14,6 +14,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | FormBuilder web validation/export is retained | attributed engine, `formbuilder-use-case.test.js`; upstream Web Companion 48/48 tests | Web logic proven; visual browser flow open |
 | WebMCP Bridge is bounded and fail-closed | `packages/bridge/test/webmcp-bridge.test.js` | Explicit host-catalog adapter proven; foreign discovery open |
 | Legacy fallback is bounded | `packages/bridge/test/legacy-bridge.test.js`; visual eval | Request contract proven; DOM snapshot/image capture open |
+| Core jury journey is reproducible without credentials | `npm run proof`; `packages/evals/test/juror-proof.test.js` | Six deterministic integration steps proven; output explicitly denies browser and host-token claims |
 | Public-preview tree is reproducible | clean clone of local `release/public-preview` at `88d85fe0faec66eb7e4c67eff38bfb1a4794bba9` | `npm ci --ignore-scripts`, 48/48 tests, 10/10 evals, 15-file Pages build, 0 vulnerabilities, 0 secret findings, HTTP 200 for root/showcase/modules |
 
 ## Commit trail

@@ -28,6 +28,10 @@ Tests use the real protocol and connector. Only the browser-owned `ModelContext`
 
 The eval output deliberately uses `adapter-characters`. It does not convert characters to tokens or claim visibility into a browser/agent host. A passing run covers ten named cases, including latest-only 350-character change and feedback snapshots, reports both included and avoided source characters where meaningful, and records the bounded visual request without claiming an image was captured.
 
+## Reproducible juror dry-run
+
+Run `npm run proof` for a compact integration journey through the actual protocol and FormBuilder packages. The six steps cover native field focus, an offer that cannot authorize itself, a matching human click, verified causal change plus feedback, a scoped AFK lease and the real `formularerstellen-response-v1` export. The command exits non-zero if any step fails and reports both `browserClaim: false` and `hostTokenClaim: false` so this local proof cannot be mistaken for browser acceptance.
+
 ## Still required before acceptance
 
 - Browser system test in ChatGPT's in-app browser or supported Chrome with WebMCP enabled.
