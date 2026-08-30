@@ -10,6 +10,7 @@
   "scripts": {
     "build:pages": "node scripts/build-pages.mjs",
     "check:secrets": "node scripts/check-secrets.mjs .",
+    "demo:adapter": "node packages/bridge/examples/adaptive-runtime-demo.mjs",
     "eval": "node packages/evals/src/cli.js",
     "proof": "node packages/evals/src/juror-proof-cli.js",
     "smoke:contrast": "node scripts/pixel-contrast-browser-smoke.mjs",

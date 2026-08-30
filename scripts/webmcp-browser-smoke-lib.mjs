@@ -184,7 +184,8 @@ export function validateBrowserHostBridgeObservation(observed) {
   const catalog = observed.catalog;
   const capabilities = Array.isArray(catalog?.capabilities) ? catalog.capabilities : [];
   requireCondition(
-    catalog?.mode === "webmcp-bridge" &&
+    observed.runtimeMode === "webmcp-bridge" &&
+      catalog?.mode === "webmcp-bridge" &&
       catalog.discovery === "host-supplied" &&
       capabilities.length === 2 &&
       Array.isArray(catalog.rejected) &&
@@ -250,6 +251,7 @@ export function validateBrowserHostBridgeObservation(observed) {
   return {
     browserHostClaim: true,
     foreignLiveSiteClaim: false,
+    runtimeMode: observed.runtimeMode,
     suppliedCapabilities: capabilities.length,
     readExecutions: hostCalls.length,
     previewCharacters: preview.preview.length,

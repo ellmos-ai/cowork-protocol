@@ -258,6 +258,7 @@ test("200-percent browser zoom evidence rejects pinch zoom posing as browser zoo
 
 function validBridgeObservation() {
   return {
+    runtimeMode: "webmcp-bridge",
     catalog: {
       mode: "webmcp-bridge",
       discovery: "host-supplied",
@@ -315,6 +316,7 @@ test("browser-host bridge evidence requires bounded reads and an offer-only muta
   assert.deepEqual(validateBrowserHostBridgeObservation(validBridgeObservation()), {
     browserHostClaim: true,
     foreignLiveSiteClaim: false,
+    runtimeMode: "webmcp-bridge",
     suppliedCapabilities: 2,
     readExecutions: 2,
     previewCharacters: 1200,

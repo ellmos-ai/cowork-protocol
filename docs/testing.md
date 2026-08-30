@@ -28,12 +28,16 @@ This gate contains:
 - an integration test from the real FormBuilder connector output through the WebMCP tool callback;
 - a registration contract test for the current `document.modelContext.registerTool()` shape, including the latest-only change and feedback tools;
 - bridge tests for 350-code-unit host capability summaries, isolated rejection of an identity that cannot fit after JSON escaping, JSON-normalized small results and read-result previews, malformed or duplicate declarations, unserializable results, required arguments and offer-only mutation handling;
+- adaptive runtime tests proving native-first selection, fallback to a usable host WebMCP catalog, fallback to the no-WebMCP companion, code-only probe diagnostics and fail-closed exhaustion;
+- no-WebMCP companion tests for callback-backed semantic tiers, bounded visual delivery, explain-only ephemeral targets, inert visible offers and execution only after a matching human-click confirmation;
 - Unicode-boundary tests proving bounded protocol text, parameter names, dynamically fitted descriptions, WebMCP bridge previews and legacy summaries never end with half of a surrogate pair;
 - action-surface tests proving expired, stale or malformed stored offers disappear, expiry timers are schedulable, visible values stay within 350 Unicode code points and `form.clear_value` cannot silently rewrite a non-empty proposal;
 - lease validation tests for non-negative integer attempt counts, positive integer limits and malformed scope arrays;
 - legacy tests for ephemeral versus stable targets, 350/1,200-code-unit semantic tiers, rejected level jumps and the 160,000-pixel visual request ceiling.
 
 Tests use the real protocol and connector. Only the browser-owned `ModelContext` boundary is represented by a small contract fake, because Node does not implement WebMCP.
+
+`npm run demo:adapter` is the reference host harness for the adaptive runtime. It executes native, generic WebMCP and legacy-companion fixtures, including the explicit visual-region callback and the visible-offer/confirm/action callback chain. It is deterministic library evidence, not proof of browser-wide discovery, extension transport or a connected model client.
 
 The eval output deliberately uses `adapter-characters`, defined as JavaScript UTF-16 code units. It does not convert those units to tokens or claim visibility into a browser/agent host. A passing run covers eleven named cases, including the native target-bound 1,200-unit context request, the 1,200-unit bridge read-result preview and latest-only 350-unit change and feedback snapshots, reports both included and avoided source units where meaningful, and records the bounded visual request without claiming an image was captured.
 
@@ -65,6 +69,7 @@ The showcase visual direction is a light editorial surface with restrained gold 
 
 - Connected ChatGPT/in-app-agent discovery and invocation; the current Chrome smoke is an in-page WebMCP client, not an agent conversation.
 - Discovery and invocation of an unrelated live website's WebMCP catalog. The isolated Chrome host fixture proves adapter execution but explicitly sets `foreignLiveSiteClaim: false`.
+- A real browser extension or equivalent host transport supplying semantic snapshots, visual-region delivery and trusted-click callbacks on websites that expose neither Cowork Protocol nor WebMCP. The package contract and deterministic host harness are implemented; browser-wide attachment and acceptance remain open.
 - Real microphone permission, captured speech, silence handling and transcript quality. Rapid repeated activation is now accepted in Chrome 152.
 - Screen-reader practice in the intended client. Current names, Tab order, focus indicators, reduced motion, non-color presence text, 390-pixel layout, true 200% browser zoom and the rendered contrast matrix are accepted in Chrome 152 or source-level checks.
 - License, public-repository, live-URL and video readbacks before submission. The latest clean-clone reference is recorded in the evidence ledger after each release-proof run.

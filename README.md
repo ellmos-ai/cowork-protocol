@@ -18,7 +18,8 @@ The repository currently contains:
 - the pre-existing MIT-licensed FormBuilder web schema/validation/response engine, explicitly attributed and isolated to the showcase;
 - a current WebMCP registration adapter using `document.modelContext.registerTool()` and `AbortSignal` ownership;
 - a host-supplied WebMCP bridge catalog that emits bounded summaries, executes only read-only-hinted tools, normalizes small read results as JSON, converts oversized results into explicit 1,200-character previews and keeps every mutation offer-only;
-- a legacy DOM/accessibility fallback with explain-only ephemeral targets, offer-only stable targets, one-step semantic expansion and a 400×400 visual-region request contract;
+- an adaptive, host-supplied runtime that selects native Cowork first, then a usable generic WebMCP catalog, then the legacy host companion, and reports bounded fallback diagnostics rather than pretending to discover a browser by itself;
+- a legacy DOM/accessibility host companion with explain-only ephemeral targets, offer-only stable targets, one-step semantic expansion, an explicit 400×400 visual-region delivery callback, and a click-confirmed host action callback;
 - a responsive FormBuilder showcase with attention controls, exact-value action offers, enforced explain/suggest/delegated/paused rights, causal change receipts, one-click feedback, presence, scoped solo work and an audio fallback.
 
 The native browser path now has both contract and browser evidence. An isolated Chrome 152 run with WebMCP testing enabled discovered all seven tools through `document.modelContext.getTools()`. It invoked focus and one-shot context, created two visible offers through `cowork_offer_action`, verified that neither offer changed the field, then used trusted browser clicks to apply both exact values and record human feedback. Native change and feedback reads returned only the second event with `omittedCount: 1`. The reproducible smoke explicitly reports `browserClaim: true`, `agentClientClaim: false` and `hostTokenClaim: false`: it proves Chrome mediation and the local human loop, not a connected ChatGPT-agent journey. The same browser gate keeps all 19 controls reachable at true 200% browser zoom. A separate rendered-contrast smoke audits 609 visible text items across ten interaction states with no unsupported range and a 4.5656:1 minimum. A connected Edge session separately accepted AFK handoff/return, Human Solo and the basic keyboard path. Real microphone input, screen-reader practice in the intended client, deployment and a connected-agent invocation remain pending.
@@ -43,6 +44,7 @@ Then open `http://127.0.0.1:4173/apps/formbuilder-showcase/` in a WebMCP-capable
 
 ```powershell
 npm test
+npm run demo:adapter
 npm run eval
 npm run proof
 npm run smoke:webmcp
@@ -51,6 +53,8 @@ npm run check:secrets
 ```
 
 The suite uses Node's built-in test runner and has no external runtime dependency.
+
+`npm run demo:adapter` is a deterministic host-contract harness. It selects all three paths with explicit fixtures: native Cowork, host-supplied WebMCP and no-WebMCP legacy companion. The latter reads a semantic target and one bounded context tier through host callbacks. The output explicitly keeps browser-wide discovery, an extension transport and a connected model client false; those require a real browser host or extension and separate acceptance evidence.
 
 `npm run eval` reports `adapter-characters`, defined here as JavaScript UTF-16 code units rather than browser or model tokens. It verifies the 350-unit focus, change and feedback budgets; the 160/161 selected-text boundary; silence and unchanged-state suppression; one-step expansion; latest-only event snapshots; the bounded bridge catalog summary; and the 1,200-unit bridge read-result preview without inventing unavailable host telemetry.
 
@@ -84,12 +88,12 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 - `packages/core` — protocol packets, causal changes, human feedback, state decisions, authorizations and budgets.
 - `packages/formbuilder-connector` — maps a stable FormBuilder field into a native Cowork focus.
 - `packages/native-webmcp` — registers the seven Cowork tools with the current WebMCP API.
-- `packages/bridge` — adapts an explicit host tool catalog or bounded legacy semantic snapshots without claiming browser-wide discovery or image capture.
+- `packages/bridge` — negotiates native → generic WebMCP → no-WebMCP host companion, while adapting explicit host catalogs and bounded legacy semantic/visual-delivery callbacks without claiming browser-wide discovery or built-in image capture.
 - `packages/evals` — reproducible character-budget and silence evals with no host-token claim.
 - `apps/formbuilder-showcase` — visible reference journey for focus, offer, confirmation, causal receipt, feedback, presence, solo lease and audio controls.
 - `apps/formbuilder-showcase/src/form-engine.mjs` — attributed web-only FormBuilder engine for required-field validation and JSON response export.
 
-See [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), [docs/deployment.md](docs/deployment.md), [docs/evidence.md](docs/evidence.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
+See the [adapter runtime guide](packages/bridge/README.md), [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), [docs/deployment.md](docs/deployment.md), [docs/evidence.md](docs/evidence.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
 
 ## License
 

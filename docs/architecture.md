@@ -117,7 +117,44 @@ Text alternative: the browser host owns discovery and supplies both catalog and 
 
 ## Legacy bridge boundary
 
-The legacy path accepts a host-provided semantic DOM/accessibility snapshot. A target without a stable ID is ephemeral and explain-only; a stable target may create a visible value offer but never directly mutate. Context expands one tier at a time: 350 code units of nearby semantic text, 1,200 code units of an accessibility-region summary, then a request for a pointer-centered region no larger than 400×400 pixels. Text truncation never splits a UTF-16 surrogate pair. The package returns the request descriptor, not image bytes. Capturing and delivering that region is a separate browser-host responsibility and remains unverified.
+The exported adaptive runtime prioritizes three explicitly supplied host layers. It selects a native Cowork adapter when its probe succeeds, otherwise a generic WebMCP bridge with at least one usable capability, otherwise a legacy host companion. It never scans a browser or an unrelated page by itself. Probe failures and unusable layers become code-only diagnostics; if no layer is usable, negotiation fails closed.
+
+```mermaid
+flowchart LR
+  HOST["Browser host or extension"] -->|"native adapter plus availability probe"| RUNTIME["Adaptive Cowork Runtime"]
+  HOST -->|"tool catalog plus executor"| RUNTIME
+  HOST -->|"semantic and visual callbacks"| RUNTIME
+  RUNTIME -->|"1. preferred"| NATIVE["Native Cowork"]
+  RUNTIME -->|"2. fallback"| WEB["Generic WebMCP Bridge"]
+  RUNTIME -->|"3. fallback"| COMPANION["No-WebMCP Host Companion"]
+```
+
+Text alternative: the host supplies one or more adapters. Negotiation chooses native Cowork first, a usable generic WebMCP catalog second and the no-WebMCP companion third. No layer is inferred from unrestricted browser access.
+
+The legacy companion accepts a host-provided semantic DOM/accessibility snapshot. A target without a stable ID is ephemeral and explain-only; a stable target may create a visible value offer but never directly mutate. Context expands one recorded tier at a time: 350 code units of nearby semantic text, 1,200 code units of an accessibility-region summary, then a request for a pointer-centered region no larger than 400×400 pixels. At the visual tier, the package invokes an explicit `requestVisualRegion` host callback and bounds the returned JSON delivery metadata or semantic description to 1,200 code units. It does not capture pixels itself. The agent-facing adapter can present a visible action with `presentActionOffer` but has no confirmation method. Only the separate host surface accepts a matching, unexpired `human-click` confirmation and then reaches `executeAuthorizedAction`. The host remains responsible for proving a trusted click, capturing or referencing the requested region and transporting either result to a model client.
+
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Companion as Legacy Host Companion
+  participant Host as Browser Host
+  participant Human
+
+  Agent->>Companion: readFocus(pointer)
+  Companion->>Host: getTargetSnapshot()
+  Host-->>Companion: stable semantic target
+  Agent->>Companion: requestContext(level 0 to 1)
+  Companion->>Host: getNearbySemanticText()
+  Host-->>Companion: bounded semantic context
+  Agent->>Companion: requestContext(level 2 to 3, pointer)
+  Companion->>Host: requestVisualRegion(max 400 by 400)
+  Host-->>Companion: bounded delivery metadata or description
+  Agent->>Companion: offerAction(exact arguments)
+  Companion->>Host: presentActionOffer(offer)
+  Human->>Host: trusted visible click
+  Host->>Companion: confirmAction(human-click event)
+  Companion->>Host: executeAuthorizedAction(authorization)
+```
 
 ## Source and scope
 

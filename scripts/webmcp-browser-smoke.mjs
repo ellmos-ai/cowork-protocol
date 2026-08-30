@@ -430,7 +430,7 @@ try {
     toolExecutionExpression("cowork_read_feedback", {})
   );
   const bridgeObserved = await evaluateValue(call, `(async () => {
-    const { createWebMcpBridge } = await import("/packages/bridge/src/index.js");
+    const { negotiateCoworkRuntime } = await import("/packages/bridge/src/index.js");
     const tools = [
       {
         name: "calendar_read_slots",
@@ -457,19 +457,23 @@ try {
       }
     ];
     const hostCalls = [];
-    const bridge = createWebMcpBridge({
-      tools,
-      async executeTool(request) {
-        hostCalls.push(request);
-        if (request.arguments.date === "large-result") {
-          return { records: ["x".repeat(5000)] };
+    const runtime = await negotiateCoworkRuntime({
+      native: { isAvailable: async () => false, readFocus: async () => ({}) },
+      webMcp: {
+        tools,
+        async executeTool(request) {
+          hostCalls.push(request);
+          if (request.arguments.date === "large-result") {
+            return { records: ["x".repeat(5000)] };
+          }
+          return {
+            date: request.arguments.date,
+            slots: ["09:00", "10:30"]
+          };
         }
-        return {
-          date: request.arguments.date,
-          slots: ["09:00", "10:30"]
-        };
       }
     });
+    const bridge = runtime.adapter;
     const smallResult = await bridge.executeRead({
       capabilityId: "webmcp:calendar_read_slots",
       arguments: { date: "2026-09-01" }
@@ -488,6 +492,7 @@ try {
       mutationError = { name: error.name, code: error.code };
     }
     return {
+      runtimeMode: runtime.mode,
       catalog: bridge.catalog,
       smallResult,
       largeResult,

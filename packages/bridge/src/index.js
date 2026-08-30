@@ -1,24 +1,16 @@
 import { CoworkProtocolError } from "../../core/src/index.js";
+import { boundHostResult, truncateBridgeText } from "./bounded-result.js";
+import { createLegacyHostCompanion } from "./companion.js";
 
 export { buildLegacyDomFocus, requestLegacyContext } from "./legacy.js";
+export { createLegacyHostCompanion } from "./companion.js";
 
 const MAX_DESCRIPTION_CHARS = 160;
 const MAX_PARAMETER_NAMES = 12;
 const MAX_PARAMETER_NAME_CHARS = 48;
 const MAX_TOOL_NAME_CHARS = 64;
 const MAX_CAPABILITY_SUMMARY_CHARS = 350;
-const MAX_READ_RESULT_CHARS = 1200;
-
-function truncateText(text, limit) {
-  if (text.length <= limit) return text;
-  if (limit === 0) return "";
-  let prefix = text.slice(0, limit - 1);
-  const lastCodeUnit = prefix.charCodeAt(prefix.length - 1);
-  if (lastCodeUnit >= 0xd800 && lastCodeUnit <= 0xdbff) {
-    prefix = prefix.slice(0, -1);
-  }
-  return `${prefix}…`;
-}
+const truncateText = truncateBridgeText;
 
 function boundedDescription(description) {
   if (typeof description !== "string") return "";
@@ -35,10 +27,6 @@ function parameterNames(inputSchema) {
 
 function reject(hostToolName, reason) {
   return { hostToolName, reason };
-}
-
-function truncatePreview(serialized) {
-  return truncateText(serialized, MAX_READ_RESULT_CHARS);
 }
 
 function boundedCapabilitySummary(tool, access) {
@@ -73,35 +61,7 @@ function boundedCapabilitySummary(tool, access) {
 }
 
 export function boundWebMcpReadResult(capabilityId, result) {
-  let serialized;
-  try {
-    serialized = JSON.stringify(result);
-  } catch {
-    throw new CoworkProtocolError(
-      "INVALID_BRIDGE_RESULT",
-      "Host WebMCP read results must be JSON-serializable"
-    );
-  }
-  if (typeof serialized !== "string") {
-    throw new CoworkProtocolError(
-      "INVALID_BRIDGE_RESULT",
-      "Host WebMCP read results must contain a JSON value"
-    );
-  }
-  if (serialized.length <= MAX_READ_RESULT_CHARS) return JSON.parse(serialized);
-
-  const preview = truncatePreview(serialized);
-  return {
-    protocolVersion: "0.1",
-    type: "bridge-read-preview",
-    capabilityId,
-    preview,
-    metrics: {
-      sourceCharacters: serialized.length,
-      includedCharacters: preview.length,
-      truncated: true
-    }
-  };
+  return boundHostResult(capabilityId, result, "bridge-read-preview");
 }
 
 export function negotiateWebMcpCatalog({ tools }) {
@@ -235,4 +195,96 @@ export function createWebMcpBridge({ tools, executeTool }) {
       return boundWebMcpReadResult(capabilityId, result);
     }
   };
+}
+
+function diagnostic(layer, code) {
+  const normalizedCode =
+    typeof code === "string" && /^[A-Z0-9_:-]{1,64}$/.test(code)
+      ? code
+      : `${layer.toUpperCase()}_LAYER_ERROR`;
+  return { layer, code: normalizedCode };
+}
+
+function runtimeEnvelope(mode, adapter, diagnostics, guarantees, host) {
+  return {
+    protocolVersion: "0.1",
+    mode,
+    selection: "host-supplied-priority",
+    diagnostics,
+    guarantees,
+    adapter,
+    ...(host ? { host } : {})
+  };
+}
+
+export async function negotiateCoworkRuntime({ native, webMcp, legacy } = {}) {
+  const diagnostics = [];
+
+  if (native) {
+    let available = true;
+    if (typeof native.isAvailable === "function") {
+      try {
+        available = (await native.isAvailable()) === true;
+      } catch (error) {
+        available = false;
+        diagnostics.push(
+          diagnostic("native", error?.code ?? "NATIVE_PROBE_FAILED")
+        );
+      }
+    }
+    if (available && typeof native.readFocus === "function") {
+      return runtimeEnvelope("native-cowork", native, diagnostics, {
+        stableTargets: true,
+        browserWideDiscovery: false,
+        directMutation: "native-policy"
+      });
+    }
+    if (available) {
+      diagnostics.push(diagnostic("native", "NATIVE_ADAPTER_INVALID"));
+    } else if (!diagnostics.some(({ layer }) => layer === "native")) {
+      diagnostics.push(diagnostic("native", "NATIVE_UNAVAILABLE"));
+    }
+  }
+
+  if (webMcp) {
+    try {
+      const bridge = createWebMcpBridge(webMcp);
+      if (bridge.catalog.capabilities.length > 0) {
+        return runtimeEnvelope("webmcp-bridge", bridge, diagnostics, {
+          discovery: "host-supplied",
+          readExecution: "read-only-hint",
+          mutation: "offer-only"
+        });
+      }
+      diagnostics.push(diagnostic("webmcp", "NO_USABLE_CAPABILITIES"));
+    } catch (error) {
+      diagnostics.push(
+        diagnostic("webmcp", error?.code ?? "WEBMCP_BRIDGE_INVALID")
+      );
+    }
+  }
+
+  if (legacy) {
+    try {
+      const companion = createLegacyHostCompanion(legacy);
+      return runtimeEnvelope(
+        "legacy-host-companion",
+        companion.agent,
+        diagnostics,
+        companion.guarantees,
+        companion.host
+      );
+    } catch (error) {
+      diagnostics.push(
+        diagnostic("legacy", error?.code ?? "LEGACY_COMPANION_INVALID")
+      );
+    }
+  }
+
+  const error = new CoworkProtocolError(
+    "CAPABILITY_UNAVAILABLE",
+    "No native Cowork, host-supplied WebMCP, or legacy host companion is available"
+  );
+  error.details = { diagnostics };
+  throw error;
 }
