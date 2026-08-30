@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Cowork Protocol Browser Companion",
+  "version": "0.1.0",
+  "description": "A toggleable, token-bounded Cowork fallback for pages without Cowork Protocol or WebMCP.",
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Toggle Cowork Companion"
+  },
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content-loader.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "modules/apps/browser-companion/src/content-runtime.js",
+        "modules/apps/browser-companion/src/protocol.js",
+        "modules/packages/bridge/src/bounded-result.js",
+        "modules/packages/bridge/src/companion.js",
+        "modules/packages/bridge/src/index.js",
+        "modules/packages/bridge/src/legacy.js",
+        "modules/packages/core/src/index.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

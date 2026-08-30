@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>No-WebMCP companion fixture</title>
+    <style>
+      body { margin: 0; background: #f7f1df; color: #172033; font: 18px/1.5 system-ui; }
+      main { max-width: 900px; margin: 60px auto; padding: 36px; }
+      section { background: white; border: 2px solid #d9b45b; border-radius: 24px; padding: 34px; }
+      label { display: block; font-weight: 800; margin-bottom: 8px; }
+      input { box-sizing: border-box; width: 100%; border: 2px solid #64748b; border-radius: 12px; font: inherit; padding: 14px; }
+      .context { margin-top: 24px; }
+      .support-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 30px; }
+      .support-grid button { min-height: 34px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section aria-label="Project settings region">
+        <h1>Standalone project editor</h1>
+        <label for="project-title">Project title</label>
+        <input id="project-title" name="title" value="Draft" aria-describedby="title-help">
+        <p id="title-help" class="context">
+          Choose a concise title that collaborators can recognize. This page intentionally
+          exposes no Cowork Protocol and no WebMCP tools. The browser companion should start
+          with this nearby semantic text and request broader structure or a pointer crop only
+          when the client explicitly asks for one more tier. Repeated explanatory language
+          keeps this fixture long enough to exercise the exact three hundred and fifty
+          character boundary without ever requiring the whole document.
+        </p>
+        <div class="support-grid" id="support-grid"></div>
+      </section>
+    </main>
+    <script>
+      const grid = document.querySelector("#support-grid");
+      for (let index = 1; index <= 30; index += 1) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.setAttribute(
+          "aria-label",
+          `Supporting workflow control ${index} with a deliberately descriptive accessible name`
+        );
+        button.textContent = `Control ${index}`;
+        grid.append(button);
+      }
+
+      window.coworkCompanionRequest = (method, argumentsValue = {}) =>
+        new Promise((resolve, reject) => {
+          const requestId = `fixture-${crypto.randomUUID()}`;
+          const timeout = setTimeout(() => {
+            window.removeEventListener("message", onMessage);
+            reject(new Error("COMPANION_RESPONSE_TIMEOUT"));
+          }, 30000);
+          function onMessage(event) {
+            if (
+              event.source !== window ||
+              event.data?.source !== "cowork-browser-companion" ||
+              event.data?.requestId !== requestId
+            ) return;
+            clearTimeout(timeout);
+            window.removeEventListener("message", onMessage);
+            if (event.data.ok) resolve(event.data.result);
+            else reject(new Error(event.data.error?.code ?? "COMPANION_REQUEST_FAILED"));
+          }
+          window.addEventListener("message", onMessage);
+          window.postMessage({
+            source: "cowork-page-client",
+            protocolVersion: "0.1",
+            requestId,
+            method,
+            arguments: argumentsValue
+          }, "*");
+        });
+    </script>
+  </body>
+</html>

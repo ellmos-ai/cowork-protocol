@@ -1,0 +1,397 @@
+import { spawn } from "node:child_process";
+import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { buildBrowserCompanion } from "./build-browser-companion.mjs";
+import { validateBrowserCompanionObservation } from "./browser-companion-smoke-lib.mjs";
+import { createStaticServer } from "./serve.mjs";
+
+const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-companion-smoke-"));
+const extensionPath = path.resolve("dist-browser-companion");
+let server;
+let browser;
+
+async function firstExisting(paths) {
+  for (const candidate of paths) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      // Try the next explicit browser path.
+    }
+  }
+  return null;
+}
+
+async function installedChromeForTesting() {
+  if (process.platform !== "win32") return null;
+  const root = "C:\\_Local_DEV\\tools\\chrome-for-testing\\chrome";
+  try {
+    const versions = (await readdir(root, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort((left, right) => right.localeCompare(left, undefined, { numeric: true }));
+    for (const version of versions) {
+      const candidate = path.join(root, version, "chrome-win64", "chrome.exe");
+      try {
+        await access(candidate);
+        return candidate;
+      } catch {
+        // Try the next locally installed testing version.
+      }
+    }
+  } catch {
+    // The optional local testing-browser cache is absent.
+  }
+  return null;
+}
+
+async function resolveChromePath() {
+  const configuredPath =
+    process.env.COWORK_COMPANION_BROWSER_PATH ?? process.env.COWORK_CHROME_PATH;
+  if (configuredPath) {
+    await access(configuredPath);
+    return configuredPath;
+  }
+  const testingBrowser = await installedChromeForTesting();
+  if (testingBrowser) return testingBrowser;
+  const candidate = await firstExisting([
+    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable"
+  ]);
+  if (!candidate) throw new Error("Chrome was not found; set COWORK_CHROME_PATH");
+  return candidate;
+}
+
+async function waitForJson(url, attempts = 80) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return response.json();
+    } catch {
+      // Retry only the isolated process owned by this smoke.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(`Timed out waiting for ${url}`);
+}
+
+async function waitForDevToolsPort(attempts = 80) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const text = await readFile(path.join(profilePath, "DevToolsActivePort"), "utf8");
+      const port = Number(text.split(/\r?\n/, 1)[0]);
+      if (Number.isInteger(port) && port > 0) return port;
+    } catch {
+      // Retry only the isolated profile created by this script.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error("Timed out waiting for Chrome's isolated DevTools port");
+}
+
+function connect(url) {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(url);
+    socket.addEventListener("open", () => resolve(socket), { once: true });
+    socket.addEventListener("error", reject, { once: true });
+  });
+}
+
+function cdpClient(socket, onEvent) {
+  let nextId = 0;
+  const pending = new Map();
+  socket.addEventListener("message", (event) => {
+    const message = JSON.parse(event.data);
+    if (!Object.hasOwn(message, "id")) {
+      onEvent?.(message);
+      return;
+    }
+    const request = pending.get(message.id);
+    if (!request) return;
+    pending.delete(message.id);
+    if (message.error) request.reject(new Error(JSON.stringify(message.error)));
+    else request.resolve(message.result);
+  });
+  return (method, params = {}) => {
+    const id = ++nextId;
+    socket.send(JSON.stringify({ id, method, params }));
+    return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+  };
+}
+
+async function evaluateValue(call, expression, contextId) {
+  const result = await call("Runtime.evaluate", {
+    expression,
+    awaitPromise: true,
+    returnByValue: true,
+    ...(contextId ? { contextId } : {})
+  });
+  if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
+  return result.result.value;
+}
+
+async function waitForExtensionContext(contexts, attempts = 80) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const context = contexts.find(
+      (candidate) =>
+        candidate.auxData?.type === "isolated" &&
+        (candidate.origin?.startsWith("chrome-extension://") ||
+          candidate.name?.startsWith("chrome-extension://"))
+    );
+    if (context) return context.id;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(
+    `Extension content context not found: ${JSON.stringify(
+      contexts.map(({ id, name, origin, auxData }) => ({ id, name, origin, type: auxData?.type }))
+    )}`
+  );
+}
+
+async function trustedClick(call, elementExpression, label) {
+  const point = await evaluateValue(call, `(() => {
+    const element = ${elementExpression};
+    if (!element) return null;
+    element.scrollIntoView({ block: "center", inline: "center" });
+    const rect = element.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2,
+      visible: rect.width > 0 && rect.height > 0 };
+  })()`);
+  if (!point?.visible) throw new Error(`${label} is not visible`);
+  await call("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: point.x,
+    y: point.y
+  });
+  await call("Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    x: point.x,
+    y: point.y,
+    button: "left",
+    buttons: 1,
+    clickCount: 1
+  });
+  await call("Input.dispatchMouseEvent", {
+    type: "mouseReleased",
+    x: point.x,
+    y: point.y,
+    button: "left",
+    buttons: 0,
+    clickCount: 1
+  });
+  return point;
+}
+
+async function stopOwnedBrowser(child) {
+  if (!child || child.exitCode !== null) return;
+  const exited = new Promise((resolve) => child.once("exit", resolve));
+  if (process.platform === "win32" && child.pid) {
+    await new Promise((resolve) => {
+      const killer = spawn(
+        "taskkill.exe",
+        ["/PID", String(child.pid), "/T", "/F"],
+        { windowsHide: true, stdio: "ignore" }
+      );
+      killer.once("exit", resolve);
+      killer.once("error", resolve);
+    });
+  } else {
+    child.kill("SIGKILL");
+  }
+  await Promise.race([
+    exited,
+    new Promise((resolve) => setTimeout(resolve, 5000))
+  ]);
+}
+
+try {
+  await buildBrowserCompanion({ sourceRoot: process.cwd(), outputRoot: extensionPath });
+  const chromePath = await resolveChromePath();
+  server = createStaticServer({ root: process.cwd() });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Smoke server has no TCP port");
+  const fixtureUrl =
+    `http://127.0.0.1:${address.port}/apps/browser-companion/test/fixture.html`;
+
+  browser = spawn(
+    chromePath,
+    [
+      ...(process.env.COWORK_COMPANION_HEADFUL === "1"
+        ? ["--window-position=-32000,-32000"]
+        : ["--headless=new"]),
+      "--disable-gpu",
+      "--disable-features=WebMCP,WebMCPTesting",
+      "--disable-blink-features=WebMCP",
+      "--force-device-scale-factor=1",
+      "--remote-debugging-port=0",
+      "--window-size=1200,900",
+      `--disable-extensions-except=${extensionPath}`,
+      `--load-extension=${extensionPath}`,
+      `--user-data-dir=${profilePath}`,
+      fixtureUrl
+    ],
+    { windowsHide: true, stdio: "ignore" }
+  );
+
+  const debugPort = await waitForDevToolsPort();
+  const version = await waitForJson(`http://127.0.0.1:${debugPort}/json/version`);
+  const targets = await waitForJson(`http://127.0.0.1:${debugPort}/json`);
+  const target = targets.find(
+    (candidate) => candidate.type === "page" && candidate.url.includes("fixture.html")
+  );
+  if (!target) throw new Error("No-WebMCP companion fixture target not found");
+
+  const contexts = [];
+  const socket = await connect(target.webSocketDebuggerUrl);
+  const call = cdpClient(socket, (event) => {
+    if (event.method === "Runtime.executionContextCreated") {
+      contexts.push(event.params.context);
+    }
+  });
+  await call("Runtime.enable");
+  await call("Page.bringToFront");
+  const extensionContextId = await waitForExtensionContext(contexts);
+  const extensionState = (expression) =>
+    evaluateValue(
+      call,
+      `globalThis.__coworkBrowserCompanionLoading.then((api) => ${expression})`,
+      extensionContextId
+    );
+
+  const defaultState = await extensionState("api.state()");
+  const webMcpAvailable = await evaluateValue(call, "Boolean(document.modelContext)");
+  const enabledState = await extensionState("api.setEnabled(true)");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const pointer = await trustedClick(
+    call,
+    'document.querySelector("#project-title")',
+    "Project title input"
+  );
+  const focus = await evaluateValue(
+    call,
+    'window.coworkCompanionRequest("readFocus", { lens: "pointer" })'
+  );
+  const nearbyContext = await evaluateValue(
+    call,
+    'window.coworkCompanionRequest("requestContext", { currentLevel: 0, requestedLevel: 1 })'
+  );
+  const accessibilityContext = await evaluateValue(
+    call,
+    'window.coworkCompanionRequest("requestContext", { currentLevel: 1, requestedLevel: 2 })'
+  );
+  const visualContext = await evaluateValue(
+    call,
+    `window.coworkCompanionRequest("requestContext", {
+      currentLevel: 2,
+      requestedLevel: 3,
+      pointer: ${JSON.stringify(pointer)}
+    })`
+  );
+  const visualReferenceId = visualContext.visualDelivery.referenceId;
+  const visualConsumption = await extensionState(`(async () => {
+    const referenceId = ${JSON.stringify(visualReferenceId)};
+    const consumed = await api.consumeVisualRegion(referenceId);
+    let replayCode = null;
+    try {
+      await api.consumeVisualRegion(referenceId);
+    } catch (error) {
+      replayCode = error.code;
+    }
+    return {
+      referenceId: consumed.referenceId,
+      width: consumed.width,
+      height: consumed.height,
+      mimeType: consumed.mimeType,
+      dataUrlPrefix: consumed.dataUrl.slice(0, "data:image/png;base64,".length),
+      dataUrlCharacters: consumed.dataUrl.length,
+      replayCode
+    };
+  })()`);
+  const valueBeforeOffer = await evaluateValue(
+    call,
+    'document.querySelector("#project-title").value'
+  );
+  await evaluateValue(
+    call,
+    `window.coworkCompanionRequest("offerAction", {
+      offerId: "extension-offer-1",
+      capabilityId: "legacy.offer_value",
+      targetId: ${JSON.stringify(focus.targetId)},
+      pageVersion: ${JSON.stringify(focus.pageVersion)},
+      proposedArguments: { value: "Cowork Everywhere" },
+      summary: "Use Cowork Everywhere as the project title",
+      effect: "write",
+      undoAvailable: true,
+      expiresAt: "2099-09-01T10:05:00.000Z"
+    })`
+  );
+  const offer = await evaluateValue(call, `(() => {
+    const root = document.querySelector("#cowork-browser-companion-root");
+    const button = root?.shadowRoot?.querySelector("[data-cowork-offer-id]");
+    return {
+      valueBeforeOffer: ${JSON.stringify(valueBeforeOffer)},
+      valueBeforeHumanClick: document.querySelector("#project-title").value,
+      visibleOfferCount: root?.shadowRoot?.querySelectorAll("[data-cowork-offer-id]").length ?? 0,
+      visibleOfferText: button?.textContent ?? ""
+    };
+  })()`);
+  await trustedClick(
+    call,
+    'document.querySelector("#cowork-browser-companion-root")?.shadowRoot?.querySelector("[data-cowork-offer-id]")',
+    "Cowork visible action offer"
+  );
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  const clickSurface = await evaluateValue(call, `(() => {
+    const root = document.querySelector("#cowork-browser-companion-root");
+    return {
+      valueAfterHumanClick: document.querySelector("#project-title").value,
+      status: root?.shadowRoot?.querySelector(".status")?.textContent ?? ""
+    };
+  })()`);
+  const afterClickState = await extensionState("api.state()");
+  const disabledState = await extensionState("api.setEnabled(false)");
+  disabledState.surfaceHidden = await evaluateValue(
+    call,
+    'document.querySelector("#cowork-browser-companion-root")?.hidden === true'
+  );
+
+  const report = validateBrowserCompanionObservation({
+    browserVersion: version.Browser,
+    defaultState,
+    webMcpAvailable,
+    enabledState,
+    focus,
+    nearbyContext,
+    accessibilityContext,
+    visualContext,
+    visualConsumption,
+    offer,
+    click: {
+      trusted: afterClickState.lastTrustedHumanClick,
+      ...clickSurface
+    },
+    disabledState
+  });
+  console.log(JSON.stringify(report, null, 2));
+  socket.close();
+} finally {
+  await stopOwnedBrowser(browser);
+  if (server) await new Promise((resolve) => server.close(resolve));
+  await rm(profilePath, {
+    recursive: true,
+    force: true,
+    maxRetries: 10,
+    retryDelay: 150
+  });
+}

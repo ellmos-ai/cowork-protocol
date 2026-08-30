@@ -8,12 +8,14 @@
     "apps/*"
   ],
   "scripts": {
+    "build:companion": "node scripts/build-browser-companion.mjs",
     "build:pages": "node scripts/build-pages.mjs",
     "check:secrets": "node scripts/check-secrets.mjs .",
     "demo:adapter": "node packages/bridge/examples/adaptive-runtime-demo.mjs",
     "eval": "node packages/evals/src/cli.js",
     "proof": "node packages/evals/src/juror-proof-cli.js",
     "smoke:accessibility": "node scripts/accessibility-browser-smoke.mjs",
+    "smoke:companion": "node scripts/browser-companion-smoke.mjs",
     "smoke:contrast": "node scripts/pixel-contrast-browser-smoke.mjs",
     "smoke:model-host": "node scripts/model-host-browser-smoke.mjs",
     "smoke:webmcp": "node scripts/webmcp-browser-smoke.mjs",

@@ -16,6 +16,8 @@ flowchart TB
   NATIVE["Native WebMCP Connector"]
   WEBBRIDGE["WebMCP Bridge"]
   LEGACY["Legacy DOM/A11y/Visual-request Bridge"]
+  EXTENSION["Browser Companion Extension\ndefault-off semantic and crop host"]
+  LEGACYPAGE["Arbitrary web page\nCowork and WebMCP absent"]
   FORM["FormBuilder Showcase"]
 
   HUMAN -->|"authorizes and evaluates"| PANEL
@@ -36,6 +38,8 @@ flowchart TB
   CORE <--> |"versioned protocol messages"| NATIVE
   CORE <--> |"degraded guarantees"| WEBBRIDGE
   CORE <--> |"best-effort signals"| LEGACY
+  LEGACYPAGE <-->|"pointer focus and trusted visible click"| EXTENSION
+  EXTENSION <-->|"bounded host callbacks"| LEGACY
   NATIVE <--> |"stable fields and verified actions"| FORM
   FORM -->|"observed ChangeEvent with cause refs"| CORE
 ```
@@ -190,7 +194,9 @@ flowchart LR
 
 Text alternative: the host supplies one or more adapters. Negotiation chooses native Cowork first, a usable generic WebMCP catalog second and the no-WebMCP companion third. No layer is inferred from unrestricted browser access.
 
-The legacy companion accepts a host-provided semantic DOM/accessibility snapshot. A target without a stable ID is ephemeral and explain-only; a stable target may create a visible value offer but never directly mutate. Context expands one recorded tier at a time: 350 code units of nearby semantic text, 1,200 code units of an accessibility-region summary, then a request for a pointer-centered region no larger than 400×400 pixels. At the visual tier, the package invokes an explicit `requestVisualRegion` host callback and bounds the returned JSON delivery metadata or semantic description to 1,200 code units. It does not capture pixels itself. The agent-facing adapter can present a visible action with `presentActionOffer` but has no confirmation method. Only the separate host surface accepts a matching, unexpired `human-click` confirmation and then reaches `executeAuthorizedAction`. The host remains responsible for proving a trusted click, capturing or referencing the requested region and transporting either result to a model client.
+The legacy companion accepts a host-provided semantic DOM/accessibility snapshot. A target without a stable ID is ephemeral and explain-only; a stable target may create a visible value offer but never directly mutate. Context expands one recorded tier at a time: 350 code units of nearby semantic text, 1,200 code units of an accessibility-region summary, then a request for a pointer-centered region no larger than 400×400 pixels. At the visual tier, the package invokes an explicit `requestVisualRegion` host callback and bounds the returned JSON delivery metadata or semantic description to 1,200 code units. The package itself does not capture pixels. The agent-facing adapter can present a visible action with `presentActionOffer` but has no confirmation method. Only the separate host surface accepts a matching, unexpired `human-click` confirmation and then reaches `executeAuthorizedAction`.
+
+`apps/browser-companion` is one concrete host implementation. Its content script is inert until toggled on. It extracts the pointed semantic control, provides the two bounded text tiers, asks its service worker to capture the visible tab and immediately crops that bitmap to the 400×400 pointer request. The page-facing transport receives only the random reference and bounded metadata. Cropped bytes are consumable exactly once from the isolated extension host; arbitrary page JavaScript never receives the full screenshot or the crop. Stable text-like controls can receive visible exact-value offers, but password, file, hidden, ambiguous and unstable targets remain explain-only. An `isTrusted` click plus the core authorization contract gates execution and observed-value verification.
 
 ```mermaid
 sequenceDiagram
@@ -214,6 +220,55 @@ sequenceDiagram
   Host->>Companion: confirmAction(human-click event)
   Companion->>Host: executeAuthorizedAction(authorization)
 ```
+
+## Concrete no-WebMCP browser companion
+
+```mermaid
+sequenceDiagram
+  actor Human
+  participant Page as Arbitrary web page
+  participant PageClient as Versioned page client
+  participant Extension as Companion content runtime
+  participant Companion as Legacy Host Companion
+  participant Worker as Extension service worker
+  participant ExtensionHost as Optional isolated host consumer
+
+  Note over Page,Extension: document.modelContext is absent; extension starts off
+  Human->>Extension: toolbar toggle on
+  Human->>Page: point at a stable text control
+  PageClient->>Extension: readFocus(pointer)
+  Extension->>Companion: readFocus(pointer)
+  Companion->>Extension: semantic target callback
+  Extension-->>Companion: stable target plus bounded label
+  Companion-->>Extension: bounded focus packet
+  Extension-->>PageClient: bounded focus packet
+  PageClient->>Extension: requestContext(0 to 1)
+  Extension->>Companion: requestContext(0 to 1)
+  Companion-->>Extension: at most 350 semantic characters
+  Extension-->>PageClient: at most 350 semantic characters
+  PageClient->>Extension: requestContext(1 to 2)
+  Extension->>Companion: requestContext(1 to 2)
+  Companion-->>Extension: at most 1,200 accessibility characters
+  Extension-->>PageClient: at most 1,200 accessibility characters
+  PageClient->>Extension: requestContext(2 to 3, pointer)
+  Extension->>Companion: requestContext(2 to 3, pointer)
+  Companion->>Worker: capture pointer region, max 400 by 400
+  Worker->>Worker: capture visible tab, crop immediately, discard full image
+  Worker-->>Extension: random one-shot crop reference and metadata
+  Extension-->>PageClient: bounded reference and metadata only
+  ExtensionHost->>Worker: consume crop reference once
+  Worker-->>ExtensionHost: cropped PNG only
+  PageClient->>Extension: offerAction(exact visible value)
+  Extension->>Companion: offerAction(exact visible value)
+  Companion->>Extension: render inert offer
+  Human->>Extension: trusted click
+  Extension->>Companion: confirmAction(human-click)
+  Companion->>Page: set and observe exact value
+  Page-->>Extension: verified value
+  Human->>Extension: toolbar toggle off
+```
+
+Text alternative: on a page without WebMCP, the human explicitly enables the extension and points at one control. A versioned page client receives the smallest semantic tier first and must request each larger tier separately. At the visual tier it receives only bounded metadata and a random reference; the full visible capture exists only long enough to create a 400×400 crop. An isolated extension-side host API can consume that crop once, but no connected model client is claimed. A proposed field value remains unchanged until the human clicks the extension offer, after which the host applies and verifies the exact value. Toggling off removes the active surface.
 
 ## Source and scope
 

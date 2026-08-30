@@ -30,6 +30,8 @@ Imported web source:
 
 The original copyright notice and file-specific provenance are retained in `apps/formbuilder-showcase/FORMBUILDER-NOTICE.md`.
 
+The protocol packages, same-origin model transport, WebMCP adapters, FormBuilder connector, Cowork panel and optional `apps/browser-companion` extension are new challenge work. The Browser Companion reuses only the new Cowork core/bridge modules from this repository; it imports no additional pre-existing application source.
+
 ## Publication boundary
 
 The submission uses one repository and keeps the flagship application under `apps/formbuilder-showcase`. Only browser code needed for the web use case may be published from the pre-existing FormBuilder. Desktop, Python, executable, Capacitor and native packaging code are out of scope.

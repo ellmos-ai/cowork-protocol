@@ -20,7 +20,13 @@ const PATTERNS = [
   }
 ];
 
-const EXCLUDED_DIRECTORIES = new Set([".git", "coverage", "dist", "node_modules"]);
+const EXCLUDED_DIRECTORIES = new Set([
+  ".git",
+  "coverage",
+  "dist",
+  "dist-browser-companion",
+  "node_modules"
+]);
 const BINARY_EXTENSIONS = new Set([
   ".gif",
   ".ico",

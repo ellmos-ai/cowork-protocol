@@ -8,6 +8,8 @@
 
 The package does not discover arbitrary browser tabs, capture pixels or connect a model client by itself.
 
+The optional reference host in `apps/browser-companion` now supplies these callbacks on an arbitrary page after the human toggles its toolbar action. It uses this package unchanged, keeps sensitive or unstable targets explain-only, crops the requested 400×400 pointer region inside its extension service worker and exposes the crop once only to the isolated extension host. `npm run smoke:companion` is real Chrome 152 extension acceptance; `npm run demo:adapter` remains the smaller deterministic package harness.
+
 ## Negotiate a runtime
 
 ```js
