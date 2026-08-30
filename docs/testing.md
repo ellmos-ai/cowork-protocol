@@ -62,6 +62,6 @@ The showcase visual direction is a light editorial surface with restrained gold 
 - Discovery and invocation of an unrelated live website's WebMCP catalog. The isolated Chrome host fixture proves adapter execution but explicitly sets `foreignLiveSiteClaim: false`.
 - Real microphone permission, captured speech, silence handling and transcript quality. Rapid repeated activation is now accepted in Chrome 152.
 - Screen-reader practice, 200% zoom and a complete pixel-based contrast review. Current names, Tab order, focus indicators, reduced motion, non-color presence text, 390-pixel layout and six core theme contrast pairs are accepted in Chrome 152 or source-level checks.
-- License, live URL and video readbacks before submission. The local clean-clone, full native Chrome WebMCP human-loop smoke, secret-scan and dependency-audit gates are complete for `64fa1eb`.
+- License, live URL and video readbacks before submission. The local clean-clone, native Chrome human-loop and browser-host bridge smoke, secret-scan and dependency-audit gates are complete for `09962c4`.
 
 The connected Edge result proves only the local fallback interaction path. The isolated Chrome result separately proves native WebMCP browser registration, discovery, click-gated action and latest-only readback, but not a connected ChatGPT-agent journey.
