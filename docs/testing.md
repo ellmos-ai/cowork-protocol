@@ -22,6 +22,8 @@ This gate contains:
 - interaction-log tests proving unchanged values emit no change and feedback snapshots return only the latest event;
 - context-router tests for silence, unchanged state and one-step escalation;
 - target-bound native context-request tests for the 200-character reason and 1,200-character one-shot expansion boundaries;
+- speech-controller tests proving rapid repeated activation starts only one recognition session, idle stop is a no-op and synchronous start failure unlocks retry;
+- native browser-evidence validation that rejects a partial tool catalog or an unbounded/reusable context expansion;
 - an integration test from the real FormBuilder connector output through the WebMCP tool callback;
 - a registration contract test for the current `document.modelContext.registerTool()` shape, including the latest-only change and feedback tools;
 - bridge tests for 350-code-unit host capability summaries, isolated rejection of an identity that cannot fit after JSON escaping, JSON-normalized small results and read-result previews, malformed or duplicate declarations, unserializable results, required arguments and offer-only mutation handling;
@@ -42,13 +44,19 @@ Run `npm run proof` for a compact integration journey through the actual protoco
 
 A connected Edge extension session loaded the local showcase and explicitly reported that `document.modelContext` was unavailable. Within that honest fallback boundary, a real browser click selected a field, created an exact-value offer, authorized it, changed page version 1 to 2 and produced one verified receipt. A subsequent `Adjust` click recorded bounded human feedback. Brief and longer AFK both failed closed until delegated mode and a focus existed, then exposed distinct presence text and an Agent Solo lease; return restored Cowork with a bounded summary. Pausing the agent switched the visible mode to Human Solo, and resume restored the agent. Twelve consecutive Tab presses followed the skip link, the four form controls, export, attention controls, action mode, offer and pause controls in logical order. A later headless Edge smoke verified that the context-preview button reports `STALE_FOCUS` before focus and returns one 110-adapter-character related field context after a pointer focus, while still showing `WebMCP unavailable`.
 
+## Native WebMCP browser snapshot
+
+`npm run smoke:webmcp` used Chrome 152.0.7977.64 with the current WebMCP testing features and a fresh temporary profile. The secure local origin exposed `registerTool`, `getTools` and `executeTool`; the showcase reported `Native WebMCP`; Chrome discovered exactly seven Cowork tools and executed the read-only focus and context-request tools. The observed focus contained 9 adapter characters and the target-bound one-shot expansion contained 110. Chrome 152 accepted JSON-string arguments through its current in-page execution surface after rejecting the newer object form, and the smoke records that compatibility fact. The report sets `browserClaim: true`, `agentClientClaim: false` and `hostTokenClaim: false`.
+
+The same Chrome build exposed `SpeechRecognition`, `speechSynthesis` and 22 synthesis voices. After the guarded-session fix, two immediate Push-to-talk activations produced no uncaught exception; Reduced Motion reduced the control transition to 0.01 ms, and the three audio controls were present in Chrome's accessibility tree. The isolated fake device returned `audio-capture`, so this proves API wiring and rapid-activation safety, not microphone capture, transcript quality or audible speaker output.
+
 ## Still required before acceptance
 
-- Browser system test in ChatGPT's in-app browser or supported Chrome with WebMCP enabled.
+- Connected ChatGPT/in-app-agent discovery and invocation; the current Chrome smoke is an in-page WebMCP client, not an agent conversation.
 - Host-level proof that a foreign WebMCP tool catalog can actually be supplied and invoked; the local bridge test is not discovery evidence.
 - Latest-only change and feedback readback through a real WebMCP client.
-- Microphone acceptance including rapid repeated push-to-talk activation in a real SpeechRecognition host.
+- Real microphone permission, captured speech, silence handling and transcript quality. Rapid repeated activation is now accepted in Chrome 152.
 - Complete accessibility acceptance for all focus states, reduced motion and non-color status cues in the intended browser/client.
 - License, live URL and video readbacks before submission. The local clean-clone, secret-scan and dependency-audit gates are complete for `release/public-preview` at `54661ee`.
 
-The connected Edge result proves only the local fallback interaction path; it is not presented as a live WebMCP acceptance result.
+The connected Edge result proves only the local fallback interaction path. The isolated Chrome result separately proves native WebMCP browser registration, discovery and read-only invocation, but not a connected ChatGPT-agent journey.

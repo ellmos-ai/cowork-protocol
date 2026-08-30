@@ -31,6 +31,7 @@ test("the Pages artifact contains only the web showcase and its runtime modules"
     assert.equal(files.includes("index.html"), true);
     assert.equal(files.includes("apps/formbuilder-showcase/index.html"), true);
     assert.equal(files.includes("apps/formbuilder-showcase/src/app.js"), true);
+    assert.equal(files.includes("apps/formbuilder-showcase/src/speech-controller.js"), true);
     assert.equal(files.includes("packages/core/src/index.js"), true);
     assert.equal(files.includes("packages/formbuilder-connector/src/index.js"), true);
     assert.equal(files.includes("packages/native-webmcp/src/index.js"), true);
@@ -45,6 +46,7 @@ test("the Pages artifact contains only the web showcase and its runtime modules"
       "utf8"
     );
     assert.match(appModule, /packages\/native-webmcp\/src\/index\.js/);
+    assert.match(appModule, /\.\/speech-controller\.js/);
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }

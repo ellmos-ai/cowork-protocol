@@ -36,6 +36,7 @@ import {
   nextActionOfferExpiry,
   prepareVisibleActionOffer
 } from "./view-model.js";
+import { createRecognitionSession } from "./speech-controller.js";
 
 const $ = (selector) => document.querySelector(selector);
 const fields = [...document.querySelectorAll(".form-field[data-field-id]")];
@@ -61,7 +62,7 @@ let capabilityLevel = "unavailable";
 let registrationController = null;
 let offerCounter = 0;
 let changeCounter = 0;
-let recognition = null;
+let recognitionSession = null;
 let leaseCallsUsed = 0;
 let responseDownloadUrl = null;
 let pendingChangeCause = null;
@@ -660,32 +661,35 @@ function configureSpeech() {
     return;
   }
 
-  recognition = new Recognition();
-  recognition.lang = "en-US";
-  recognition.interimResults = false;
-  recognition.continuous = false;
-  recognition.onstart = () => {
-    talkButton.classList.add("is-listening");
-    talkButton.textContent = "Listening…";
-    $("#transcript").textContent = "Listening. Pause naturally; silence will not create a turn.";
-  };
-  recognition.onresult = (event) => {
-    const transcript = event.results?.[0]?.[0]?.transcript?.trim() ?? "";
-    $("#transcript").textContent = transcript
-      ? `You: ${transcript}`
-      : "Silence detected. No model turn created.";
-  };
-  recognition.onerror = (event) => {
-    $("#transcript").textContent =
-      event.error === "no-speech"
-        ? "Silence detected. No model turn created."
-        : `Speech input unavailable: ${event.error}`;
-  };
-  recognition.onend = () => {
-    talkButton.classList.remove("is-listening");
-    talkButton.innerHTML = '<span aria-hidden="true">●</span> Push to talk';
-  };
-  talkButton.addEventListener("click", () => recognition.start());
+  recognitionSession = createRecognitionSession({
+    Recognition,
+    onActiveChange: (active) => {
+      talkButton.disabled = active;
+      talkButton.setAttribute("aria-busy", String(active));
+    },
+    onStart: () => {
+      talkButton.classList.add("is-listening");
+      talkButton.textContent = "Listening…";
+      $("#transcript").textContent = "Listening. Pause naturally; silence will not create a turn.";
+    },
+    onResult: (event) => {
+      const transcript = event.results?.[0]?.[0]?.transcript?.trim() ?? "";
+      $("#transcript").textContent = transcript
+        ? `You: ${transcript}`
+        : "Silence detected. No model turn created.";
+    },
+    onError: (event) => {
+      $("#transcript").textContent =
+        event.error === "no-speech"
+          ? "Silence detected. No model turn created."
+          : `Speech input unavailable: ${event.error}`;
+    },
+    onEnd: () => {
+      talkButton.classList.remove("is-listening");
+      talkButton.innerHTML = '<span aria-hidden="true">●</span> Push to talk';
+    }
+  });
+  talkButton.addEventListener("click", () => recognitionSession.start());
 }
 
 async function configureWebMcp() {
@@ -814,7 +818,7 @@ $("#away-long").addEventListener("click", () => startAway("long"));
 $("#return-human").addEventListener("click", returnHuman);
 $("#toggle-agent").addEventListener("click", toggleAgent);
 $("#stop-speech").addEventListener("click", () => {
-  recognition?.stop();
+  recognitionSession?.stop();
   window.speechSynthesis?.cancel();
 });
 $("#demo-form").addEventListener("submit", (event) => {

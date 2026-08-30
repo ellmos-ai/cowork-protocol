@@ -6,6 +6,7 @@ This UML-like C4 component view answers one question: which component owns conte
 flowchart TB
   HUMAN["Human\nfocus, speech, click, presence"]
   AGENT["Web agent\nhypothesis, proposal, scoped work"]
+  BROWSER["WebMCP-capable browser\nModelContext mediation"]
   PANEL["Cowork Panel\nmodes, offers, feedback, receipts"]
   CORE["Protocol Core\ncausal events, budgets, rights, leases"]
   NATIVE["Native WebMCP Connector"]
@@ -17,6 +18,8 @@ flowchart TB
   PANEL -->|"PresenceEvent, authorization, FeedbackEvent"| CORE
   CORE -->|"bounded focus, latest feedback, or offer"| AGENT
   AGENT -->|"context request or proposal"| CORE
+  AGENT <-->|"discovers and invokes tools"| BROWSER
+  BROWSER <-->|"registerTool, getTools, executeTool"| NATIVE
   CORE -->|"verified receipt"| PANEL
   CORE <--> |"versioned protocol messages"| NATIVE
   CORE <--> |"degraded guarantees"| WEBBRIDGE
@@ -25,7 +28,7 @@ flowchart TB
   FORM -->|"observed ChangeEvent with cause refs"| CORE
 ```
 
-Text alternative: the panel is the human control surface, the core enforces context and authority, and connectors translate application or browser data into the same protocol. FormBuilder reports value deltas as digest-based change events with explicit cause references. After a receipt, a real human click creates feedback; the native tool returns only the latest bounded feedback event to the agent. Only the native FormBuilder connector can promise stable targets and application-level verification. Bridge connectors must expose their reduced capability level.
+Text alternative: the panel is the human control surface, the core enforces context and authority, and connectors translate application or browser data into the same protocol. A WebMCP-capable browser mediates discovery and invocation between the web agent and the native connector. FormBuilder reports value deltas as digest-based change events with explicit cause references. After a receipt, a real human click creates feedback; the native tool returns only the latest bounded feedback event to the agent. Only the native FormBuilder connector can promise stable targets and application-level verification. Bridge connectors must expose their reduced capability level.
 
 The human authorization surface accepts only losslessly JSON-serializable action arguments. A FormBuilder offer displays the exact proposed value, limits it to 350 Unicode code points in both its WebMCP schema and runtime guard, and expires it from the DOM on a scheduled render; agent-generated events cannot authorize it.
 

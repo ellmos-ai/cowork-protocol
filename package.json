@@ -12,6 +12,7 @@
     "check:secrets": "node scripts/check-secrets.mjs .",
     "eval": "node packages/evals/src/cli.js",
     "proof": "node packages/evals/src/juror-proof-cli.js",
+    "smoke:webmcp": "node scripts/webmcp-browser-smoke.mjs",
     "preview:pages": "node scripts/serve.mjs 4174 dist",
     "start": "node scripts/serve.mjs",
     "test": "node --test"

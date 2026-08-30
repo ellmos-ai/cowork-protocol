@@ -21,7 +21,7 @@ The repository currently contains:
 - a legacy DOM/accessibility fallback with explain-only ephemeral targets, offer-only stable targets, one-step semantic expansion and a 400×400 visual-region request contract;
 - a responsive FormBuilder showcase with attention controls, exact-value action offers, enforced explain/suggest/delegated/paused rights, causal change receipts, one-click feedback, presence, scoped solo work and an audio fallback.
 
-The native browser path has a tested registration contract and the showcase is served locally. A connected Edge session accepted the local click-gated offer, verified receipt, bounded feedback, brief and longer AFK handoff/return, agent pause/Human Solo and basic keyboard focus path. That browser reported `document.modelContext` unavailable, so real WebMCP discovery/invocation, microphone acceptance, full visual/accessibility acceptance in the intended client and deployment remain pending. This README does not claim those gates as complete.
+The native browser path now has both contract and browser evidence. An isolated Chrome 152 run with WebMCP testing enabled discovered all seven tools through `document.modelContext.getTools()` and invoked the read-only focus and one-shot context tools through `executeTool()`. The reproducible smoke explicitly reports `browserClaim: true`, `agentClientClaim: false` and `hostTokenClaim: false`: it proves Chrome mediation, not a connected ChatGPT-agent journey. A connected Edge session separately accepted the click-gated offer, verified receipt, bounded feedback, AFK handoff/return, Human Solo and basic keyboard path. Real microphone input, complete accessibility acceptance in the intended client, deployment and a connected-agent invocation remain pending.
 
 Only the browser-based FormBuilder use case belongs to the publication scope. Desktop, Python and native packaging code from the pre-existing FormBuilder repository are intentionally excluded. The showcase remains in this repository so the protocol, application and deployment form one reproducible submission.
 
@@ -45,6 +45,7 @@ Then open `http://127.0.0.1:4173/apps/formbuilder-showcase/` in a WebMCP-capable
 npm test
 npm run eval
 npm run proof
+npm run smoke:webmcp
 npm run check:secrets
 ```
 
@@ -53,6 +54,8 @@ The suite uses Node's built-in test runner and has no external runtime dependenc
 `npm run eval` reports `adapter-characters`, defined here as JavaScript UTF-16 code units rather than browser or model tokens. It verifies the 350-unit focus, change and feedback budgets; the 160/161 selected-text boundary; silence and unchanged-state suppression; one-step expansion; latest-only event snapshots; the bounded bridge catalog summary; and the 1,200-unit bridge read-result preview without inventing unavailable host telemetry.
 
 `npm run proof` is a deterministic seven-step juror dry-run. It exercises the real focus, one-shot related-context request, offer, human-click authorization, verified change and feedback, scoped AFK lease and FormBuilder export contracts in seconds. Its output explicitly sets `browserClaim: false` and `hostTokenClaim: false`; it is reproducible core evidence, not a substitute for the required live WebMCP browser demonstration.
+
+`npm run smoke:webmcp` starts the showcase and an isolated Chrome profile, enables the current Chrome WebMCP testing features, discovers exactly the seven Cowork tools, and invokes only `cowork_read_focus` and `cowork_request_context`. It requires Chrome 150 or newer; set `COWORK_CHROME_PATH` when Chrome is installed outside the usual Windows, macOS or Linux locations. It does not use a personal browser profile or execute a mutating tool.
 
 ## Build the web-only release
 

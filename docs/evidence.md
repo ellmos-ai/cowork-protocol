@@ -6,12 +6,12 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 |---|---|---|
 | Focus packets enforce 160/161 and 350-code-unit rules | `packages/core/test/focus-packet.test.js`; `npm run eval` | Local contract proven; no host-token claim |
 | Silence and unchanged state emit no packet | `packages/core/test/context-router.test.js`; eval cases | Local contract proven |
-| An agent can request one related context level without receiving the page | context-router, FormBuilder connector and native registration tests; eval and juror proof | Target binding, reason bound and 1,200-character one-shot response proven locally; live WebMCP invocation open |
+| An agent can request one related context level without receiving the page | context-router, FormBuilder connector and native registration tests; eval, juror proof and Chrome 152 WebMCP smoke | Target binding, reason bound and 1,200-character one-shot response proven; Chrome invoked a 110-character response, connected-agent invocation open |
 | Agent offers cannot authorize themselves | `packages/core/test/action-authorization.test.js`; connected Edge fallback interaction | Local negative path and real local click path proven; WebMCP-hosted click acceptance open |
 | Change causality is explicit, reference-bounded and latest-only | `packages/core/test/change-feedback.test.js`; `interaction-log.test.js`; eval case | Local delta/digest contract proven; live browser observation open |
 | Feedback requires a human click and exposes only the latest event | `change-feedback.test.js`; `interaction-log.test.js`; eval case; connected Edge fallback interaction | Local negative/budget path and real feedback click proven; WebMCP readback open |
 | Solo work is lease-scoped | `packages/core/test/solo-lease.test.js`; FormBuilder connector action tests; connected Edge fallback interaction | Local limits, brief/longer delegated AFK, visible real-time expiry, return summary and agent-pause/Human-Solo path proven; background continuity open |
-| Seven Native WebMCP tools register and clean up | `packages/native-webmcp/test/registration.test.js` | Contract fake proven; real client discovery/invocation open |
+| Seven Native WebMCP tools register and clean up | `packages/native-webmcp/test/registration.test.js`; `npm run smoke:webmcp` | Contract fake plus Chrome 152 discovery and two read-only invocations proven; connected-agent journey open |
 | FormBuilder web validation/export is retained | attributed engine, `formbuilder-use-case.test.js`; upstream Web Companion 48/48 tests; connected Edge fallback interaction | Web logic and click-gated field change proven; full visual/WebMCP flow open |
 | WebMCP Bridge is bounded and fail-closed | `packages/bridge/test/webmcp-bridge.test.js` | Explicit host-catalog adapter proven; foreign discovery open |
 | Legacy fallback is bounded | `packages/bridge/test/legacy-bridge.test.js`; visual eval | Request contract proven; DOM snapshot/image capture open |
@@ -19,6 +19,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | Independent code review closed the baseline release findings | Claude Code 2.1.251 with the Fable model reviewed the full tree and the bounded baseline follow-up diffs | Baseline verdict `Ready to publish code: Yes` with no Critical or Important findings; two read-only Fable attempts for the later context-request diff timed out without output, so that increment is not claimed as Fable-reviewed |
 | Public-preview tree is reproducible | clean clone of local `release/public-preview` at `54661ee` | `npm ci`, 83/83 tests, 11/11 character evals, 7/7 proof steps, 15-file Pages build, 38 syntax checks, 0 vulnerabilities, 0 secret findings, clean scoped history and HTTP 200 coverage through the local-server test |
 | Local browser fallback is interactive | connected Edge extension plus isolated headless Edge smoke against the local showcase | Exact-value offer, real click, page-version change, verified receipt, Adjust feedback, brief/longer AFK fail-closed/delegated/return, visible lease expiry, agent pause/Human Solo, first 12 keyboard focus stops, and context-preview fail-closed/success states accepted; `document.modelContext` absent, so no WebMCP claim |
+| Audio controls fail safely under rapid activation | speech-controller tests plus isolated Chrome 152 SpeechRecognition/synthesis smoke | Two immediate activations produce no uncaught error; 22 synthesis voices and active synthesis observed; fake device returned `audio-capture`, so real microphone and audible output remain open |
 
 ## Commit trail
 
@@ -42,8 +43,8 @@ The independent Fable reviews reproduced the release-relevant capability, state,
 ## Explicitly not yet evidenced
 
 - complete visual and accessibility quality in a WebMCP-supporting browser;
-- live WebMCP client discovery and invocation;
-- microphone permission, speech recognition and spoken output;
+- connected ChatGPT-agent WebMCP discovery and invocation beyond the accepted Chrome in-page client;
+- real microphone permission, captured speech and audibly confirmed spoken output;
 - public GitHub repository and license detection;
 - deployed live URL;
 - public YouTube video;

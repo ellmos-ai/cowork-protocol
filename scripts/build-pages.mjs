@@ -13,6 +13,7 @@ const PUBLIC_FILES = [
   "apps/formbuilder-showcase/src/formbuilder-use-case.js",
   "apps/formbuilder-showcase/src/interaction-log.js",
   "apps/formbuilder-showcase/src/session.js",
+  "apps/formbuilder-showcase/src/speech-controller.js",
   "apps/formbuilder-showcase/src/view-model.js",
   "packages/core/src/index.js",
   "packages/formbuilder-connector/src/index.js",
