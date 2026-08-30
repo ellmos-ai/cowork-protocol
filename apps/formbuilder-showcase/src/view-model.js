@@ -1,3 +1,4 @@
+import { CoworkProtocolError } from "../../../packages/core/src/index.js";
 import { actionModeAllows } from "./session.js";
 
 const MODE_LABELS = {
@@ -15,21 +16,33 @@ const CAPABILITY_LABELS = {
 };
 
 const MUTATING_FORM_CAPABILITIES = new Set(["form.set_value", "form.clear_value"]);
+const MAX_VISIBLE_OFFER_VALUE_CHARS = 350;
 
 export function prepareVisibleActionOffer(offer) {
   if (!MUTATING_FORM_CAPABILITIES.has(offer.capabilityId)) {
-    const error = new Error("Only mutating FormBuilder capabilities can create action offers");
-    error.name = "CoworkProtocolError";
-    error.code = "CAPABILITY_UNAVAILABLE";
-    throw error;
+    throw new CoworkProtocolError(
+      "CAPABILITY_UNAVAILABLE",
+      "Only mutating FormBuilder capabilities can create action offers"
+    );
   }
-  const proposedValue =
-    offer.capabilityId === "form.clear_value" ? "" : offer.proposedArguments?.value;
+  const proposedValue = offer.proposedArguments?.value;
   if (typeof proposedValue !== "string") {
-    const error = new Error("A visible FormBuilder offer requires a string value");
-    error.name = "CoworkProtocolError";
-    error.code = "INVALID_ARGUMENTS";
-    throw error;
+    throw new CoworkProtocolError(
+      "INVALID_ARGUMENTS",
+      "A visible FormBuilder offer requires a string value"
+    );
+  }
+  if (proposedValue.length > MAX_VISIBLE_OFFER_VALUE_CHARS) {
+    throw new CoworkProtocolError(
+      "INVALID_ARGUMENTS",
+      "A visible FormBuilder offer value cannot exceed 350 characters"
+    );
+  }
+  if (offer.capabilityId === "form.clear_value" && proposedValue !== "") {
+    throw new CoworkProtocolError(
+      "INVALID_ARGUMENTS",
+      "form.clear_value requires an empty proposed value"
+    );
   }
   return {
     offerId: offer.offerId,
@@ -50,7 +63,51 @@ function humanPresentation(humanPresence) {
   return { humanTone: "green", humanLabel: "Human present" };
 }
 
-export function buildPanelViewModel({ session, focusPacket, offers, capabilityLevel }) {
+function isCurrentOffer(offer, nowTimestamp, pageVersion) {
+  if (!offer || typeof offer !== "object") return false;
+  const expiresAt = Date.parse(offer.expiresAt);
+  return (
+    MUTATING_FORM_CAPABILITIES.has(offer.capabilityId) &&
+    offer.pageVersion === pageVersion &&
+    Number.isFinite(nowTimestamp) &&
+    Number.isFinite(expiresAt) &&
+    expiresAt > nowTimestamp
+  );
+}
+
+function isRenderableActionOffer(offer) {
+  try {
+    prepareVisibleActionOffer(offer);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function currentActionOffers({ offers, now, pageVersion }) {
+  const nowTimestamp = Date.parse(now);
+  return offers.filter(
+    (offer) =>
+      isCurrentOffer(offer, nowTimestamp, pageVersion) &&
+      isRenderableActionOffer(offer)
+  );
+}
+
+export function nextActionOfferExpiry(offers) {
+  const expiries = offers
+    .map((offer) => Date.parse(offer?.expiresAt))
+    .filter(Number.isFinite);
+  return expiries.length > 0 ? Math.min(...expiries) : null;
+}
+
+export function buildPanelViewModel({
+  session,
+  focusPacket,
+  offers,
+  capabilityLevel,
+  now,
+  pageVersion
+}) {
   const human = humanPresentation(session.humanPresence);
   const contextCharacters = focusPacket?.metrics?.contextCharacters;
 
@@ -66,8 +123,7 @@ export function buildPanelViewModel({ session, focusPacket, offers, capabilityLe
         : `${contextCharacters} context characters`,
     soloAllowed: actionModeAllows(session.actionMode, "solo"),
     actionChips: actionModeAllows(session.actionMode, "offer")
-      ? offers
-          .filter((offer) => MUTATING_FORM_CAPABILITIES.has(offer.capabilityId))
+      ? currentActionOffers({ offers, now, pageVersion })
           .slice(0, 3)
           .map(prepareVisibleActionOffer)
       : []

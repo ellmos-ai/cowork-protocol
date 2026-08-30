@@ -67,6 +67,17 @@ test("legacy context expands one bounded semantic level at a time", () => {
   assert.equal(region.accessibilityRegionText.length, 1200);
 });
 
+test("legacy context truncation never emits a dangling UTF-16 surrogate", () => {
+  const related = requestLegacyContext({
+    currentLevel: 0,
+    requestedLevel: 1,
+    nearbySemanticText: `${"N".repeat(348)}😀tail`
+  });
+
+  assert.equal(related.nearbySemanticText, `${"N".repeat(348)}…`);
+  assert.doesNotMatch(related.nearbySemanticText, /[\uD800-\uDFFF](?![\uDC00-\uDFFF])/u);
+});
+
 test("legacy context rejects level jumps and requests only a pointer-sized visual lens", () => {
   assert.throws(
     () => requestLegacyContext({ currentLevel: 0, requestedLevel: 2 }),

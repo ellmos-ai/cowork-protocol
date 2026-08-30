@@ -10,7 +10,7 @@ flowchart TB
   CORE["Protocol Core\ncausal events, budgets, rights, leases"]
   NATIVE["Native WebMCP Connector"]
   WEBBRIDGE["WebMCP Bridge"]
-  LEGACY["Legacy DOM/A11y/Image Bridge"]
+  LEGACY["Legacy DOM/A11y/Visual-request Bridge"]
   FORM["FormBuilder Showcase"]
 
   HUMAN -->|"authorizes and evaluates"| PANEL
@@ -27,15 +27,17 @@ flowchart TB
 
 Text alternative: the panel is the human control surface, the core enforces context and authority, and connectors translate application or browser data into the same protocol. FormBuilder reports value deltas as digest-based change events with explicit cause references. After a receipt, a real human click creates feedback; the native tool returns only the latest bounded feedback event to the agent. Only the native FormBuilder connector can promise stable targets and application-level verification. Bridge connectors must expose their reduced capability level.
 
+The human authorization surface accepts only losslessly JSON-serializable action arguments. A FormBuilder offer displays the exact proposed value, limits it to 350 characters and expires it from the DOM on a scheduled render; agent-generated events cannot authorize it.
+
 ## WebMCP bridge boundary
 
-`packages/bridge` does not scrape a page or pretend that a producer-side API can enumerate every registered tool. A host must explicitly supply the tool catalog and executor. The bridge exposes only bounded summaries: tool identity, at most 160 description characters and at most 12 parameter names. Tools marked read-only by the host can cross the read executor; all other tools remain `offer-only` and must return to a visible human-authorization path. Missing schemas, duplicate names and malformed catalogs fail closed.
+`packages/bridge` does not scrape a page or pretend that a producer-side API can enumerate every registered tool. A host must explicitly supply the tool catalog and executor. The bridge exposes only bounded summaries: at most 350 serialized characters per capability, including a 160-character description, at most 12 parameter names and at most 48 characters per included parameter name. Tools marked read-only by the host can cross the read executor; all other tools remain `offer-only` and must return to a visible human-authorization path. Small read results are normalized through a JSON round trip. A result larger than 1,200 adapter characters becomes a labeled JSON preview with source and included-character metrics; the unbounded object is not forwarded. Missing schemas, duplicate names, malformed catalogs and unserializable results fail closed.
 
 This completes a portable adapter contract, not a live foreign-site discovery result. Host discovery and invocation still require a browser-owned integration and an acceptance test.
 
 ## Legacy bridge boundary
 
-The legacy path accepts a host-provided semantic DOM/accessibility snapshot. A target without a stable ID is ephemeral and explain-only; a stable target may create a visible value offer but never directly mutate. Context expands one tier at a time: 350 characters of nearby semantic text, 1,200 characters of an accessibility-region summary, then a request for a pointer-centered region no larger than 400×400 pixels. The package returns the request descriptor, not image bytes. Capturing and delivering that region is a separate browser-host responsibility and remains unverified.
+The legacy path accepts a host-provided semantic DOM/accessibility snapshot. A target without a stable ID is ephemeral and explain-only; a stable target may create a visible value offer but never directly mutate. Context expands one tier at a time: 350 characters of nearby semantic text, 1,200 characters of an accessibility-region summary, then a request for a pointer-centered region no larger than 400×400 pixels. Text truncation preserves complete UTF-16 code points. The package returns the request descriptor, not image bytes. Capturing and delivering that region is a separate browser-host responsibility and remains unverified.
 
 ## Source and scope
 

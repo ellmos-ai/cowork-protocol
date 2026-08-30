@@ -18,6 +18,7 @@ test("the token-economy eval covers every declared budget and silence invariant"
       "unchanged-no-packet",
       "context-one-step",
       "bridge-summary-350",
+      "bridge-read-result-1200",
       "change-latest-350",
       "feedback-latest-350",
       "legacy-visual-160000"
@@ -41,10 +42,15 @@ test("the eval reports avoided source characters without converting them to toke
   const report = runTokenEconomyEval();
   const digestCase = report.cases.find(({ id }) => id === "selection-161-digest");
   const bridgeCase = report.cases.find(({ id }) => id === "bridge-summary-350");
+  const bridgeResultCase = report.cases.find(
+    ({ id }) => id === "bridge-read-result-1200"
+  );
 
   assert.equal(digestCase.observed.selectedTextIncludedCharacters, 0);
   assert.equal(digestCase.observed.avoidedSourceCharacters, 161);
   assert.equal(bridgeCase.observed.sourceDescriptionCharacters, 500);
   assert.equal(bridgeCase.observed.includedDescriptionCharacters, 160);
   assert.equal(bridgeCase.observed.avoidedSourceCharacters, 340);
+  assert.equal(bridgeResultCase.observed.includedCharacters, 1200);
+  assert.ok(bridgeResultCase.observed.avoidedSourceCharacters > 0);
 });

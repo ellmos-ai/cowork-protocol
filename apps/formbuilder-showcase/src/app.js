@@ -30,6 +30,8 @@ import {
 import {
   buildPanelViewModel,
   buildReceiptViewModels,
+  currentActionOffers,
+  nextActionOfferExpiry,
   prepareVisibleActionOffer
 } from "./view-model.js";
 
@@ -62,6 +64,7 @@ let leaseCallsUsed = 0;
 let responseDownloadUrl = null;
 let pendingChangeCause = null;
 let leaseExpiryTimer = null;
+let offerExpiryTimer = null;
 
 function setStatus(message) {
   $("#system-status").textContent = message;
@@ -236,11 +239,29 @@ function recordReceiptFeedback(event, receipt, verdict, adjustmentInput) {
 }
 
 function render() {
+  const now = new Date().toISOString();
   session = transitionShowcaseSession(session, {
     type: "CLOCK_TICK",
-    now: new Date().toISOString()
+    now
   });
-  const view = buildPanelViewModel({ session, focusPacket, offers, capabilityLevel });
+  offers = currentActionOffers({ offers, now, pageVersion });
+  clearTimeout(offerExpiryTimer);
+  const nextOfferExpiry = nextActionOfferExpiry(offers);
+  offerExpiryTimer =
+    nextOfferExpiry === null
+      ? null
+      : setTimeout(
+          () => render(),
+          Math.max(0, nextOfferExpiry - Date.parse(now) + 10)
+        );
+  const view = buildPanelViewModel({
+    session,
+    focusPacket,
+    offers,
+    capabilityLevel,
+    now,
+    pageVersion
+  });
   $("#mode-badge").textContent = view.modeLabel;
   $("#human-label").textContent = view.humanLabel;
   $("#agent-label").textContent = view.agentLabel;
@@ -288,6 +309,12 @@ function createVisibleOffer({ capabilityId, targetId, value, summary }) {
       "Capability is not available for the focused field"
     );
   }
+  const now = new Date();
+  offers = currentActionOffers({
+    offers,
+    now: now.toISOString(),
+    pageVersion
+  });
   if (offers.length >= 3) {
     throw new CoworkProtocolError(
       "CONTEXT_BUDGET_EXCEEDED",
@@ -310,7 +337,7 @@ function createVisibleOffer({ capabilityId, targetId, value, summary }) {
     summary,
     effect: "mutate",
     undoAvailable: true,
-    expiresAt: new Date(Date.now() + 60_000).toISOString()
+    expiresAt: new Date(now.getTime() + 60_000).toISOString()
   });
   offers = [...offers, offer];
   setStatus("Agent proposal added. Only a real click on the offer can authorize it.");
@@ -515,6 +542,11 @@ function executeSoloAction({ capabilityId, targetId, value }) {
 function returnHuman() {
   clearTimeout(leaseExpiryTimer);
   leaseExpiryTimer = null;
+  offers = currentActionOffers({
+    offers,
+    now: new Date().toISOString(),
+    pageVersion
+  });
   session = transitionShowcaseSession(session, {
     type: "HUMAN_RETURNED",
     receipts,
@@ -748,6 +780,8 @@ $("#demo-form").addEventListener("submit", (event) => {
 
 window.addEventListener("beforeunload", () => {
   registrationController?.abort();
+  clearTimeout(leaseExpiryTimer);
+  clearTimeout(offerExpiryTimer);
   if (responseDownloadUrl) URL.revokeObjectURL(responseDownloadUrl);
 });
 

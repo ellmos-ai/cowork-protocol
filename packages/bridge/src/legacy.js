@@ -12,7 +12,12 @@ const VISUAL_LENS_EDGE = 400;
 function capped(text, limit) {
   if (typeof text !== "string") return "";
   if (text.length <= limit) return text;
-  return `${text.slice(0, limit - 1)}…`;
+  let prefix = text.slice(0, limit - 1);
+  const lastCodeUnit = prefix.charCodeAt(prefix.length - 1);
+  if (lastCodeUnit >= 0xd800 && lastCodeUnit <= 0xdbff) {
+    prefix = prefix.slice(0, -1);
+  }
+  return `${prefix}…`;
 }
 
 function legacyTargetId(target) {

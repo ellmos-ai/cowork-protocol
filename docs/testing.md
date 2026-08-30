@@ -16,19 +16,22 @@ This gate contains:
 - unit tests for 160/161 and 350-character boundaries;
 - decision-table tests for presence and solo-lease limits;
 - session tests for action-mode rights, attempt-based lease accounting, bounded receipts and visible lease expiry;
-- negative tests for agent-simulated confirmation, stale focus and stale page versions;
+- negative tests for agent-simulated confirmation, stale focus, stale page versions and lossy JSON argument values;
 - negative tests preventing read-only capabilities from becoming mutations and proving visible chips carry the exact authorized value;
 - negative tests for synthetic feedback, unknown feedback verdicts and overstated causal confidence;
 - interaction-log tests proving unchanged values emit no change and feedback snapshots return only the latest event;
 - context-router tests for silence, unchanged state and one-step escalation;
 - an integration test from the real FormBuilder connector output through the WebMCP tool callback;
 - a registration contract test for the current `document.modelContext.registerTool()` shape, including the latest-only change and feedback tools;
-- bridge tests for bounded host catalogs, missing schemas, required arguments and offer-only mutation handling.
+- bridge tests for 350-character host capability summaries, JSON-normalized small results and read-result previews, malformed or duplicate declarations, unserializable results, required arguments and offer-only mutation handling;
+- Unicode-boundary tests proving bounded protocol text, WebMCP bridge previews and legacy summaries never end with half of a surrogate pair;
+- action-surface tests proving expired, stale or malformed stored offers disappear, expiry timers are schedulable, visible values stay within 350 characters and `form.clear_value` cannot silently rewrite a non-empty proposal;
+- lease validation tests for non-negative integer attempt counts, positive integer limits and malformed scope arrays;
 - legacy tests for ephemeral versus stable targets, 350/1,200-character semantic tiers, rejected level jumps and the 160,000-pixel visual request ceiling.
 
 Tests use the real protocol and connector. Only the browser-owned `ModelContext` boundary is represented by a small contract fake, because Node does not implement WebMCP.
 
-The eval output deliberately uses `adapter-characters`. It does not convert characters to tokens or claim visibility into a browser/agent host. A passing run covers ten named cases, including latest-only 350-character change and feedback snapshots, reports both included and avoided source characters where meaningful, and records the bounded visual request without claiming an image was captured.
+The eval output deliberately uses `adapter-characters`. It does not convert characters to tokens or claim visibility into a browser/agent host. A passing run covers eleven named cases, including the 1,200-character bridge read-result preview and latest-only 350-character change and feedback snapshots, reports both included and avoided source characters where meaningful, and records the bounded visual request without claiming an image was captured.
 
 ## Reproducible juror dry-run
 
@@ -42,6 +45,7 @@ Run `npm run proof` for a compact integration journey through the actual protoco
 - FormBuilder end-to-end focus → offer → click → verified receipt.
 - FormBuilder end-to-end receipt → trusted feedback click → latest-only WebMCP readback.
 - AFK return, lease expiry and pause paths in the visible panel.
+- Microphone acceptance including rapid repeated push-to-talk activation in a real SpeechRecognition host.
 - Accessibility check for keyboard-only controls, focus order, labels and non-color status cues.
 - Clean-clone, license, secret-scan, live URL and video readbacks before submission.
 

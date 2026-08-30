@@ -1,4 +1,5 @@
 import {
+  boundWebMcpReadResult,
   negotiateWebMcpCatalog,
   requestLegacyContext
 } from "../../bridge/src/index.js";
@@ -72,6 +73,11 @@ export function runTokenEconomyEval() {
     }]
   });
   const bridgeCapability = bridgeCatalog.capabilities[0];
+  const bridgeSourceResult = { records: ["R".repeat(5000)] };
+  const bridgeReadResult = boundWebMcpReadResult(
+    "webmcp:read_evaluation_record",
+    bridgeSourceResult
+  );
   const changeSourceSummary = "C".repeat(500);
   const changeEvent = createChangeEvent({
     changeId: "change-eval-2",
@@ -134,7 +140,9 @@ export function runTokenEconomyEval() {
         selectionKind: digestSelection.focus.selection.kind,
         selectedTextIncludedCharacters:
           digestSelection.metrics.selectedTextIncludedCharacters,
-        avoidedSourceCharacters: 161
+        avoidedSourceCharacters:
+          digestSelection.metrics.selectedTextCharacters -
+          digestSelection.metrics.selectedTextIncludedCharacters
       },
       digestSelection.focus.selection.kind === "digest" &&
         digestSelection.metrics.selectedTextIncludedCharacters === 0
@@ -169,6 +177,21 @@ export function runTokenEconomyEval() {
       },
       JSON.stringify(bridgeCapability).length <= 350 &&
         bridgeCapability.description.length === 160
+    ),
+    evaluatedCase(
+      "bridge-read-result-1200",
+      { maximumResultCharacters: 1200 },
+      {
+        resultKind: bridgeReadResult.type,
+        sourceCharacters: bridgeReadResult.metrics.sourceCharacters,
+        includedCharacters: bridgeReadResult.metrics.includedCharacters,
+        avoidedSourceCharacters:
+          bridgeReadResult.metrics.sourceCharacters -
+          bridgeReadResult.metrics.includedCharacters
+      },
+      bridgeReadResult.type === "bridge-read-preview" &&
+        bridgeReadResult.metrics.includedCharacters <= 1200 &&
+        bridgeReadResult.metrics.truncated === true
     ),
     evaluatedCase(
       "change-latest-350",

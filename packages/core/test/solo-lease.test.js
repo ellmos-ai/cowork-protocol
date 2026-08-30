@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { authorizeSoloAction } from "../src/index.js";
+import { authorizeSoloAction, CoworkProtocolError } from "../src/index.js";
 
 const lease = {
   leaseId: "lease-1",
@@ -26,10 +26,10 @@ const validRequest = {
 };
 
 function expectCode(overrides, code) {
-  assert.throws(() => authorizeSoloAction({ ...validRequest, ...overrides }), {
-    name: "CoworkProtocolError",
-    code
-  });
+  assert.throws(
+    () => authorizeSoloAction({ ...validRequest, ...overrides }),
+    (error) => error instanceof CoworkProtocolError && error.code === code
+  );
 }
 
 test("a solo lease authorizes only an active action inside every human-approved limit", () => {
@@ -50,4 +50,29 @@ test("a solo lease authorizes only an active action inside every human-approved 
   expectCode({ humanPresence: "offline" }, "INVALID_HUMAN_PRESENCE");
   expectCode({ agentPresence: "background" }, "INVALID_AGENT_PRESENCE");
   expectCode({ now: "not-a-date" }, "LEASE_EXPIRED");
+});
+
+test("solo lease call counters require non-negative integer attempts and a positive integer limit", () => {
+  expectCode({ callsUsed: -1 }, "LEASE_SCOPE_VIOLATION");
+  expectCode({ callsUsed: 0.5 }, "LEASE_SCOPE_VIOLATION");
+  expectCode(
+    { callsUsed: 0, lease: { ...lease, maxCalls: 0 } },
+    "LEASE_SCOPE_VIOLATION"
+  );
+  expectCode(
+    { callsUsed: 1, lease: { ...lease, maxCalls: 1.5 } },
+    "LEASE_SCOPE_VIOLATION"
+  );
+});
+
+test("malformed solo leases fail closed with the protocol error type", () => {
+  expectCode({ lease: undefined }, "LEASE_SCOPE_VIOLATION");
+  expectCode(
+    { lease: { ...lease, allowedCapabilityIds: "form.set_value" } },
+    "LEASE_SCOPE_VIOLATION"
+  );
+  expectCode(
+    { lease: { ...lease, allowedTargetIds: null } },
+    "LEASE_SCOPE_VIOLATION"
+  );
 });

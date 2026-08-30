@@ -8,15 +8,16 @@ Cowork Protocol is a small collaboration contract for people and web agents. It 
 
 The repository currently contains:
 
-- a protocol core for token-bounded focus packets;
+- a protocol core for character-bounded focus packets that reduce unnecessary model context;
 - bounded `ChangeEvent` and click-authenticated `FeedbackEvent` contracts;
 - explicit human-click authorization for proposed actions;
+- exact human-visible offer values capped at 350 characters for meaningful review;
 - presence modes and fail-closed solo leases;
 - a one-step context escalation router that emits nothing for silence or unchanged state;
 - a FormBuilder connector using stable field IDs;
 - the pre-existing MIT-licensed FormBuilder web schema/validation/response engine, explicitly attributed and isolated to the showcase;
 - a current WebMCP registration adapter using `document.modelContext.registerTool()` and `AbortSignal` ownership;
-- a host-supplied WebMCP bridge catalog that emits bounded summaries, executes only read-only-hinted tools and keeps every mutation offer-only;
+- a host-supplied WebMCP bridge catalog that emits bounded summaries, executes only read-only-hinted tools, normalizes small read results as JSON, converts oversized results into explicit 1,200-character previews and keeps every mutation offer-only;
 - a legacy DOM/accessibility fallback with explain-only ephemeral targets, offer-only stable targets, one-step semantic expansion and a 400×400 visual-region request contract;
 - a responsive FormBuilder showcase with attention controls, exact-value action offers, enforced explain/suggest/delegated/paused rights, causal change receipts, one-click feedback, presence, scoped solo work and an audio fallback.
 
@@ -49,7 +50,7 @@ npm run check:secrets
 
 The suite uses Node's built-in test runner and has no external runtime dependency.
 
-`npm run eval` measures adapter-produced characters, not browser or model tokens. It verifies the 350-character focus, change and feedback budgets; the 160/161 selected-text boundary; silence and unchanged-state suppression; one-step expansion; latest-only event snapshots; and the bounded bridge summary without inventing unavailable host telemetry.
+`npm run eval` measures adapter-produced characters, not browser or model tokens. It verifies the 350-character focus, change and feedback budgets; the 160/161 selected-text boundary; silence and unchanged-state suppression; one-step expansion; latest-only event snapshots; the bounded bridge catalog summary; and the 1,200-character bridge read-result preview without inventing unavailable host telemetry.
 
 `npm run proof` is a deterministic six-step juror dry-run. It exercises the real focus, offer, human-click authorization, verified change and feedback, scoped AFK lease and FormBuilder export contracts in seconds. Its output explicitly sets `browserClaim: false` and `hostTokenClaim: false`; it is reproducible core evidence, not a substitute for the required live WebMCP browser demonstration.
 
@@ -64,7 +65,7 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 
 ## Native WebMCP tools
 
-- `cowork_read_focus` returns the current token-bounded focus packet.
+- `cowork_read_focus` returns the current character-bounded focus packet.
 - `cowork_offer_action` creates a visible offer; it never authorizes or executes the change.
 - `cowork_read_presence` returns the explicit human/agent work mode.
 - `cowork_execute_solo` executes only inside a valid, scoped and unexpired solo lease.

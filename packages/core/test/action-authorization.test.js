@@ -3,8 +3,10 @@ import { test } from "node:test";
 
 import {
   authorizeActionOffer,
+  CoworkProtocolError,
   createActionOffer,
-  createActionReceipt
+  createActionReceipt,
+  digestArguments
 } from "../src/index.js";
 
 test("an agent creates a visible offer but not its authorization", () => {
@@ -60,6 +62,42 @@ test("action-offer summaries are bounded in the core even without host schema va
     summaryCharacters: 201,
     summaryIncludedCharacters: 200
   });
+});
+
+test("bounded protocol text never ends with half of a Unicode surrogate pair", () => {
+  const offer = createActionOffer({
+    offerId: "offer-unicode-summary",
+    capabilityId: "form.set_value",
+    targetId: "field.name",
+    pageVersion: 4,
+    proposedArguments: { value: "Lukas" },
+    summary: `${"x".repeat(198)}😀z`,
+    effect: "mutate",
+    undoAvailable: true,
+    expiresAt: "2026-08-30T10:01:00.000Z"
+  });
+
+  assert.equal(offer.summary, `${"x".repeat(198)}…`);
+  assert.deepEqual(offer.metrics, {
+    summaryCharacters: 201,
+    summaryIncludedCharacters: 199
+  });
+});
+
+test("argument digests reject values that JSON would silently discard or rewrite", () => {
+  for (const value of [
+    undefined,
+    () => "hidden",
+    { value: undefined },
+    [undefined],
+    { value: Number.NaN }
+  ]) {
+    assert.throws(
+      () => digestArguments(value),
+      (error) =>
+        error instanceof CoworkProtocolError && error.code === "INVALID_ARGUMENTS"
+    );
+  }
 });
 
 test("an executed action is successful only when its observed result verifies", () => {
@@ -121,7 +159,7 @@ function expectCode(eventOverrides, requestOverrides, code) {
         now: "2026-08-30T10:00:00.000Z",
         ...requestOverrides
       }),
-    { name: "CoworkProtocolError", code }
+    (error) => error instanceof CoworkProtocolError && error.code === code
   );
 }
 

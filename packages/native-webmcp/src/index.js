@@ -30,7 +30,7 @@ export async function registerNativeCoworkTools({
         name: "cowork_read_focus",
         title: "Read focused FormBuilder field",
         description:
-          "Read the current user-directed focus as a token-bounded Cowork Protocol packet.",
+          "Read the current user-directed focus as a character-bounded Cowork Protocol packet.",
         inputSchema: {
           type: "object",
           properties: {},
@@ -67,6 +67,7 @@ export async function registerNativeCoworkTools({
               },
               value: {
                 type: "string",
+                maxLength: 350,
                 description: "Proposed field value."
               },
               summary: {
@@ -158,7 +159,7 @@ export async function registerNativeCoworkTools({
           name: "cowork_read_changes",
           title: "Read latest causal change",
           description:
-            "Read only the latest token-bounded change event, including explicit cause references and confidence.",
+            "Read only the latest character-bounded change event, including explicit cause references and confidence.",
           inputSchema: {
             type: "object",
             properties: {},
@@ -182,7 +183,7 @@ export async function registerNativeCoworkTools({
           name: "cowork_read_feedback",
           title: "Read human feedback",
           description:
-            "Read the latest click-authenticated, token-bounded human evaluation of a verified result.",
+            "Read the latest click-authenticated, character-bounded human evaluation of a verified result.",
           inputSchema: {
             type: "object",
             properties: {},

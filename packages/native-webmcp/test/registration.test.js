@@ -91,7 +91,7 @@ test("native registration exposes a read-only focus tool backed by the real conn
   assert.equal(tool.title, "Read focused FormBuilder field");
   assert.equal(
     tool.description,
-    "Read the current user-directed focus as a token-bounded Cowork Protocol packet."
+    "Read the current user-directed focus as a character-bounded Cowork Protocol packet."
   );
   assert.deepEqual(tool.inputSchema, {
     type: "object",
@@ -124,6 +124,10 @@ test("native registration exposes a read-only focus tool backed by the real conn
     "value",
     "summary"
   ]);
+  assert.equal(
+    offerRegistration.tool.inputSchema.properties.value.maxLength,
+    350
+  );
   const offerResult = await offerRegistration.tool.execute({
     capabilityId: "form.set_value",
     targetId: "form-field:field-name",

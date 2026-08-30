@@ -96,8 +96,54 @@ function sha256Hex(text) {
   return [...hash].map((value) => value.toString(16).padStart(8, "0")).join("");
 }
 
+function isLosslessJsonValue(value, ancestors = new Set()) {
+  if (value === null || typeof value === "string" || typeof value === "boolean") {
+    return true;
+  }
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value !== "object" || ancestors.has(value)) return false;
+
+  ancestors.add(value);
+  let valid;
+  if (Array.isArray(value)) {
+    const keys = Object.keys(value);
+    valid =
+      keys.length === value.length &&
+      keys.every(
+        (key, index) =>
+          key === String(index) && isLosslessJsonValue(value[index], ancestors)
+      );
+  } else {
+    const prototype = Object.getPrototypeOf(value);
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    valid =
+      (prototype === Object.prototype || prototype === null) &&
+      Object.getOwnPropertySymbols(value).length === 0 &&
+      Object.values(descriptors).every(
+        (descriptor) =>
+          descriptor.enumerable === true &&
+          Object.hasOwn(descriptor, "value") &&
+          isLosslessJsonValue(descriptor.value, ancestors)
+      );
+  }
+  ancestors.delete(value);
+  return valid;
+}
+
 export function digestArguments(arguments_) {
-  return sha256Hex(JSON.stringify(arguments_));
+  let serialized;
+  try {
+    if (!isLosslessJsonValue(arguments_)) {
+      throw new Error("not a lossless JSON value");
+    }
+    serialized = JSON.stringify(arguments_);
+  } catch {
+    throw new CoworkProtocolError(
+      "INVALID_ARGUMENTS",
+      "Action arguments must be losslessly JSON-serializable"
+    );
+  }
+  return sha256Hex(serialized);
 }
 
 export class CoworkProtocolError extends Error {
@@ -115,7 +161,12 @@ function truncateWithEllipsis(text, limit) {
   if (limit === 0) {
     return "";
   }
-  return `${text.slice(0, limit - 1)}…`;
+  let prefix = text.slice(0, limit - 1);
+  const lastCodeUnit = prefix.charCodeAt(prefix.length - 1);
+  if (lastCodeUnit >= 0xd800 && lastCodeUnit <= 0xdbff) {
+    prefix = prefix.slice(0, -1);
+  }
+  return `${prefix}…`;
 }
 
 function assertBoundedReferences(references) {
@@ -224,6 +275,12 @@ export function createPresenceEvent(input) {
 }
 
 export function authorizeSoloAction(request) {
+  if (!request || typeof request !== "object" || Array.isArray(request)) {
+    throw new CoworkProtocolError(
+      "LEASE_SCOPE_VIOLATION",
+      "A structured solo lease request is required"
+    );
+  }
   const { lease } = request;
 
   if (!HUMAN_PRESENCE_VALUES.has(request.humanPresence)) {
@@ -236,6 +293,18 @@ export function authorizeSoloAction(request) {
     throw new CoworkProtocolError(
       "INVALID_AGENT_PRESENCE",
       `Unknown agent presence: ${request.agentPresence}`
+    );
+  }
+  if (
+    !lease ||
+    typeof lease !== "object" ||
+    Array.isArray(lease) ||
+    !Array.isArray(lease.allowedCapabilityIds) ||
+    !Array.isArray(lease.allowedTargetIds)
+  ) {
+    throw new CoworkProtocolError(
+      "LEASE_SCOPE_VIOLATION",
+      "Solo lease scope must contain capability and target arrays"
     );
   }
   const now = Date.parse(request.now);
@@ -252,6 +321,17 @@ export function authorizeSoloAction(request) {
   }
   if (now >= expiresAt) {
     throw new CoworkProtocolError("LEASE_EXPIRED", "Solo lease expired");
+  }
+  if (
+    !Number.isInteger(request.callsUsed) ||
+    request.callsUsed < 0 ||
+    !Number.isInteger(lease.maxCalls) ||
+    lease.maxCalls <= 0
+  ) {
+    throw new CoworkProtocolError(
+      "LEASE_SCOPE_VIOLATION",
+      "Solo lease call counters must be non-negative integers with a positive limit"
+    );
   }
   if (request.callsUsed >= lease.maxCalls) {
     throw new CoworkProtocolError("LEASE_EXPIRED", "Solo lease call limit reached");
