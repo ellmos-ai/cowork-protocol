@@ -15,7 +15,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | WebMCP Bridge is bounded and fail-closed | `packages/bridge/test/webmcp-bridge.test.js` | Explicit host-catalog adapter proven; foreign discovery open |
 | Legacy fallback is bounded | `packages/bridge/test/legacy-bridge.test.js`; visual eval | Request contract proven; DOM snapshot/image capture open |
 | Core jury journey is reproducible without credentials | `npm run proof`; `packages/evals/test/juror-proof.test.js` | Six deterministic integration steps proven; output explicitly denies browser and host-token claims |
-| Public-preview tree is reproducible | clean clone of local `release/public-preview` at `88d85fe0faec66eb7e4c67eff38bfb1a4794bba9` | `npm ci --ignore-scripts`, 48/48 tests, 10/10 evals, 15-file Pages build, 0 vulnerabilities, 0 secret findings, HTTP 200 for root/showcase/modules |
+| Public-preview tree is reproducible | clean clone of local `release/public-preview` at `b13f691d1b550f255e92932f929fe1b4de4f389b` | `npm ci --ignore-scripts`, 49/49 tests, 10/10 token evals, 6/6 proof steps, 15-file Pages build, 0 vulnerabilities, 0 secret findings, HTTP 200 for root/showcase/native module/license |
 
 ## Commit trail
 
@@ -26,8 +26,9 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 - `b6fcaae9` — Public evidence separated from internal submission drafts.
 - `aef484d2d552172d89af9d50f07b950da4eebc93` — Causal changes, bounded human feedback and latest-only WebMCP reads.
 - `4fc92b0e` — Allowlisted static artifact and manual-only Pages workflow.
+- `d85154bf8e21fdb9f8c19c77f3b9f98a05590651` — Deterministic six-step juror proof over the real protocol and FormBuilder packages.
 
-Local release preparation: `release/public-preview` at tested commit `88d85fe0faec66eb7e4c67eff38bfb1a4794bba9` had the same tree as `main`, retained safe history through `c86eea4`, and excluded internal Prepare paths from its ancestry. It was not pushed; the repository had no remote.
+Local release preparation: `release/public-preview` at tested commit `b13f691d1b550f255e92932f929fe1b4de4f389b` had the same tree as `main`, retained safe history through `c86eea4`, and excluded internal Prepare paths from its ancestry. It was not pushed; the repository had no remote.
 
 ## Explicitly not yet evidenced
 
