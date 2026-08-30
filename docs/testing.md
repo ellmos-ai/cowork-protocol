@@ -49,6 +49,6 @@ A connected Edge extension session loaded the local showcase and explicitly repo
 - Latest-only change and feedback readback through a real WebMCP client.
 - Microphone acceptance including rapid repeated push-to-talk activation in a real SpeechRecognition host.
 - Complete accessibility acceptance for all focus states, reduced motion and non-color status cues in the intended browser/client.
-- Clean-clone, license, secret-scan, live URL and video readbacks before submission.
+- License, live URL and video readbacks before submission. The local clean-clone, secret-scan and dependency-audit gates are complete for `release/public-preview` at `54661ee`.
 
 The connected Edge result proves only the local fallback interaction path; it is not presented as a live WebMCP acceptance result.

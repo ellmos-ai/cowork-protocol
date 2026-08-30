@@ -77,7 +77,7 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 
 - `packages/core` — protocol packets, causal changes, human feedback, state decisions, authorizations and budgets.
 - `packages/formbuilder-connector` — maps a stable FormBuilder field into a native Cowork focus.
-- `packages/native-webmcp` — registers the six Cowork tools with the current WebMCP API.
+- `packages/native-webmcp` — registers the seven Cowork tools with the current WebMCP API.
 - `packages/bridge` — adapts an explicit host tool catalog or bounded legacy semantic snapshots without claiming browser-wide discovery or image capture.
 - `packages/evals` — reproducible character-budget and silence evals with no host-token claim.
 - `apps/formbuilder-showcase` — visible reference journey for focus, offer, confirmation, causal receipt, feedback, presence, solo lease and audio controls.

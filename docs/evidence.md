@@ -17,7 +17,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | Legacy fallback is bounded | `packages/bridge/test/legacy-bridge.test.js`; visual eval | Request contract proven; DOM snapshot/image capture open |
 | Core jury journey is reproducible without credentials | `npm run proof`; `packages/evals/test/juror-proof.test.js` | Seven deterministic integration steps proven; output explicitly denies browser and host-token claims |
 | Independent code review closed the baseline release findings | Claude Code 2.1.251 with the Fable model reviewed the full tree and the bounded baseline follow-up diffs | Baseline verdict `Ready to publish code: Yes` with no Critical or Important findings; two read-only Fable attempts for the later context-request diff timed out without output, so that increment is not claimed as Fable-reviewed |
-| Public-preview tree is reproducible | clean clone of local `release/public-preview` at `dda2db652cb2f12bfe9fbd0ef29fbd49a2f449a6` | `npm ci`, 77/77 tests, 11/11 character evals, 6/6 proof steps, 15-file Pages build, 38 syntax checks, 0 vulnerabilities, 0 secret findings, HTTP 200 for root/showcase/showcase module |
+| Public-preview tree is reproducible | clean clone of local `release/public-preview` at `54661ee` | `npm ci`, 83/83 tests, 11/11 character evals, 7/7 proof steps, 15-file Pages build, 38 syntax checks, 0 vulnerabilities, 0 secret findings, clean scoped history and HTTP 200 coverage through the local-server test |
 | Local browser fallback is interactive | connected Edge extension plus isolated headless Edge smoke against the local showcase | Exact-value offer, real click, page-version change, verified receipt, Adjust feedback, brief/longer AFK fail-closed/delegated/return, visible lease expiry, agent pause/Human Solo, first 12 keyboard focus stops, and context-preview fail-closed/success states accepted; `document.modelContext` absent, so no WebMCP claim |
 
 ## Commit trail
@@ -33,8 +33,9 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 - `09d4df86122abb98ccafc4499f7a59d36fe20474` — Test-first closure of the independent Fable review findings.
 - `f1237507753dac2b4f410aa04bde2ff3f15734ba` — Hardening of catalog, lease, offer and bounded-value contracts from the full Fable follow-up.
 - `f107395d12e9bd8801e9bd1666aacdfa6be41b15` — Test-first closure of escaped-identity, lossless-JSON and Unicode-boundary edges.
+- `54661ee` — Target-bound, reasoned and one-shot related-context requests across the core, FormBuilder connector, native WebMCP adapter, showcase, eval and juror proof.
 
-Local release preparation: `release/public-preview` at tested commit `dda2db652cb2f12bfe9fbd0ef29fbd49a2f449a6` had the same tree as `main` at `f107395d12e9bd8801e9bd1666aacdfa6be41b15`, retained safe history through `c86eea4`, and excluded internal Prepare paths from its ancestry. It was not pushed; the repository had no remote.
+Local release preparation: `release/public-preview` at tested commit `54661ee` retains the deliberately scoped public history and excludes internal Prepare paths, `_reports`, dependencies and design drafts from its 59 tracked files and ancestry. A fresh single-branch clone passed every local gate listed above. It was not pushed; the repository has no remote.
 
 The independent Fable reviews reproduced the release-relevant capability, state, budget, lease, offer and JSON/Unicode boundary failures before their fixes. The resulting tests now cover read-only capability rejection, exact visible click arguments, core-level offer-summary bounds, attempt-based Solo accounting, bounded receipts, lease-expiry presentation, enforced action-mode rights, isolated over-budget tool identities, lossless JSON arguments and Unicode-safe truncation. The final Fable follow-up found no Critical or Important issue.
 
