@@ -63,6 +63,18 @@ $env:COWORK_COMPANION_BROWSER_PATH='C:\path\to\chrome-for-testing\chrome.exe'
 npm run smoke:companion
 ```
 
+To capture the two real proof frames used by release media, add an output
+directory. The ordinary smoke remains write-free when this variable is absent:
+
+```powershell
+$env:COWORK_COMPANION_EVIDENCE_DIR='C:\path\to\evidence'
+npm run smoke:companion
+```
+
+The opt-in run writes `browser-companion-offer-awaiting-click.png` and
+`browser-companion-verified-after-click.png` from the same isolated Chrome
+session that produces the acceptance report.
+
 The smoke loads the built extension into a fresh Chrome for Testing profile,
 explicitly disables WebMCP for the fixture page and proves: default-off and
 toggle-on/off behavior, 350/1,200-character semantic tiers, a real 160,000-pixel

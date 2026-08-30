@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -9,6 +9,9 @@ import { createStaticServer } from "./serve.mjs";
 
 const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-companion-smoke-"));
 const extensionPath = path.resolve("dist-browser-companion");
+const evidenceDirectory = process.env.COWORK_COMPANION_EVIDENCE_DIR
+  ? path.resolve(process.env.COWORK_COMPANION_EVIDENCE_DIR)
+  : null;
 let server;
 let browser;
 
@@ -135,6 +138,19 @@ async function evaluateValue(call, expression, contextId) {
   });
   if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
   return result.result.value;
+}
+
+async function captureEvidenceFrame(call, filename) {
+  if (!evidenceDirectory) return null;
+  await mkdir(evidenceDirectory, { recursive: true });
+  const result = await call("Page.captureScreenshot", {
+    format: "png",
+    captureBeyondViewport: false,
+    fromSurface: true
+  });
+  const outputPath = path.join(evidenceDirectory, filename);
+  await writeFile(outputPath, Buffer.from(result.data, "base64"));
+  return path.basename(outputPath);
 }
 
 async function waitForExtensionContext(contexts, attempts = 80) {
@@ -346,6 +362,12 @@ try {
       visibleOfferText: button?.textContent ?? ""
     };
   })()`);
+  const evidenceScreenshots = [];
+  const offerScreenshot = await captureEvidenceFrame(
+    call,
+    "browser-companion-offer-awaiting-click.png"
+  );
+  if (offerScreenshot) evidenceScreenshots.push(offerScreenshot);
   await trustedClick(
     call,
     'document.querySelector("#cowork-browser-companion-root")?.shadowRoot?.querySelector("[data-cowork-offer-id]")',
@@ -359,6 +381,11 @@ try {
       status: root?.shadowRoot?.querySelector(".status")?.textContent ?? ""
     };
   })()`);
+  const verifiedScreenshot = await captureEvidenceFrame(
+    call,
+    "browser-companion-verified-after-click.png"
+  );
+  if (verifiedScreenshot) evidenceScreenshots.push(verifiedScreenshot);
   const afterClickState = await extensionState("api.state()");
   const disabledState = await extensionState("api.setEnabled(false)");
   disabledState.surfaceHidden = await evaluateValue(
@@ -383,6 +410,7 @@ try {
     },
     disabledState
   });
+  if (evidenceScreenshots.length > 0) report.evidenceScreenshots = evidenceScreenshots;
   console.log(JSON.stringify(report, null, 2));
   socket.close();
 } finally {
