@@ -16,7 +16,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | Legacy fallback is bounded | `packages/bridge/test/legacy-bridge.test.js`; visual eval | Request contract proven; DOM snapshot/image capture open |
 | Core jury journey is reproducible without credentials | `npm run proof`; `packages/evals/test/juror-proof.test.js` | Six deterministic integration steps proven; output explicitly denies browser and host-token claims |
 | Independent code review closed the release-relevant findings | Claude Code 2.1.251 with the Fable model reviewed the full tree, then re-reviewed the bounded fix diff | Initial verdict `With fixes`; five Critical/Important paths fixed test-first; re-review verdict `Ready to publish code: Yes` with no Critical or Important findings |
-| Public-preview tree is reproducible | clean clone of local `release/public-preview` at `b13f691d1b550f255e92932f929fe1b4de4f389b` | `npm ci --ignore-scripts`, 49/49 tests, 10/10 token evals, 6/6 proof steps, 15-file Pages build, 0 vulnerabilities, 0 secret findings, HTTP 200 for root/showcase/native module/license |
+| Public-preview tree is reproducible | clean clone of local `release/public-preview` at `540b659725db7a685b3921791eaaeed8861e0630` | `npm ci --ignore-scripts`, 54/54 tests, 10/10 token evals, 6/6 proof steps, 15-file Pages build, 38 syntax checks, 0 vulnerabilities, 0 secret findings, HTTP 200 for root/showcase/native module/license |
 
 ## Commit trail
 
@@ -28,8 +28,9 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 - `aef484d2d552172d89af9d50f07b950da4eebc93` — Causal changes, bounded human feedback and latest-only WebMCP reads.
 - `4fc92b0e` — Allowlisted static artifact and manual-only Pages workflow.
 - `d85154bf8e21fdb9f8c19c77f3b9f98a05590651` — Deterministic six-step juror proof over the real protocol and FormBuilder packages.
+- `09d4df86122abb98ccafc4499f7a59d36fe20474` — Test-first closure of the independent Fable review findings.
 
-Local release preparation: `release/public-preview` at tested commit `b13f691d1b550f255e92932f929fe1b4de4f389b` had the same tree as `main`, retained safe history through `c86eea4`, and excluded internal Prepare paths from its ancestry. It was not pushed; the repository had no remote.
+Local release preparation: `release/public-preview` at tested commit `540b659725db7a685b3921791eaaeed8861e0630` had the same tree as `main`, retained safe history through `c86eea4`, and excluded internal Prepare paths from its ancestry. It was not pushed; the repository had no remote.
 
 The independent Fable review reproduced one release-blocking capability/value-visibility path and four Important state/budget inconsistencies. The resulting tests now cover read-only capability rejection, exact visible click arguments, core-level offer-summary bounds, attempt-based Solo accounting, bounded receipts, lease-expiry presentation and enforced action-mode rights. A focused Fable re-review verified all five paths closed and found no new Critical or Important issue.
 
