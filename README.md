@@ -32,6 +32,12 @@ A separate Chrome for Testing 152 acceptance explicitly disabled WebMCP and load
 
 Only the browser-based FormBuilder use case belongs to the publication scope. Desktop, Python and native packaging code from the pre-existing FormBuilder repository are intentionally excluded. The showcase remains in this repository so the protocol, application and deployment form one reproducible submission.
 
+## Architecture at a glance
+
+[![Cowork Protocol architecture: human and preferred model collaborate through the panel, protocol core and three bounded connector paths](design/architecture-overview.png)](docs/architecture.md)
+
+The runtime chooses the strongest connector the current page actually provides: native Cowork, a bounded bridge for existing WebMCP tools, or the default-off Browser Companion for a page without WebMCP. The [architecture document](docs/architecture.md) keeps the detailed component and sequence views beside their text alternatives.
+
 ## Why WebMCP
 
 The agent reads a structured `cowork_read_focus` tool instead of guessing from the whole interface. FormBuilder contributes a stable target ID and only the capabilities relevant to that field. User-authored text is marked untrusted, selected text over 160 JavaScript UTF-16 code units becomes a length plus digest, and normal focus text is capped at 350 code units.

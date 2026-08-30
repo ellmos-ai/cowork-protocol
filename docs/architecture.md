@@ -2,6 +2,10 @@
 
 This UML-like C4 component view answers one question: which component owns context, authority and application-specific behavior?
 
+![Cowork Protocol architecture overview](../design/architecture-overview.svg)
+
+The overview above is the compact submission view: human intent enters through the Cowork Panel, the Protocol Core keeps context and authority bounded, and the runtime selects the strongest connector the current page actually provides. The Mermaid views below remain the source-backed engineering detail and text alternatives.
+
 ```mermaid
 flowchart TB
   HUMAN["Human\nfocus, speech, click, presence"]

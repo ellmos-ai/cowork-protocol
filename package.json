@@ -10,6 +10,7 @@
   "scripts": {
     "build:companion": "node scripts/build-browser-companion.mjs",
     "build:pages": "node scripts/build-pages.mjs",
+    "check:architecture": "node scripts/check-architecture.mjs",
     "check:secrets": "node scripts/check-secrets.mjs .",
     "demo:adapter": "node packages/bridge/examples/adaptive-runtime-demo.mjs",
     "eval": "node packages/evals/src/cli.js",
