@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { validateNativeWebMcpObservation } from "../webmcp-browser-smoke-lib.mjs";
+import {
+  validateBrowserHostBridgeObservation,
+  validateNativeWebMcpObservation
+} from "../webmcp-browser-smoke-lib.mjs";
 
 const expectedTools = [
   "cowork_execute_solo",
@@ -189,5 +192,95 @@ test("native WebMCP browser evidence rejects an unbounded or reusable context ex
   assert.throws(
     () => validateNativeWebMcpObservation(observed),
     /one-shot context expansion must stay within 1,200 adapter characters/
+  );
+});
+
+function validBridgeObservation() {
+  return {
+    catalog: {
+      mode: "webmcp-bridge",
+      discovery: "host-supplied",
+      capabilities: [
+        {
+          capabilityId: "webmcp:calendar_read_slots",
+          hostToolName: "calendar_read_slots",
+          description: "Read open appointment slots without changing the calendar.",
+          access: "read-execute",
+          parameterNames: ["date"]
+        },
+        {
+          capabilityId: "webmcp:calendar_book_slot",
+          hostToolName: "calendar_book_slot",
+          description: "Book the chosen appointment slot.",
+          access: "offer-only",
+          parameterNames: ["slotId", "attendee"]
+        }
+      ],
+      rejected: []
+    },
+    smallResult: {
+      date: "2026-09-01",
+      slots: ["09:00", "10:30"]
+    },
+    largeResult: {
+      protocolVersion: "0.1",
+      type: "bridge-read-preview",
+      capabilityId: "webmcp:calendar_read_slots",
+      preview: `${"x".repeat(1199)}…`,
+      metrics: {
+        sourceCharacters: 5016,
+        includedCharacters: 1200,
+        truncated: true
+      }
+    },
+    hostCalls: [
+      {
+        name: "calendar_read_slots",
+        arguments: { date: "2026-09-01" }
+      },
+      {
+        name: "calendar_read_slots",
+        arguments: { date: "large-result" }
+      }
+    ],
+    mutationError: {
+      name: "CoworkProtocolError",
+      code: "HUMAN_CONFIRMATION_REQUIRED"
+    }
+  };
+}
+
+test("browser-host bridge evidence requires bounded reads and an offer-only mutation", () => {
+  assert.deepEqual(validateBrowserHostBridgeObservation(validBridgeObservation()), {
+    browserHostClaim: true,
+    foreignLiveSiteClaim: false,
+    suppliedCapabilities: 2,
+    readExecutions: 2,
+    previewCharacters: 1200,
+    mutationAccess: "offer-only"
+  });
+});
+
+test("browser-host bridge evidence rejects a mutating tool that reached the executor", () => {
+  const observed = validBridgeObservation();
+  observed.hostCalls.push({
+    name: "calendar_book_slot",
+    arguments: { slotId: "09:00", attendee: "Lukas" }
+  });
+
+  assert.throws(
+    () => validateBrowserHostBridgeObservation(observed),
+    /Mutating host tools must remain offer-only/
+  );
+});
+
+test("browser-host bridge evidence rejects an oversized read preview", () => {
+  const observed = validBridgeObservation();
+  observed.largeResult.preview = `${"x".repeat(1200)}…`;
+  observed.largeResult.metrics.includedCharacters = 1201;
+
+  assert.throws(
+    () => validateBrowserHostBridgeObservation(observed),
+    /Host read previews must remain within 1,200 adapter characters/
   );
 });

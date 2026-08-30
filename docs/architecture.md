@@ -93,7 +93,27 @@ The offer call can render intent but cannot grant authority. The visible value, 
 
 `packages/bridge` does not scrape a page or pretend that a producer-side API can enumerate every registered tool. A host must explicitly supply the tool catalog and executor. The bridge exposes only bounded summaries: at most 350 serialized JavaScript UTF-16 code units per capability, including a 160-code-unit description, at most 12 parameter names and at most 48 code units per included parameter name. If even an escaped tool identity cannot fit, only that declaration is rejected; valid neighboring tools remain available. Tools marked read-only by the host can cross the read executor; all other tools remain `offer-only` and must return to a visible human-authorization path. Small read results are normalized through a JSON round trip. A result larger than 1,200 adapter code units becomes a labeled JSON preview with source and included-unit metrics; the unbounded object is not forwarded. Missing schemas, duplicate names, malformed catalogs and unserializable results fail closed.
 
-This completes a portable adapter contract, not a live foreign-site discovery result. Host discovery and invocation still require a browser-owned integration and an acceptance test.
+The isolated Chrome acceptance path now supplies a browser-owned calendar catalog and executor to the real bridge. It proves that the adapter runs in a browser host, bounds both catalog and read result, and blocks the mutating tool before host execution. It does not prove discovery or invocation on an unrelated live website.
+
+```mermaid
+sequenceDiagram
+  participant Host as Browser host
+  participant Bridge as WebMCP Bridge
+  participant Read as Read-only host tool
+  participant Mutate as Mutating host tool
+
+  Host->>Bridge: tools plus executeTool callback
+  Bridge-->>Host: bounded read-execute and offer-only capabilities
+  Host->>Bridge: executeRead(read capability, arguments)
+  Bridge->>Read: validated host request
+  Read-->>Bridge: JSON result
+  Bridge-->>Host: normalized result or <=1,200-char preview
+  Host->>Bridge: executeRead(mutating capability)
+  Bridge--xMutate: no executor call
+  Bridge-->>Host: HUMAN_CONFIRMATION_REQUIRED
+```
+
+Text alternative: the browser host owns discovery and supplies both catalog and executor. The bridge classifies effects and sends only read-only tools to the executor. Oversized read results become bounded previews. Mutating tools terminate at the visible-offer boundary and never reach the host executor through `executeRead`.
 
 ## Legacy bridge boundary
 

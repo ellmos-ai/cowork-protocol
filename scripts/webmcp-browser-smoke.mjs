@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { createStaticServer } from "./serve.mjs";
-import { validateNativeWebMcpObservation } from "./webmcp-browser-smoke-lib.mjs";
+import {
+  validateBrowserHostBridgeObservation,
+  validateNativeWebMcpObservation
+} from "./webmcp-browser-smoke-lib.mjs";
 
 const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-webmcp-smoke-"));
 let server;
@@ -310,9 +313,77 @@ try {
     call,
     toolExecutionExpression("cowork_read_feedback", {})
   );
+  const bridgeObserved = await evaluateValue(call, `(async () => {
+    const { createWebMcpBridge } = await import("/packages/bridge/src/index.js");
+    const tools = [
+      {
+        name: "calendar_read_slots",
+        description: "Read open appointment slots without changing the calendar.",
+        inputSchema: {
+          type: "object",
+          properties: { date: { type: "string" } },
+          required: ["date"]
+        },
+        annotations: { readOnlyHint: true }
+      },
+      {
+        name: "calendar_book_slot",
+        description: "Book the chosen appointment slot.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            slotId: { type: "string" },
+            attendee: { type: "string" }
+          },
+          required: ["slotId", "attendee"]
+        },
+        annotations: { readOnlyHint: false }
+      }
+    ];
+    const hostCalls = [];
+    const bridge = createWebMcpBridge({
+      tools,
+      async executeTool(request) {
+        hostCalls.push(request);
+        if (request.arguments.date === "large-result") {
+          return { records: ["x".repeat(5000)] };
+        }
+        return {
+          date: request.arguments.date,
+          slots: ["09:00", "10:30"]
+        };
+      }
+    });
+    const smallResult = await bridge.executeRead({
+      capabilityId: "webmcp:calendar_read_slots",
+      arguments: { date: "2026-09-01" }
+    });
+    const largeResult = await bridge.executeRead({
+      capabilityId: "webmcp:calendar_read_slots",
+      arguments: { date: "large-result" }
+    });
+    let mutationError = null;
+    try {
+      await bridge.executeRead({
+        capabilityId: "webmcp:calendar_book_slot",
+        arguments: { slotId: "09:00", attendee: "Lukas" }
+      });
+    } catch (error) {
+      mutationError = { name: error.name, code: error.code };
+    }
+    return {
+      catalog: bridge.catalog,
+      smallResult,
+      largeResult,
+      hostCalls,
+      mutationError
+    };
+  })()`);
   const summary = validateNativeWebMcpObservation(observed);
+  const bridgeSummary = validateBrowserHostBridgeObservation(bridgeObserved);
   console.log(JSON.stringify({
     ...summary,
+    bridge: bridgeSummary,
     hostTokenClaim: false,
     toolNames: observed.toolNames
   }, null, 2));
