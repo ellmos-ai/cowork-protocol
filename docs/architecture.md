@@ -29,6 +29,35 @@ Text alternative: the panel is the human control surface, the core enforces cont
 
 The human authorization surface accepts only losslessly JSON-serializable action arguments. A FormBuilder offer displays the exact proposed value, limits it to 350 Unicode code points in both its WebMCP schema and runtime guard, and expires it from the DOM on a scheduled render; agent-generated events cannot authorize it.
 
+## One-shot adaptive context request
+
+This UML-like sequence view answers one question: how can an agent obtain one useful field detail without receiving the page?
+
+```mermaid
+sequenceDiagram
+  actor Human
+  participant Panel as Cowork Panel
+  participant Agent as Web agent
+  participant WebMCP as Native WebMCP Connector
+  participant Form as FormBuilder Connector
+  participant Core as Protocol Core
+
+  Human->>Panel: points to, selects, or pins a field
+  Panel->>Form: stable field id and field semantics
+  Agent->>WebMCP: cowork_read_focus()
+  WebMCP-->>Agent: level 2 focus packet (<=350 chars)
+  Agent->>WebMCP: cowork_request_context(reason)
+  WebMCP->>Form: current focus plus related field rules
+  Form->>Core: request level 2 to 3
+  Core-->>Form: target-bound one-shot expansion (<=1,200 chars)
+  Form-->>WebMCP: related field context only
+  WebMCP-->>Agent: context-expansion
+```
+
+The request is read-only, must include a reason of at most 200 JavaScript UTF-16 code units, can expand by only one level, stays bound to the current target and page version, and returns at most 1,200 adapter code units. With attention off or without a stable current focus it fails closed. The response contains only related field semantics such as requiredness, help text and select options; it does not return the page or persist the expansion into later turns.
+
+Diagram type: UML-like sequence diagram. Source and renderer: the Mermaid block above, rendered by compatible Markdown hosts. Fallback: the adjacent prose contract if Mermaid is unavailable. Scope: runtime interaction, not deployment topology.
+
 ## WebMCP bridge boundary
 
 `packages/bridge` does not scrape a page or pretend that a producer-side API can enumerate every registered tool. A host must explicitly supply the tool catalog and executor. The bridge exposes only bounded summaries: at most 350 serialized JavaScript UTF-16 code units per capability, including a 160-code-unit description, at most 12 parameter names and at most 48 code units per included parameter name. If even an escaped tool identity cannot fit, only that declaration is rejected; valid neighboring tools remain available. Tools marked read-only by the host can cross the read executor; all other tools remain `offer-only` and must return to a visible human-authorization path. Small read results are normalized through a JSON round trip. A result larger than 1,200 adapter code units becomes a labeled JSON preview with source and included-unit metrics; the unbounded object is not forwarded. Missing schemas, duplicate names, malformed catalogs and unserializable results fail closed.

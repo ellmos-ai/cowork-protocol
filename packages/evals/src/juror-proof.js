@@ -6,6 +6,7 @@ import {
   createFeedbackEvent
 } from "../../core/src/index.js";
 import {
+  buildFormBuilderContextExpansion,
   buildFormBuilderFocus,
   planAuthorizedFormBuilderMutation,
   planSoloFormBuilderMutation
@@ -26,6 +27,16 @@ export function runJurorProof() {
     label: "Full name",
     selectedText: "",
     controlKind: "text"
+  });
+  const contextRequest = buildFormBuilderContextExpansion({
+    focusPacket: focus,
+    fieldId: "full-name",
+    label: "Full name",
+    controlKind: "text",
+    required: true,
+    helpText: "Required. Used in the generated FormBuilder response.",
+    options: [],
+    reason: "Need the field requirement before proposing a value"
   });
 
   const values = {
@@ -152,6 +163,20 @@ export function runJurorProof() {
       }
     ),
     proofStep(
+      "context-request",
+      contextRequest.targetId === focus.targetId &&
+        contextRequest.level === 3 &&
+        contextRequest.oneShot === true &&
+        contextRequest.metrics.includedContextCharacters <= 1200,
+      {
+        targetId: contextRequest.targetId,
+        level: contextRequest.level,
+        oneShot: contextRequest.oneShot,
+        includedContextCharacters:
+          contextRequest.metrics.includedContextCharacters
+      }
+    ),
+    proofStep(
       "offer-only",
       offer.requiresHumanConfirmation === true &&
         valueBeforeHumanClick === "Ada Lovelace" &&
@@ -204,7 +229,7 @@ export function runJurorProof() {
   ];
 
   return {
-    proofVersion: "cowork-juror-proof-v1",
+    proofVersion: "cowork-juror-proof-v2",
     browserClaim: false,
     hostTokenClaim: false,
     steps,

@@ -13,7 +13,7 @@ The repository currently contains:
 - explicit human-click authorization for proposed actions;
 - exact human-visible offer values capped at 350 Unicode code points for meaningful review;
 - presence modes and fail-closed solo leases;
-- a one-step context escalation router that emits nothing for silence or unchanged state;
+- a one-step context escalation router that emits nothing for silence or unchanged state and exposes one bounded, reasoned WebMCP context request;
 - a FormBuilder connector using stable field IDs;
 - the pre-existing MIT-licensed FormBuilder web schema/validation/response engine, explicitly attributed and isolated to the showcase;
 - a current WebMCP registration adapter using `document.modelContext.registerTool()` and `AbortSignal` ownership;
@@ -52,7 +52,7 @@ The suite uses Node's built-in test runner and has no external runtime dependenc
 
 `npm run eval` reports `adapter-characters`, defined here as JavaScript UTF-16 code units rather than browser or model tokens. It verifies the 350-unit focus, change and feedback budgets; the 160/161 selected-text boundary; silence and unchanged-state suppression; one-step expansion; latest-only event snapshots; the bounded bridge catalog summary; and the 1,200-unit bridge read-result preview without inventing unavailable host telemetry.
 
-`npm run proof` is a deterministic six-step juror dry-run. It exercises the real focus, offer, human-click authorization, verified change and feedback, scoped AFK lease and FormBuilder export contracts in seconds. Its output explicitly sets `browserClaim: false` and `hostTokenClaim: false`; it is reproducible core evidence, not a substitute for the required live WebMCP browser demonstration.
+`npm run proof` is a deterministic seven-step juror dry-run. It exercises the real focus, one-shot related-context request, offer, human-click authorization, verified change and feedback, scoped AFK lease and FormBuilder export contracts in seconds. Its output explicitly sets `browserClaim: false` and `hostTokenClaim: false`; it is reproducible core evidence, not a substitute for the required live WebMCP browser demonstration.
 
 ## Build the web-only release
 
@@ -66,6 +66,7 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 ## Native WebMCP tools
 
 - `cowork_read_focus` returns the current character-bounded focus packet.
+- `cowork_request_context` returns one reasoned, target-bound related-context level capped at 1,200 adapter characters.
 - `cowork_offer_action` creates a visible offer; it never authorizes or executes the change.
 - `cowork_read_presence` returns the explicit human/agent work mode.
 - `cowork_execute_solo` executes only inside a valid, scoped and unexpired solo lease.

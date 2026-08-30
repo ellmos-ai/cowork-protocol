@@ -16,7 +16,7 @@ test("the token-economy eval covers every declared budget and silence invariant"
       "selection-161-digest",
       "silence-no-packet",
       "unchanged-no-packet",
-      "context-one-step",
+      "native-context-request-1200",
       "bridge-summary-350",
       "bridge-read-result-1200",
       "change-latest-350",
@@ -26,6 +26,16 @@ test("the token-economy eval covers every declared budget and silence invariant"
   );
   assert.equal(report.summary.failed, 0);
   assert.equal(report.summary.passed, report.cases.length);
+
+  const contextCase = report.cases.find(
+    ({ id }) => id === "native-context-request-1200"
+  );
+  assert.equal(contextCase.observed.type, "context-expansion");
+  assert.equal(contextCase.observed.from, 2);
+  assert.equal(contextCase.observed.to, 3);
+  assert.equal(contextCase.observed.oneShot, true);
+  assert.equal(contextCase.observed.includedContextCharacters, 1200);
+  assert.ok(contextCase.observed.avoidedSourceCharacters > 0);
 });
 
 test("the legacy visual fallback requests a bounded region without claiming image capture", () => {

@@ -10,6 +10,7 @@ function toolResult(structuredContent) {
 export async function registerNativeCoworkTools({
   modelContext,
   readFocus,
+  requestContext,
   offerAction,
   readPresence,
   executeSolo,
@@ -46,6 +47,38 @@ export async function registerNativeCoworkTools({
       },
       { signal: controller.signal }
     );
+
+    if (typeof requestContext === "function") {
+      await modelContext.registerTool(
+        {
+          name: "cowork_request_context",
+          title: "Request related field context",
+          description:
+            "Request one character-bounded related context level for the current focus, with a short reason.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              reason: {
+                type: "string",
+                minLength: 1,
+                maxLength: 200,
+                description: "Why the current focus packet is not sufficient."
+              }
+            },
+            required: ["reason"],
+            additionalProperties: false
+          },
+          annotations: {
+            readOnlyHint: true,
+            untrustedContentHint: true
+          },
+          async execute(arguments_) {
+            return toolResult(await requestContext(arguments_));
+          }
+        },
+        { signal: controller.signal }
+      );
+    }
 
     if (typeof offerAction === "function") {
       await modelContext.registerTool(

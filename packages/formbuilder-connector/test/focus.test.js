@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { buildFormBuilderFocus } from "../src/index.js";
+import {
+  buildFormBuilderContextExpansion,
+  buildFormBuilderFocus
+} from "../src/index.js";
 
 test("a stable FormBuilder field becomes a native focus with only field capabilities", () => {
   const packet = buildFormBuilderFocus({
@@ -69,4 +72,64 @@ test("pointer and pinned lenses keep their attention source distinct", () => {
   });
   assert.equal(pinned.source, "human-pinned");
   assert.equal(pinned.focus.kind, "pinned");
+});
+
+test("a FormBuilder context request exposes only related field semantics", () => {
+  const focusPacket = buildFormBuilderFocus({
+    sessionId: "form-session-4",
+    pageVersion: 7,
+    fieldId: "email",
+    label: "Email",
+    controlKind: "text",
+    selectedText: "",
+    focusKind: "pointer"
+  });
+
+  const expansion = buildFormBuilderContextExpansion({
+    focusPacket,
+    fieldId: "email",
+    label: "Email",
+    controlKind: "email",
+    required: true,
+    helpText: "Used only to send the completed form.",
+    options: [],
+    reason: "Need the validation rule"
+  });
+
+  assert.equal(expansion.targetId, "form-field:email");
+  assert.equal(
+    expansion.relatedContext,
+    '{"label":"Email","controlKind":"email","required":true,"helpText":"Used only to send the completed form.","options":[]}'
+  );
+  assert.deepEqual(expansion.capabilityIds, [
+    "form.explain_field",
+    "form.set_value",
+    "form.clear_value"
+  ]);
+});
+
+test("a FormBuilder context request rejects a field outside the current focus", () => {
+  const focusPacket = buildFormBuilderFocus({
+    sessionId: "form-session-5",
+    pageVersion: 8,
+    fieldId: "email",
+    label: "Email",
+    controlKind: "text",
+    selectedText: ""
+  });
+
+  assert.throws(
+    () =>
+      buildFormBuilderContextExpansion({
+        focusPacket,
+        fieldId: "full-name",
+        label: "Full name",
+        controlKind: "text",
+        required: true,
+        helpText: "",
+        options: [],
+        reason: "Need nearby details"
+      }),
+    { name: "CoworkProtocolError", code: "STALE_FOCUS" }
+  );
 });

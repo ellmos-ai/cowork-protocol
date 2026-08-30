@@ -8,7 +8,10 @@ import {
   createFeedbackEvent,
   createPresenceEvent
 } from "../../core/src/index.js";
-import { buildFormBuilderFocus } from "../../formbuilder-connector/src/index.js";
+import {
+  buildFormBuilderContextExpansion,
+  buildFormBuilderFocus
+} from "../../formbuilder-connector/src/index.js";
 import { registerNativeCoworkTools } from "../src/index.js";
 
 test("native registration exposes a read-only focus tool backed by the real connector", async () => {
@@ -29,6 +32,24 @@ test("native registration exposes a read-only focus tool backed by the real conn
         label: "Name",
         controlKind: "text",
         selectedText: "Lu"
+      }),
+    requestContext: ({ reason }) =>
+      buildFormBuilderContextExpansion({
+        focusPacket: buildFormBuilderFocus({
+          sessionId: "browser-session-1",
+          pageVersion: 8,
+          fieldId: "field-name",
+          label: "Name",
+          controlKind: "text",
+          selectedText: "Lu"
+        }),
+        fieldId: "field-name",
+        label: "Name",
+        controlKind: "text",
+        required: true,
+        helpText: "Used in the generated form response.",
+        options: [],
+        reason
       }),
     offerAction: ({ capabilityId, targetId, value, summary }) =>
       createActionOffer({
@@ -83,7 +104,7 @@ test("native registration exposes a read-only focus tool backed by the real conn
       })
   });
 
-  assert.equal(registrations.length, 6);
+  assert.equal(registrations.length, 7);
   const { tool, options } = registrations.find(
     (registration) => registration.tool.name === "cowork_read_focus"
   );
@@ -110,6 +131,23 @@ test("native registration exposes a read-only focus tool backed by the real conn
   assert.deepEqual(result.content, [
     { type: "text", text: JSON.stringify(result.structuredContent) }
   ]);
+
+  const contextRegistration = registrations.find(
+    (registration) => registration.tool.name === "cowork_request_context"
+  );
+  assert.equal(contextRegistration.tool.title, "Request related field context");
+  assert.deepEqual(contextRegistration.tool.annotations, {
+    readOnlyHint: true,
+    untrustedContentHint: true
+  });
+  assert.deepEqual(contextRegistration.tool.inputSchema.required, ["reason"]);
+  assert.equal(contextRegistration.tool.inputSchema.properties.reason.maxLength, 200);
+  const contextResult = await contextRegistration.tool.execute({
+    reason: "Need the field validation rule"
+  });
+  assert.equal(contextResult.structuredContent.type, "context-expansion");
+  assert.equal(contextResult.structuredContent.targetId, "form-field:field-name");
+  assert.equal(contextResult.structuredContent.oneShot, true);
 
   const offerRegistration = registrations.find(
     (registration) => registration.tool.name === "cowork_offer_action"
@@ -193,6 +231,7 @@ test("native registration exposes a read-only focus tool backed by the real conn
   assert.equal(soloRegistration.options.signal.aborted, true);
   assert.equal(feedbackRegistration.options.signal.aborted, true);
   assert.equal(changesRegistration.options.signal.aborted, true);
+  assert.equal(contextRegistration.options.signal.aborted, true);
 });
 
 test("missing document.modelContext reports an unavailable native capability", async () => {

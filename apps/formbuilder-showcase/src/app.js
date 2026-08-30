@@ -4,10 +4,10 @@ import {
   createActionOffer,
   createFeedbackEvent,
   createPresenceEvent,
-  createActionReceipt,
-  routeContextSignal
+  createActionReceipt
 } from "../../../packages/core/src/index.js";
 import {
+  buildFormBuilderContextExpansion,
   buildFormBuilderFocus,
   planAuthorizedFormBuilderMutation,
   planSoloFormBuilderMutation
@@ -131,6 +131,30 @@ function buildFocus(field) {
     controlKind: field.dataset.controlKind,
     selectedText: selectedTextFor(control),
     focusKind: focusKind()
+  });
+}
+
+function requestRelatedContext({ reason }) {
+  if (!focusedField || !focusPacket) {
+    throw new CoworkProtocolError(
+      "STALE_FOCUS",
+      "Point to, select, or pin a FormBuilder field before requesting more context"
+    );
+  }
+  const control = currentControl(focusedField);
+  const options =
+    control?.tagName === "SELECT"
+      ? [...control.options].map((option) => option.textContent.trim())
+      : [];
+  return buildFormBuilderContextExpansion({
+    focusPacket,
+    fieldId: focusedField.dataset.fieldId,
+    label: focusedField.dataset.label,
+    controlKind: control?.type ?? focusedField.dataset.controlKind,
+    required: control?.required === true,
+    helpText: focusedField.querySelector(".field-help")?.textContent?.trim() ?? "",
+    options,
+    reason
   });
 }
 
@@ -681,6 +705,7 @@ async function configureWebMcp() {
         }
         return focusPacket;
       },
+      requestContext: requestRelatedContext,
       offerAction: createVisibleOffer,
       readPresence: () =>
         createPresenceEvent({
@@ -697,7 +722,7 @@ async function configureWebMcp() {
       readFeedback: () => createFeedbackSnapshot(feedbackEvents)
     });
     capabilityLevel = "native";
-    setStatus("Native WebMCP tools registered: focus, causal changes, presence, offers, lease-scoped solo execution, and bounded feedback.");
+    setStatus("Native WebMCP tools registered: focus, one-shot related context, causal changes, presence, offers, lease-scoped solo execution, and bounded feedback.");
     render();
   } catch (error) {
     capabilityLevel = "unavailable";
@@ -772,17 +797,11 @@ $("#action-mode").addEventListener("change", (event) => {
 
 $("#expand-context").addEventListener("click", () => {
   try {
-    const routed = routeContextSignal({
-      signal: "focus",
-      changed: focusPacket !== null,
-      currentLevel: 2,
-      requestedLevel: 3,
-      reason: "Human allowed one related context step"
+    const expansion = requestRelatedContext({
+      reason: "Need the related FormBuilder field rules"
     });
     setStatus(
-      routed
-        ? "One related context level is allowed for the next turn only."
-        : "Nothing changed, so no context packet was created."
+      `One related context level returned for this request only: ${expansion.metrics.includedContextCharacters} adapter characters.`
     );
   } catch (error) {
     setStatus(`${error.code}: ${error.message}`);

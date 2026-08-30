@@ -1,4 +1,5 @@
 import {
+  buildContextExpansion,
   buildFocusPacket,
   CoworkProtocolError,
   digestArguments,
@@ -63,6 +64,34 @@ export function buildFormBuilderFocus(input) {
     label: input.label,
     selectedText: input.selectedText,
     capabilityIds: capabilitiesFor(input.controlKind)
+  });
+}
+
+export function buildFormBuilderContextExpansion(input) {
+  const expectedTargetId = `form-field:${input.fieldId}`;
+  if (input.focusPacket?.targetId !== expectedTargetId) {
+    throw new CoworkProtocolError(
+      "STALE_FOCUS",
+      "Related FormBuilder context must match the current stable field focus"
+    );
+  }
+
+  const relatedContext = JSON.stringify({
+    label: typeof input.label === "string" ? input.label : "",
+    controlKind: typeof input.controlKind === "string" ? input.controlKind : "unknown",
+    required: input.required === true,
+    helpText: typeof input.helpText === "string" ? input.helpText : "",
+    options: Array.isArray(input.options)
+      ? input.options.filter((option) => typeof option === "string")
+      : []
+  });
+
+  return buildContextExpansion({
+    focusPacket: input.focusPacket,
+    currentLevel: 2,
+    requestedLevel: 3,
+    reason: input.reason,
+    relatedContext
   });
 }
 

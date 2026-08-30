@@ -9,6 +9,7 @@ import {
   createFeedbackEvent,
   routeContextSignal
 } from "../../core/src/index.js";
+import { buildFormBuilderContextExpansion } from "../../formbuilder-connector/src/index.js";
 import {
   createChangeSnapshot,
   createFeedbackSnapshot
@@ -56,12 +57,15 @@ export function runTokenEconomyEval() {
     requestedLevel: 1,
     reason: "No state delta"
   });
-  const expanded = routeContextSignal({
-    signal: "focus",
-    changed: true,
-    currentLevel: 2,
-    requestedLevel: 3,
-    reason: "One related context step"
+  const expanded = buildFormBuilderContextExpansion({
+    focusPacket: normalFocus,
+    fieldId: "eval",
+    label: "Evaluation field",
+    controlKind: "text",
+    required: true,
+    helpText: "H".repeat(1300),
+    options: [],
+    reason: "Need the related validation rule"
   });
   const sourceDescription = "D".repeat(500);
   const bridgeCatalog = negotiateWebMcpCatalog({
@@ -160,10 +164,24 @@ export function runTokenEconomyEval() {
       unchanged === null
     ),
     evaluatedCase(
-      "context-one-step",
-      { from: 2, to: 3, oneShot: true },
-      { from: 2, to: expanded.level, oneShot: expanded.oneShot },
-      expanded.level === 3 && expanded.oneShot === true
+      "native-context-request-1200",
+      { maximumContextCharacters: 1200, from: 2, to: 3, oneShot: true },
+      {
+        type: expanded.type,
+        from: expanded.currentLevel,
+        to: expanded.level,
+        oneShot: expanded.oneShot,
+        sourceContextCharacters: expanded.metrics.sourceContextCharacters,
+        includedContextCharacters: expanded.metrics.includedContextCharacters,
+        avoidedSourceCharacters:
+          expanded.metrics.sourceContextCharacters -
+          expanded.metrics.includedContextCharacters
+      },
+      expanded.type === "context-expansion" &&
+        expanded.currentLevel === 2 &&
+        expanded.level === 3 &&
+        expanded.oneShot === true &&
+        expanded.metrics.includedContextCharacters <= 1200
     ),
     evaluatedCase(
       "bridge-summary-350",

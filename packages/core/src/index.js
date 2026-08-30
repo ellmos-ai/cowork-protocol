@@ -2,6 +2,8 @@ const SELECTED_TEXT_LIMIT = 160;
 const FOCUS_TEXT_LIMIT = 350;
 const EVENT_TEXT_LIMIT = 350;
 const OFFER_SUMMARY_LIMIT = 200;
+const CONTEXT_REASON_LIMIT = 200;
+const CONTEXT_EXPANSION_LIMIT = 1200;
 const EVENT_REFERENCE_LIMIT = 8;
 const EVENT_REFERENCE_TEXT_LIMIT = 120;
 const HUMAN_PRESENCE_VALUES = new Set(["present", "afk-short", "afk-long"]);
@@ -564,5 +566,74 @@ export function routeContextSignal(input) {
     level: input.requestedLevel,
     oneShot: input.requestedLevel > input.currentLevel,
     reason: input.reason
+  };
+}
+
+export function buildContextExpansion(input) {
+  const focusPacket = input.focusPacket;
+  if (
+    focusPacket?.type !== "focus" ||
+    typeof focusPacket.targetId !== "string" ||
+    !Number.isInteger(focusPacket.pageVersion)
+  ) {
+    throw new CoworkProtocolError(
+      "STALE_FOCUS",
+      "A current focus packet is required before requesting related context"
+    );
+  }
+  if (
+    typeof input.reason !== "string" ||
+    input.reason.length === 0 ||
+    input.reason.length > CONTEXT_REASON_LIMIT
+  ) {
+    throw new CoworkProtocolError(
+      "CONTEXT_BUDGET_EXCEEDED",
+      `Context request reasons are limited to ${CONTEXT_REASON_LIMIT} characters`
+    );
+  }
+  if (typeof input.relatedContext !== "string") {
+    throw new CoworkProtocolError(
+      "INVALID_ARGUMENTS",
+      "Related context must be text"
+    );
+  }
+
+  const routed = routeContextSignal({
+    signal: "focus",
+    changed: true,
+    currentLevel: input.currentLevel,
+    requestedLevel: input.requestedLevel,
+    reason: input.reason
+  });
+  if (routed.oneShot !== true) {
+    throw new CoworkProtocolError(
+      "CONTEXT_BUDGET_EXCEEDED",
+      "A context expansion must request exactly one higher level"
+    );
+  }
+  const relatedContext = truncateWithEllipsis(
+    input.relatedContext,
+    CONTEXT_EXPANSION_LIMIT
+  );
+
+  return {
+    protocolVersion: focusPacket.protocolVersion,
+    type: "context-expansion",
+    sessionId: focusPacket.sessionId,
+    source: "agent-context-request",
+    capabilityLevel: focusPacket.capabilityLevel,
+    targetId: focusPacket.targetId,
+    pageVersion: focusPacket.pageVersion,
+    focus: focusPacket.focus,
+    capabilityIds: focusPacket.capabilityIds,
+    currentLevel: input.currentLevel,
+    level: routed.level,
+    oneShot: routed.oneShot,
+    reason: routed.reason,
+    relatedContext,
+    metrics: {
+      sourceContextCharacters: input.relatedContext.length,
+      includedContextCharacters: relatedContext.length
+    }
   };
 }
