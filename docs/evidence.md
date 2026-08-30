@@ -15,8 +15,8 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | WebMCP Bridge is bounded and fail-closed | `packages/bridge/test/webmcp-bridge.test.js` | Explicit host-catalog adapter proven; foreign discovery open |
 | Legacy fallback is bounded | `packages/bridge/test/legacy-bridge.test.js`; visual eval | Request contract proven; DOM snapshot/image capture open |
 | Core jury journey is reproducible without credentials | `npm run proof`; `packages/evals/test/juror-proof.test.js` | Six deterministic integration steps proven; output explicitly denies browser and host-token claims |
-| Independent code review closed the release-relevant findings | Claude Code 2.1.251 with the Fable model reviewed the full tree, then re-reviewed the bounded fix diff | Initial verdict `With fixes`; five Critical/Important paths fixed test-first; re-review verdict `Ready to publish code: Yes` with no Critical or Important findings |
-| Public-preview tree is reproducible | clean clone of local `release/public-preview` at `540b659725db7a685b3921791eaaeed8861e0630` | `npm ci --ignore-scripts`, 54/54 tests, 10/10 token evals, 6/6 proof steps, 15-file Pages build, 38 syntax checks, 0 vulnerabilities, 0 secret findings, HTTP 200 for root/showcase/native module/license |
+| Independent code review closed the release-relevant findings | Claude Code 2.1.251 with the Fable model reviewed the full tree and the bounded follow-up diffs | Initial verdict `With fixes`; all Critical/Important paths and four final minors fixed test-first; final follow-up verdict `Ready to publish code: Yes` with no Critical or Important findings |
+| Public-preview tree is reproducible | clean clone of local `release/public-preview` at `dda2db652cb2f12bfe9fbd0ef29fbd49a2f449a6` | `npm ci`, 77/77 tests, 11/11 character evals, 6/6 proof steps, 15-file Pages build, 38 syntax checks, 0 vulnerabilities, 0 secret findings, HTTP 200 for root/showcase/showcase module |
 
 ## Commit trail
 
@@ -29,10 +29,12 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 - `4fc92b0e` — Allowlisted static artifact and manual-only Pages workflow.
 - `d85154bf8e21fdb9f8c19c77f3b9f98a05590651` — Deterministic six-step juror proof over the real protocol and FormBuilder packages.
 - `09d4df86122abb98ccafc4499f7a59d36fe20474` — Test-first closure of the independent Fable review findings.
+- `f1237507753dac2b4f410aa04bde2ff3f15734ba` — Hardening of catalog, lease, offer and bounded-value contracts from the full Fable follow-up.
+- `f107395d12e9bd8801e9bd1666aacdfa6be41b15` — Test-first closure of escaped-identity, lossless-JSON and Unicode-boundary edges.
 
-Local release preparation: `release/public-preview` at tested commit `540b659725db7a685b3921791eaaeed8861e0630` had the same tree as `main`, retained safe history through `c86eea4`, and excluded internal Prepare paths from its ancestry. It was not pushed; the repository had no remote.
+Local release preparation: `release/public-preview` at tested commit `dda2db652cb2f12bfe9fbd0ef29fbd49a2f449a6` had the same tree as `main` at `f107395d12e9bd8801e9bd1666aacdfa6be41b15`, retained safe history through `c86eea4`, and excluded internal Prepare paths from its ancestry. It was not pushed; the repository had no remote.
 
-The independent Fable review reproduced one release-blocking capability/value-visibility path and four Important state/budget inconsistencies. The resulting tests now cover read-only capability rejection, exact visible click arguments, core-level offer-summary bounds, attempt-based Solo accounting, bounded receipts, lease-expiry presentation and enforced action-mode rights. A focused Fable re-review verified all five paths closed and found no new Critical or Important issue.
+The independent Fable reviews reproduced the release-relevant capability, state, budget, lease, offer and JSON/Unicode boundary failures before their fixes. The resulting tests now cover read-only capability rejection, exact visible click arguments, core-level offer-summary bounds, attempt-based Solo accounting, bounded receipts, lease-expiry presentation, enforced action-mode rights, isolated over-budget tool identities, lossless JSON arguments and Unicode-safe truncation. The final Fable follow-up found no Critical or Important issue.
 
 ## Explicitly not yet evidenced
 
