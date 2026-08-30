@@ -20,8 +20,9 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | Public-preview tree is reproducible | clean clone of local `release/public-preview` at `09962c4` | `npm ci`, 96/96 tests, 11/11 character evals, 7/7 proof steps, native Chrome 152 human-loop and browser-host bridge smoke, 16-file Pages build, 44 syntax checks, 0 vulnerabilities, 0 secret findings and clean scoped history |
 | Local browser fallback is interactive | connected Edge extension plus isolated headless Edge smoke against the local showcase | Exact-value offer, real click, page-version change, verified receipt, Adjust feedback, brief/longer AFK fail-closed/delegated/return, visible lease expiry, agent pause/Human Solo, first 12 keyboard focus stops, and context-preview fail-closed/success states accepted; `document.modelContext` absent, so no WebMCP claim |
 | Audio controls fail safely under rapid activation | speech-controller tests plus isolated Chrome 152 SpeechRecognition/synthesis smoke | Two immediate activations produce no uncaught error; 22 synthesis voices and active synthesis observed; fake device returned `audio-capture`, so real microphone and audible output remain open |
-| Current interaction surface is keyboard and narrow-layout coherent | Chrome 152 accessibility tree, real Tab dispatch, reduced-motion emulation and 390×844 viewport pass | 19 named interactive nodes, 0 unnamed, visible 3px focus, text presence cues and no horizontal/control overflow proven; screen reader, 200% zoom and pixel contrast remain open |
-| Showcase has an accepted light, premium visual direction | `visual-theme.test.js`; inspected Chrome 152 captures at 1440×1200 and 390×844 | Six core text/control pairs meet the 4.5:1 source-level threshold; restrained gold, blue and teal hierarchy accepted; complete composited-pixel contrast review remains open |
+| Current interaction surface is keyboard, zoom and narrow-layout coherent | Chrome 152 accessibility tree, real Tab dispatch, reduced-motion emulation, 390×844 viewport and true 200% page-zoom pass | 19 named interactive nodes, 0 unnamed, visible 3px focus, text presence cues, 19/19 controls reachable at 200% and bounded layout rounding proven; screen-reader practice remains open |
+| Rendered text contrast covers the collaboration state matrix | `visual-theme.test.js`; `pixel-contrast-smoke.test.js`; `npm run smoke:contrast` | Chrome 152 audited 609 visible text items across 10 exact states: 0 unsupported, 0 failures, unrounded minimum 4.565644512773976:1; Listening is a visual fake-recognition boundary and makes no audio claim |
+| Showcase has an accepted light, premium visual direction | `visual-theme.test.js`; inspected Chrome 152 captures at 1440×1200 and 390×844; rendered contrast smoke | Opaque warm reading surface, restrained gold, blue and teal hierarchy, six protected source pairs and the 10-state rendered contrast matrix accepted |
 
 ## Commit trail
 
@@ -41,6 +42,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 - `0bac68c` — Accepted light editorial showcase theme with restrained gold accents and source-level contrast regression checks.
 - `64fa1eb` — Native Chrome WebMCP human loop with two inert offers, trusted clicks and latest-only causal change/feedback readback.
 - `09962c4` — Browser-host bridge acceptance with bounded reads, a 1,200-character preview and fail-closed offer-only mutation.
+- `6b0473a5a755ccd7fc149ce48f6b94fbe5b3b94d` — Ten-state rendered contrast audit plus an opaque FormBuilder reading surface above decorative gradients.
 
 Local release preparation: the bridge-accepted tree at tested commit `09962c4` retains the deliberately scoped public history and excludes internal Prepare paths, `_reports`, dependencies and design drafts from its 65 tracked files and ancestry. A fresh single-branch clone passed every local gate listed above. It was not pushed; the repository has no remote.
 
@@ -48,7 +50,7 @@ The independent Fable reviews reproduced the release-relevant capability, state,
 
 ## Explicitly not yet evidenced
 
-- screen-reader practice, 200% zoom, complete pixel-based contrast and final submission-asset branding;
+- screen-reader practice and final submission-asset branding;
 - connected ChatGPT-agent WebMCP discovery and invocation beyond the accepted Chrome in-page client;
 - real microphone permission, captured speech and audibly confirmed spoken output;
 - public GitHub repository and license detection;
