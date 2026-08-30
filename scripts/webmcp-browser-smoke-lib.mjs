@@ -414,4 +414,61 @@ export function validateZoomReflowObservation(observed) {
   };
 }
 
+export function validateAccessibilityObservation(observed) {
+  requireCondition(
+    observed && typeof observed === "object",
+    "Accessibility browser observation is required"
+  );
+  const axNodes = Array.isArray(observed.axInteractiveNodes)
+    ? observed.axInteractiveNodes
+    : [];
+  const axDomIds = axNodes.map((node) => node?.backendDOMNodeId);
+  requireCondition(
+    axNodes.length === 21 &&
+      axNodes.every(
+        (node) =>
+          Number.isInteger(node?.backendDOMNodeId) &&
+          node.backendDOMNodeId > 0 &&
+          typeof node.role === "string" &&
+          node.role.trim().length > 0 &&
+          typeof node.name === "string" &&
+          node.name.trim().length > 0
+      ) &&
+      new Set(axDomIds).size === axNodes.length,
+    "Every interactive browser AX node must have a unique DOM identity and accessible name"
+  );
+
+  const clippedControls = Array.isArray(observed.horizontallyClippedControls)
+    ? observed.horizontallyClippedControls
+    : [];
+  const textClippedControls = Array.isArray(observed.textClippedControls)
+    ? observed.textClippedControls
+    : [];
+  const tabSequence = Array.isArray(observed.tabSequence) ? observed.tabSequence : [];
+  requireCondition(
+    observed.viewportCssWidth === 390 &&
+      observed.viewportCssHeight === 844 &&
+      observed.interactiveControlCount === 21 &&
+      observed.reachableControlCount === 21 &&
+      observed.focusVisibleControlCount === 21 &&
+      tabSequence.length === 21 &&
+      new Set(tabSequence).size === 21 &&
+      clippedControls.length === 0 &&
+      textClippedControls.length === 0 &&
+      typeof observed.documentHorizontalOverflow === "number" &&
+      observed.documentHorizontalOverflow <= 1,
+    "Every current control must remain reachable at the 390px browser viewport"
+  );
+
+  return {
+    accessibilityClaim: true,
+    viewportCssWidth: observed.viewportCssWidth,
+    interactiveControls: observed.interactiveControlCount,
+    namedAxControls: axNodes.length,
+    tabStops: tabSequence.length,
+    focusVisibleControls: observed.focusVisibleControlCount,
+    horizontalOverflow: observed.documentHorizontalOverflow
+  };
+}
+
 export { EXPECTED_TOOL_NAMES };

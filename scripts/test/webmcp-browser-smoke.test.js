@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  validateAccessibilityObservation,
   validateBrowserHostBridgeObservation,
   validateConversationObservation,
   validateNativeWebMcpObservation,
@@ -361,6 +362,62 @@ test("200-percent browser zoom evidence rejects pinch zoom posing as browser zoo
   assert.throws(
     () => validateZoomReflowObservation(observed),
     /Browser zoom must be a two-times page zoom with a one-times visual viewport scale/
+  );
+});
+
+function validAccessibilityObservation() {
+  return {
+    viewportCssWidth: 390,
+    viewportCssHeight: 844,
+    documentHorizontalOverflow: 0,
+    interactiveControlCount: 21,
+    reachableControlCount: 21,
+    focusVisibleControlCount: 21,
+    tabSequence: Array.from({ length: 21 }, (_, index) => `control-${index + 1}`),
+    horizontallyClippedControls: [],
+    textClippedControls: [],
+    axInteractiveNodes: Array.from({ length: 21 }, (_, index) => ({
+      backendDOMNodeId: index + 1,
+      role: index === 0 ? "link" : "button",
+      name: `Control ${index + 1}`
+    }))
+  };
+}
+
+test("current accessibility evidence requires named AX controls and a complete 390px Tab path", () => {
+  assert.deepEqual(
+    validateAccessibilityObservation(validAccessibilityObservation()),
+    {
+      accessibilityClaim: true,
+      viewportCssWidth: 390,
+      interactiveControls: 21,
+      namedAxControls: 21,
+      tabStops: 21,
+      focusVisibleControls: 21,
+      horizontalOverflow: 0
+    }
+  );
+});
+
+test("current accessibility evidence rejects an unnamed browser AX control", () => {
+  const observed = validAccessibilityObservation();
+  observed.axInteractiveNodes[4].name = "";
+
+  assert.throws(
+    () => validateAccessibilityObservation(observed),
+    /Every interactive browser AX node must have a unique DOM identity and accessible name/
+  );
+});
+
+test("current accessibility evidence rejects narrow-layout overflow or incomplete Tab reach", () => {
+  const observed = validAccessibilityObservation();
+  observed.documentHorizontalOverflow = 8;
+  observed.reachableControlCount = 20;
+  observed.horizontallyClippedControls = ["stop-speech"];
+
+  assert.throws(
+    () => validateAccessibilityObservation(observed),
+    /Every current control must remain reachable at the 390px browser viewport/
   );
 });
 
