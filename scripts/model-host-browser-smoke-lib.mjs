@@ -41,14 +41,24 @@ export function validateModelHostBrowserObservation(observed) {
       observed.authorizationHeaderPresent === false,
     "The browser request must not contain credentials or provider configuration"
   );
+  const providerResponseAccepted = observed.providerResponseAccepted === true;
+  if (providerResponseAccepted) {
+    requireCondition(
+      observed.providerLocation === "local" || observed.providerLocation === "remote",
+      "A connected preferred-model claim requires a classified provider location"
+    );
+  }
 
   return {
     modelHostClaim: true,
-    externalModelClaim: false,
-    connectedModelClaim: false,
+    externalModelClaim: providerResponseAccepted && observed.providerLocation === "remote",
+    connectedModelClaim: providerResponseAccepted,
     browserVersion: observed.browserVersion,
     packetCharacters: observed.packetCharacters,
     clickGatedOffer: true,
-    browserCredentials: false
+    browserCredentials: false,
+    ...(providerResponseAccepted
+      ? { preferredModelClaim: true, providerLocation: observed.providerLocation }
+      : {})
   };
 }

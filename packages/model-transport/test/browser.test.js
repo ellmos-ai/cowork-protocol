@@ -102,3 +102,31 @@ test("a malformed injected adapter cannot shadow a discovered model host", () =>
   assert.equal(selectModelTransport({ injected, discovered }), injected);
   assert.equal(selectModelTransport({ injected: null, discovered: {} }), null);
 });
+
+test("a slow model turn uses its own bounded timeout instead of the discovery timeout", async () => {
+  const fetchImpl = async (url, options = {}) => {
+    if (url.endsWith("/status")) {
+      return Response.json({
+        protocolVersion: "0.1",
+        available: true,
+        transport: "same-origin-model-host"
+      });
+    }
+    return new Promise((resolve, reject) => {
+      options.signal.addEventListener(
+        "abort",
+        () => reject(new DOMException("Aborted", "AbortError")),
+        { once: true }
+      );
+    });
+  };
+  const transport = await discoverHttpModelTransport({
+    fetchImpl,
+    statusTimeoutMs: 100,
+    turnTimeoutMs: 150
+  });
+  const started = Date.now();
+  await assert.rejects(() => transport.sendTurn(turn), ModelTransportError);
+  const elapsed = Date.now() - started;
+  assert.ok(elapsed >= 100 && elapsed < 1000, `unexpected timeout: ${elapsed}ms`);
+});

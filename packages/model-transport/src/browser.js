@@ -12,8 +12,8 @@ export function selectModelTransport({ injected = null, discovered = null } = {}
   return null;
 }
 
-function boundedTimeout(value) {
-  return Number.isInteger(value) && value >= 100 && value <= 120000 ? value : 30000;
+function boundedTimeout(value, fallback) {
+  return Number.isInteger(value) && value >= 100 && value <= 120000 ? value : fallback;
 }
 
 async function fetchWithTimeout(fetchImpl, url, options, timeoutMs) {
@@ -30,15 +30,25 @@ export async function discoverHttpModelTransport({
   fetchImpl = globalThis.fetch,
   statusUrl = "/__cowork/model/status",
   turnUrl = "/__cowork/model/turn",
-  timeoutMs = 30000
+  timeoutMs = null,
+  statusTimeoutMs = 5000,
+  turnTimeoutMs = 120000
 } = {}) {
   if (typeof fetchImpl !== "function") return null;
+  const legacyTimeout =
+    Number.isInteger(timeoutMs) && timeoutMs >= 100 && timeoutMs <= 120000
+      ? timeoutMs
+      : null;
+  const boundedStatusTimeout =
+    legacyTimeout ?? boundedTimeout(statusTimeoutMs, 5000);
+  const boundedTurnTimeout =
+    legacyTimeout ?? boundedTimeout(turnTimeoutMs, 120000);
   try {
     const response = await fetchWithTimeout(
       fetchImpl,
       statusUrl,
       { headers: { Accept: "application/json" }, cache: "no-store" },
-      timeoutMs
+      boundedStatusTimeout
     );
     if (!response.ok) return null;
     const status = await response.json();
@@ -70,7 +80,7 @@ export async function discoverHttpModelTransport({
             cache: "no-store",
             body: JSON.stringify({ protocolVersion: "0.1", turn })
           },
-          timeoutMs
+          boundedTurnTimeout
         );
       } catch {
         throw new ModelTransportError(

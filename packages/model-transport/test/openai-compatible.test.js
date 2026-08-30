@@ -36,6 +36,8 @@ test("the compatible gateway keeps credentials server-side and returns a bounded
     endpoint: "https://models.example.test/v1/chat/completions",
     model: "preferred-model",
     apiKey: "server-only-key",
+    reasoningEffort: "none",
+    maxTokens: 200,
     fetchImpl: async (url, options) => {
       request = { url, options };
       return Response.json({
@@ -64,10 +66,37 @@ test("the compatible gateway keeps credentials server-side and returns a bounded
   assert.equal(request.options.headers.Authorization, "Bearer server-only-key");
   const body = JSON.parse(request.options.body);
   assert.equal(body.model, "preferred-model");
-  assert.equal(body.max_tokens, 500);
+  assert.equal(body.max_tokens, 200);
+  assert.equal(body.reasoning_effort, "none");
   assert.deepEqual(body.response_format, { type: "json_object" });
   assert.deepEqual(JSON.parse(body.messages[1].content), turn);
   assert.equal(JSON.stringify(reply).includes("server-only-key"), false);
+});
+
+test("the gateway rejects an unsupported reasoning level before any provider call", () => {
+  assert.throws(
+    () =>
+      createOpenAiCompatibleTurnSender({
+        endpoint: "https://models.example.test/v1/chat/completions",
+        model: "preferred-model",
+        reasoningEffort: "unbounded"
+      }),
+    /reasoningEffort/
+  );
+});
+
+test("the gateway rejects an answer budget outside the bounded range", () => {
+  for (const maxTokens of [63, 501, 2.5]) {
+    assert.throws(
+      () =>
+        createOpenAiCompatibleTurnSender({
+          endpoint: "https://models.example.test/v1/chat/completions",
+          model: "preferred-model",
+          maxTokens
+        }),
+      /maxTokens/
+    );
+  }
 });
 
 test("a malformed upstream reply fails closed without copying provider diagnostics", async () => {

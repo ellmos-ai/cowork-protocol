@@ -7,7 +7,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | Focus packets enforce 160/161 and 350-code-unit rules | `packages/core/test/focus-packet.test.js`; `npm run eval` | Local contract proven; no host-token claim |
 | Silence and unchanged state emit no packet | `packages/core/test/context-router.test.js`; eval cases | Local contract proven |
 | Typed or spoken input becomes a provider-neutral bounded turn | `packages/conversation/test/conversation.test.js`; FormBuilder conversation integration tests; `npm run smoke:webmcp` | Silence and Human Solo make no transport call; Chrome proves the local-demo reply plus a latest-only WebMCP pull/reply and two click-gated offers, while `connectedModelClaim` remains false |
-| A preferred model can attach without browser credentials or page HTML | model-transport and server tests; `npm run smoke:model-host` | Chrome 152 discovered the same-origin host, delivered one exact 468-character turn and applied its fixture offer only after a trusted click; external and connected-model claims remain false pending a real endpoint |
+| A preferred model can attach without browser credentials or page HTML | model-transport and server tests; deterministic plus provider-backed `npm run smoke:model-host` | Chrome 152 first proved the 468-character fixture path, then delivered a 502-character turn to local Ollama `qwen3:4b`; the actual model offer applied only after a trusted click. `preferredModelClaim` and `connectedModelClaim` true; `providerLocation: local`, `externalModelClaim: false` |
 | An agent can request one related context level without receiving the page | context-router, FormBuilder connector and native registration tests; eval, juror proof and Chrome 152 WebMCP smoke | Target binding, reason bound and 1,200-character one-shot response proven; Chrome invoked a 110-character response, connected-agent invocation open |
 | Agent offers cannot authorize themselves | `packages/core/test/action-authorization.test.js`; connected Edge fallback interaction; native Chrome 152 WebMCP smoke | Two native offers stayed inert until trusted Chrome clicks applied their exact visible values |
 | Change causality is explicit, reference-bounded and latest-only | `packages/core/test/change-feedback.test.js`; `interaction-log.test.js`; eval case; native Chrome smoke | Second trusted action read back as the only returned event with `omittedCount: 1` and explicit offer/click causes |
@@ -62,5 +62,5 @@ The independent Fable reviews reproduced the release-relevant capability, state,
 - real microphone permission, captured speech and audibly confirmed spoken output;
 - public GitHub repository readback; the current GitHub repository is private, while the local root license is MIT;
 - deployed live URL;
-- connected-model demonstration through the new host transport rather than the labeled local helper;
+- remote preferred-model demonstration through the host transport; the local Qwen provider path is accepted;
 - final updated YouTube demo and final Devpost field readback. The Devpost project is already published and submitted to The WebMCP Challenge.

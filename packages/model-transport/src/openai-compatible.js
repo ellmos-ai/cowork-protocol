@@ -33,6 +33,8 @@ export function createOpenAiCompatibleTurnSender({
   endpoint,
   model,
   apiKey = "",
+  reasoningEffort = "",
+  maxTokens = 500,
   fetchImpl = globalThis.fetch,
   timeoutMs = 60000
 }) {
@@ -41,6 +43,15 @@ export function createOpenAiCompatibleTurnSender({
     throw new TypeError("model must be a bounded non-empty string");
   }
   if (typeof fetchImpl !== "function") throw new TypeError("fetchImpl must be a function");
+  if (
+    reasoningEffort !== "" &&
+    !["none", "low", "medium", "high", "max"].includes(reasoningEffort)
+  ) {
+    throw new TypeError("reasoningEffort must be empty, none, low, medium, high, or max");
+  }
+  if (!Number.isInteger(maxTokens) || maxTokens < 64 || maxTokens > 500) {
+    throw new TypeError("maxTokens must be an integer between 64 and 500");
+  }
   const boundedTimeout =
     Number.isInteger(timeoutMs) && timeoutMs >= 100 && timeoutMs <= 120000
       ? timeoutMs
@@ -66,7 +77,8 @@ export function createOpenAiCompatibleTurnSender({
             { role: "user", content: JSON.stringify(turn) }
           ],
           response_format: { type: "json_object" },
-          max_tokens: 500,
+          ...(reasoningEffort === "" ? {} : { reasoning_effort: reasoningEffort }),
+          max_tokens: maxTokens,
           temperature: 0.2
         })
       });

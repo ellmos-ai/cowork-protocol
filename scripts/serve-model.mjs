@@ -16,7 +16,10 @@ if (!endpoint || !model) {
   const modelTurnHandler = createOpenAiCompatibleTurnSender({
     endpoint,
     model,
-    apiKey: process.env.COWORK_MODEL_API_KEY ?? ""
+    apiKey: process.env.COWORK_MODEL_API_KEY ?? "",
+    reasoningEffort: process.env.COWORK_MODEL_REASONING_EFFORT ?? "",
+    maxTokens: Number(process.env.COWORK_MODEL_MAX_TOKENS ?? 500),
+    timeoutMs: Number(process.env.COWORK_MODEL_TIMEOUT_MS ?? 60000)
   });
   const server = createStaticServer({
     root: path.resolve(process.cwd()),

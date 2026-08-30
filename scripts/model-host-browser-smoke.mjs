@@ -3,10 +3,12 @@ import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { createOpenAiCompatibleTurnSender } from "../packages/model-transport/src/openai-compatible.js";
 import { validateModelHostBrowserObservation } from "./model-host-browser-smoke-lib.mjs";
 import { createStaticServer } from "./serve.mjs";
 
 const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-model-host-smoke-"));
+const providerAcceptance = process.env.COWORK_ACCEPT_CONNECTED_MODEL === "1";
 let server;
 let browser;
 
@@ -131,10 +133,34 @@ async function dispatchTrustedClick(call, selector, label) {
 try {
   const chromePath = await resolveChromePath();
   const received = [];
+  let preferredModelSender = null;
+  let providerLocation = null;
+  if (providerAcceptance) {
+    const endpoint = process.env.COWORK_MODEL_ENDPOINT;
+    const model = process.env.COWORK_MODEL_ID;
+    if (!endpoint || !model) {
+      throw new Error(
+        "Connected-model acceptance requires COWORK_MODEL_ENDPOINT and COWORK_MODEL_ID"
+      );
+    }
+    const endpointUrl = new URL(endpoint);
+    providerLocation = ["127.0.0.1", "localhost", "::1"].includes(endpointUrl.hostname)
+      ? "local"
+      : "remote";
+    preferredModelSender = createOpenAiCompatibleTurnSender({
+      endpoint,
+      model,
+      apiKey: process.env.COWORK_MODEL_API_KEY ?? "",
+      reasoningEffort: process.env.COWORK_MODEL_REASONING_EFFORT ?? "",
+      maxTokens: Number(process.env.COWORK_MODEL_MAX_TOKENS ?? 500),
+      timeoutMs: 120000
+    });
+  }
   server = createStaticServer({
     root: process.cwd(),
     modelTurnHandler: async (turn, metadata) => {
       received.push({ turn, metadata });
+      if (preferredModelSender) return preferredModelSender(turn);
       return {
         message: "I can suggest a badge name. Click the offer to approve it.",
         offers: [
@@ -190,7 +216,11 @@ try {
 
   await dispatchTrustedClick(call, "#full-name", "Full name field");
   await evaluateValue(call, `(() => {
-    document.querySelector("#conversation-input").value = "Suggest a badge name";
+    document.querySelector("#conversation-input").value = ${JSON.stringify(
+      providerAcceptance
+        ? "Suggest exactly Grace Hopper for this Full name field."
+        : "Suggest a badge name"
+    )};
     document.querySelector("#speak-output").checked = false;
     return true;
   })()`);
@@ -198,7 +228,8 @@ try {
   await waitForExpression(
     call,
     `document.querySelector(".offer-chip")?.dataset.offerValue === "Grace Hopper"`,
-    "click-gated model offer"
+    "click-gated model offer",
+    providerAcceptance ? 1200 : 60
   );
 
   const beforeClick = await evaluateValue(call, `(() => ({
@@ -227,7 +258,9 @@ try {
     receivedTurn: turn,
     packetCharacters: JSON.stringify(turn).length,
     browserRequestKeys: metadata.requestKeys,
-    authorizationHeaderPresent: metadata.authorizationHeaderPresent
+    authorizationHeaderPresent: metadata.authorizationHeaderPresent,
+    providerResponseAccepted: providerAcceptance,
+    providerLocation
   });
   console.log(JSON.stringify(result, null, 2));
 } finally {

@@ -59,3 +59,24 @@ test("the model-host proof fails if page context or an action crosses the bounda
     /human click/
   );
 });
+
+test("a provider-backed browser journey is distinguished from the deterministic fixture", () => {
+  assert.deepEqual(
+    validateModelHostBrowserObservation({
+      ...validObservation(),
+      providerResponseAccepted: true,
+      providerLocation: "local"
+    }),
+    {
+      modelHostClaim: true,
+      externalModelClaim: false,
+      connectedModelClaim: true,
+      browserVersion: "Chrome/152",
+      packetCharacters: 517,
+      clickGatedOffer: true,
+      browserCredentials: false,
+      preferredModelClaim: true,
+      providerLocation: "local"
+    }
+  );
+});
