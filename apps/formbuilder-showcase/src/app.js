@@ -17,7 +17,11 @@ import {
   createShowcaseSubmission,
   SHOWCASE_SCHEMA
 } from "./formbuilder-use-case.js";
-import { createShowcaseSession, transitionShowcaseSession } from "./session.js";
+import {
+  actionModeAllows,
+  createShowcaseSession,
+  transitionShowcaseSession
+} from "./session.js";
 import {
   createChangeSnapshot,
   createFeedbackSnapshot,
@@ -25,7 +29,8 @@ import {
 } from "./interaction-log.js";
 import {
   buildPanelViewModel,
-  buildReceiptViewModels
+  buildReceiptViewModels,
+  prepareVisibleActionOffer
 } from "./view-model.js";
 
 const $ = (selector) => document.querySelector(selector);
@@ -56,6 +61,7 @@ let recognition = null;
 let leaseCallsUsed = 0;
 let responseDownloadUrl = null;
 let pendingChangeCause = null;
+let leaseExpiryTimer = null;
 
 function setStatus(message) {
   $("#system-status").textContent = message;
@@ -138,8 +144,9 @@ function renderOffers(view) {
     const strong = document.createElement("strong");
     strong.textContent = chip.label;
     const detail = document.createElement("span");
-    detail.textContent = `${offer.capabilityId} · ${offer.targetId}`;
+    detail.textContent = `${chip.capabilityId} · ${chip.targetId} · Value: ${chip.proposedValue}`;
     copy.append(strong, detail);
+    button.dataset.offerValue = chip.proposedValue;
     button.append(copy);
     button.addEventListener("click", (event) => executeOffer(event, offer));
     list.append(button);
@@ -229,6 +236,10 @@ function recordReceiptFeedback(event, receipt, verdict, adjustmentInput) {
 }
 
 function render() {
+  session = transitionShowcaseSession(session, {
+    type: "CLOCK_TICK",
+    now: new Date().toISOString()
+  });
   const view = buildPanelViewModel({ session, focusPacket, offers, capabilityLevel });
   $("#mode-badge").textContent = view.modeLabel;
   $("#human-label").textContent = view.humanLabel;
@@ -265,7 +276,7 @@ function applyControlValue(control, nextValue, cause) {
 }
 
 function createVisibleOffer({ capabilityId, targetId, value, summary }) {
-  if (session.agentPresence === "paused" || session.actionMode === "paused") {
+  if (session.agentPresence === "paused" || !actionModeAllows(session.actionMode, "offer")) {
     throw new CoworkProtocolError("SESSION_PAUSED", "Agent actions are paused");
   }
   if (!focusPacket || targetId !== focusPacket.targetId) {
@@ -284,12 +295,18 @@ function createVisibleOffer({ capabilityId, targetId, value, summary }) {
     );
   }
 
-  const offer = createActionOffer({
-    offerId: newOfferId(),
+  const visibleOffer = prepareVisibleActionOffer({
     capabilityId,
     targetId,
-    pageVersion,
     proposedArguments: { value },
+    summary
+  });
+  const offer = createActionOffer({
+    offerId: newOfferId(),
+    capabilityId: visibleOffer.capabilityId,
+    targetId: visibleOffer.targetId,
+    pageVersion,
+    proposedArguments: { value: visibleOffer.proposedValue },
     summary,
     effect: "mutate",
     undoAvailable: true,
@@ -330,6 +347,11 @@ function addDemoOffer() {
 }
 
 function executeOffer(event, offer) {
+  if (session.agentPresence === "paused" || !actionModeAllows(session.actionMode, "offer")) {
+    setStatus("SESSION_PAUSED: this action mode does not allow offer execution.");
+    render();
+    return;
+  }
   if (!event.isTrusted) {
     setStatus("HUMAN_CONFIRMATION_REQUIRED: synthetic clicks are rejected.");
     return;
@@ -340,6 +362,13 @@ function executeOffer(event, offer) {
     if (!control) {
       throw new CoworkProtocolError("STALE_FOCUS", "The offered field no longer exists");
     }
+    const visibleValue = event.currentTarget?.dataset.offerValue;
+    if (typeof visibleValue !== "string") {
+      throw new CoworkProtocolError(
+        "HUMAN_CONFIRMATION_REQUIRED",
+        "The human-visible offer value is unavailable"
+      );
+    }
     const authorization = authorizeActionOffer({
       offer,
       event: {
@@ -347,7 +376,7 @@ function executeOffer(event, offer) {
         offerId: offer.offerId,
         targetId: offer.targetId,
         pageVersion,
-        arguments: offer.proposedArguments
+        arguments: { value: visibleValue }
       },
       now: new Date().toISOString()
     });
@@ -373,7 +402,8 @@ function executeOffer(event, offer) {
       undoAvailable: plan.undoAvailable,
       pageVersion
     });
-    receipts = [...receipts, receipt];
+    session = transitionShowcaseSession(session, { type: "RECEIPT_RECORDED", receipt });
+    receipts = session.receipts;
     offers = offers.filter((candidate) => candidate.offerId !== offer.offerId);
     setStatus(
       verified
@@ -388,6 +418,10 @@ function executeOffer(event, offer) {
 }
 
 function startAway(duration) {
+  if (session.agentPresence === "paused" || !actionModeAllows(session.actionMode, "solo")) {
+    setStatus("SESSION_PAUSED: switch Action rights to Delegated lease before going away.");
+    return;
+  }
   if (!focusPacket) {
     setStatus("Focus a field before granting a solo lease.");
     return;
@@ -397,27 +431,37 @@ function startAway(duration) {
     setStatus("A solo lease needs a concrete task.");
     return;
   }
+  const now = Date.now();
   const lease = {
-    leaseId: `lease-${Date.now()}`,
+    leaseId: `lease-${now}`,
     goal,
     allowedCapabilityIds: focusPacket.capabilityIds.filter((id) => id !== "form.explain_field"),
     allowedTargetIds: [focusPacket.targetId],
     maxCalls: 2,
     maxContextLevel: 2,
     pageVersion,
-    expiresAt: new Date(Date.now() + 120_000).toISOString()
+    expiresAt: new Date(now + 120_000).toISOString()
   };
   leaseCallsUsed = 0;
   session = transitionShowcaseSession(session, {
     type: "HUMAN_AWAY",
     duration,
-    lease
+    lease,
+    now: new Date(now).toISOString()
   });
+  clearTimeout(leaseExpiryTimer);
+  leaseExpiryTimer = setTimeout(() => render(), 120_010);
   setStatus("Agent Solo is active only inside the displayed two-minute field lease.");
   render();
 }
 
 function executeSoloAction({ capabilityId, targetId, value }) {
+  if (session.agentPresence === "paused" || !actionModeAllows(session.actionMode, "solo")) {
+    throw new CoworkProtocolError(
+      "SESSION_PAUSED",
+      "Agent Solo requires the Delegated lease action mode"
+    );
+  }
   if (!session.lease) {
     throw new CoworkProtocolError("LEASE_EXPIRED", "No solo lease is active");
   }
@@ -438,6 +482,9 @@ function executeSoloAction({ capabilityId, targetId, value }) {
     proposedArguments: { value },
     currentValue: control.value
   });
+  session = transitionShowcaseSession(session, { type: "SOLO_ATTEMPT_STARTED" });
+  leaseCallsUsed = session.leaseCallsUsed;
+  const callNumber = leaseCallsUsed;
   const change = applyControlValue(control, plan.nextValue, {
     source: "agent",
     refs: [`lease:${session.lease.leaseId}`],
@@ -445,7 +492,7 @@ function executeSoloAction({ capabilityId, targetId, value }) {
   });
   const verified = control.value === plan.verificationExpected;
   const receipt = createActionReceipt({
-    offerId: `lease:${session.lease.leaseId}:call-${leaseCallsUsed + 1}`,
+    offerId: `lease:${session.lease.leaseId}:call-${callNumber}`,
     verified,
     observedChangeIds: verified && change ? [change.changeId] : [],
     verificationSummary: verified
@@ -454,8 +501,8 @@ function executeSoloAction({ capabilityId, targetId, value }) {
     undoAvailable: plan.undoAvailable,
     pageVersion
   });
-  if (verified) leaseCallsUsed += 1;
-  receipts = [...receipts, receipt];
+  session = transitionShowcaseSession(session, { type: "RECEIPT_RECORDED", receipt });
+  receipts = session.receipts;
   setStatus(
     verified
       ? "Agent Solo action verified. The page-version change now ends this lease."
@@ -466,6 +513,8 @@ function executeSoloAction({ capabilityId, targetId, value }) {
 }
 
 function returnHuman() {
+  clearTimeout(leaseExpiryTimer);
+  leaseExpiryTimer = null;
   session = transitionShowcaseSession(session, {
     type: "HUMAN_RETURNED",
     receipts,
@@ -661,6 +710,7 @@ $("#change-causality").addEventListener("change", (event) => {
 $("#action-mode").addEventListener("change", (event) => {
   session = { ...session, actionMode: event.target.value };
   setStatus(`Action mode changed to ${event.target.selectedOptions[0].text}.`);
+  render();
 });
 
 $("#expand-context").addEventListener("click", () => {

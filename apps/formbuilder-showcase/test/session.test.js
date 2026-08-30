@@ -25,11 +25,24 @@ test("the visible session distinguishes cowork, agent solo, human solo and silen
   const away = transitionShowcaseSession(initial, {
     type: "HUMAN_AWAY",
     duration: "short",
-    lease: { leaseId: "lease-1" }
+    lease: {
+      leaseId: "lease-1",
+      expiresAt: "2026-08-30T10:02:00.000Z"
+    },
+    now: "2026-08-30T10:00:00.000Z"
   });
   assert.equal(away.humanPresence, "afk-short");
   assert.equal(away.effectiveMode, "agent-solo");
-  assert.deepEqual(away.lease, { leaseId: "lease-1" });
+  assert.deepEqual(away.lease, {
+    leaseId: "lease-1",
+    expiresAt: "2026-08-30T10:02:00.000Z"
+  });
+
+  const expired = transitionShowcaseSession(away, {
+    type: "CLOCK_TICK",
+    now: "2026-08-30T10:02:00.000Z"
+  });
+  assert.equal(expired.effectiveMode, "idle");
 
   const returned = transitionShowcaseSession(away, {
     type: "HUMAN_RETURNED",
@@ -51,4 +64,26 @@ test("the visible session distinguishes cowork, agent solo, human solo and silen
   const resumed = transitionShowcaseSession(paused, { type: "AGENT_RESUMED" });
   assert.equal(resumed.agentPresence, "active");
   assert.equal(resumed.effectiveMode, "cowork");
+});
+
+test("solo attempts consume a call before verification and receipts stay bounded", () => {
+  const initial = {
+    ...createShowcaseSession(),
+    leaseCallsUsed: 0,
+    receipts: Array.from({ length: 20 }, (_, index) => ({
+      offerId: `old-${index + 1}`,
+      status: "verified"
+    }))
+  };
+
+  const attempted = transitionShowcaseSession(initial, { type: "SOLO_ATTEMPT_STARTED" });
+  assert.equal(attempted.leaseCallsUsed, 1);
+
+  const recorded = transitionShowcaseSession(attempted, {
+    type: "RECEIPT_RECORDED",
+    receipt: { offerId: "latest", status: "failed" }
+  });
+  assert.equal(recorded.receipts.length, 20);
+  assert.equal(recorded.receipts[0].offerId, "old-2");
+  assert.equal(recorded.receipts.at(-1).offerId, "latest");
 });

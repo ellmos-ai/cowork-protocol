@@ -1,5 +1,16 @@
 import { resolvePresenceMode } from "../../../packages/core/src/index.js";
 
+const ACTION_MODE_RIGHTS = {
+  explain: new Set(),
+  suggest: new Set(["offer"]),
+  delegated: new Set(["solo"]),
+  paused: new Set()
+};
+
+export function actionModeAllows(actionMode, operation) {
+  return ACTION_MODE_RIGHTS[actionMode]?.has(operation) ?? false;
+}
+
 export function createShowcaseSession() {
   return {
     humanPresence: "present",
@@ -13,13 +24,20 @@ export function createShowcaseSession() {
   };
 }
 
-function withEffectiveMode(state) {
+function withEffectiveMode(state, now = new Date().toISOString()) {
+  const currentTime = Date.parse(now);
+  const leaseExpiry = Date.parse(state.lease?.expiresAt);
+  const leaseValid =
+    state.lease !== null &&
+    Number.isFinite(currentTime) &&
+    Number.isFinite(leaseExpiry) &&
+    currentTime < leaseExpiry;
   return {
     ...state,
     effectiveMode: resolvePresenceMode({
       humanPresence: state.humanPresence,
       agentPresence: state.agentPresence,
-      leaseValid: state.lease !== null
+      leaseValid
     })
   };
 }
@@ -30,12 +48,16 @@ export function transitionShowcaseSession(state, event) {
   }
 
   if (event.type === "HUMAN_AWAY") {
-    return withEffectiveMode({
-      ...state,
-      humanPresence: event.duration === "long" ? "afk-long" : "afk-short",
-      lease: event.lease,
-      returnSummary: null
-    });
+    return withEffectiveMode(
+      {
+        ...state,
+        humanPresence: event.duration === "long" ? "afk-long" : "afk-short",
+        lease: event.lease,
+        leaseCallsUsed: 0,
+        returnSummary: null
+      },
+      event.now
+    );
   }
 
   if (event.type === "HUMAN_RETURNED") {
@@ -58,6 +80,24 @@ export function transitionShowcaseSession(state, event) {
 
   if (event.type === "AGENT_RESUMED") {
     return withEffectiveMode({ ...state, agentPresence: "active" });
+  }
+
+  if (event.type === "CLOCK_TICK") {
+    return withEffectiveMode(state, event.now);
+  }
+
+  if (event.type === "SOLO_ATTEMPT_STARTED") {
+    return {
+      ...state,
+      leaseCallsUsed: (state.leaseCallsUsed ?? 0) + 1
+    };
+  }
+
+  if (event.type === "RECEIPT_RECORDED") {
+    return {
+      ...state,
+      receipts: [...(state.receipts ?? []), event.receipt].slice(-20)
+    };
   }
 
   return state;

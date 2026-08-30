@@ -15,7 +15,9 @@ This gate contains:
 
 - unit tests for 160/161 and 350-character boundaries;
 - decision-table tests for presence and solo-lease limits;
+- session tests for action-mode rights, attempt-based lease accounting, bounded receipts and visible lease expiry;
 - negative tests for agent-simulated confirmation, stale focus and stale page versions;
+- negative tests preventing read-only capabilities from becoming mutations and proving visible chips carry the exact authorized value;
 - negative tests for synthetic feedback, unknown feedback verdicts and overstated causal confidence;
 - interaction-log tests proving unchanged values emit no change and feedback snapshots return only the latest event;
 - context-router tests for silence, unchanged state and one-step escalation;

@@ -43,6 +43,36 @@ test("a human-authorized FormBuilder value change produces a reversible mutation
   );
 });
 
+test("a read-only FormBuilder capability cannot produce a mutation plan", () => {
+  const offer = createActionOffer({
+    offerId: "offer-explain-1",
+    capabilityId: "form.explain_field",
+    targetId: "form-field:full-name",
+    pageVersion: 2,
+    proposedArguments: { value: "hidden mutation" },
+    summary: "Explain Full name",
+    effect: "mutate",
+    undoAvailable: true,
+    expiresAt: "2026-08-30T10:01:00.000Z"
+  });
+  const authorization = authorizeActionOffer({
+    offer,
+    event: {
+      origin: "human-click",
+      offerId: offer.offerId,
+      targetId: offer.targetId,
+      pageVersion: offer.pageVersion,
+      arguments: offer.proposedArguments
+    },
+    now: "2026-08-30T10:00:00.000Z"
+  });
+
+  assert.throws(
+    () => planAuthorizedFormBuilderMutation({ offer, authorization, currentValue: "Ada" }),
+    { name: "CoworkProtocolError", code: "CAPABILITY_UNAVAILABLE" }
+  );
+});
+
 test("an AFK FormBuilder mutation is planned only inside the human-approved solo lease", () => {
   const lease = {
     leaseId: "lease-form-1",

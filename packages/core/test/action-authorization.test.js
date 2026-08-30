@@ -33,9 +33,33 @@ test("an agent creates a visible offer but not its authorization", () => {
       effect: "mutate",
       requiresHumanConfirmation: true,
       undoAvailable: true,
-      expiresAt: "2026-08-30T10:01:00.000Z"
+      expiresAt: "2026-08-30T10:01:00.000Z",
+      metrics: {
+        summaryCharacters: 17,
+        summaryIncludedCharacters: 17
+      }
     }
   );
+});
+
+test("action-offer summaries are bounded in the core even without host schema validation", () => {
+  const offer = createActionOffer({
+    offerId: "offer-long-summary",
+    capabilityId: "form.set_value",
+    targetId: "field.name",
+    pageVersion: 4,
+    proposedArguments: { value: "Lukas" },
+    summary: "x".repeat(201),
+    effect: "mutate",
+    undoAvailable: true,
+    expiresAt: "2026-08-30T10:01:00.000Z"
+  });
+
+  assert.equal(offer.summary, `${"x".repeat(199)}…`);
+  assert.deepEqual(offer.metrics, {
+    summaryCharacters: 201,
+    summaryIncludedCharacters: 200
+  });
 });
 
 test("an executed action is successful only when its observed result verifies", () => {

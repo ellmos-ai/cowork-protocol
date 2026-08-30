@@ -125,11 +125,9 @@
           <label class="compact-select">
             <span class="visually-hidden">Action mode</span>
             <select id="action-mode">
-              <option value="explain">Explain</option>
-              <option value="suggest" selected>Suggest</option>
-              <option value="preview">Preview</option>
-              <option value="execute-on-click">Execute after click</option>
-              <option value="delegated">Delegated scope</option>
+              <option value="explain">Explain only</option>
+              <option value="suggest" selected>Suggest with click</option>
+              <option value="delegated">Delegated lease</option>
               <option value="paused">Paused</option>
             </select>
           </label>
@@ -154,7 +152,7 @@
           <button class="quiet-button" id="away-long" type="button">I’m away longer</button>
           <button class="primary-small" id="return-human" type="button">I’m back</button>
         </div>
-        <p class="microcopy">The demo lease lasts two minutes, allows two calls, and is bound to the focused field.</p>
+        <p class="microcopy">The demo lease lasts two minutes, permits at most two attempts, and ends after a verified page change.</p>
       </section>
 
       <section class="panel-section" aria-labelledby="audio-heading">

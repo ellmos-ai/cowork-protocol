@@ -18,7 +18,7 @@ The repository currently contains:
 - a current WebMCP registration adapter using `document.modelContext.registerTool()` and `AbortSignal` ownership;
 - a host-supplied WebMCP bridge catalog that emits bounded summaries, executes only read-only-hinted tools and keeps every mutation offer-only;
 - a legacy DOM/accessibility fallback with explain-only ephemeral targets, offer-only stable targets, one-step semantic expansion and a 400×400 visual-region request contract;
-- a responsive FormBuilder showcase with attention controls, visible offers, causal change receipts, one-click feedback, presence, scoped solo work and an audio fallback.
+- a responsive FormBuilder showcase with attention controls, exact-value action offers, enforced explain/suggest/delegated/paused rights, causal change receipts, one-click feedback, presence, scoped solo work and an audio fallback.
 
 The native browser path has a tested registration contract and the showcase is served locally. A real WebMCP browser smoke, visual acceptance, microphone acceptance and deployment are still pending because no browser runtime was connected during the latest verification. This README does not claim those gates as complete.
 

@@ -1,3 +1,5 @@
+import { actionModeAllows } from "./session.js";
+
 const MODE_LABELS = {
   cowork: "Cowork",
   "agent-solo": "Agent solo",
@@ -11,6 +13,32 @@ const CAPABILITY_LABELS = {
   legacy: "Legacy bridge",
   unavailable: "WebMCP unavailable"
 };
+
+const MUTATING_FORM_CAPABILITIES = new Set(["form.set_value", "form.clear_value"]);
+
+export function prepareVisibleActionOffer(offer) {
+  if (!MUTATING_FORM_CAPABILITIES.has(offer.capabilityId)) {
+    const error = new Error("Only mutating FormBuilder capabilities can create action offers");
+    error.name = "CoworkProtocolError";
+    error.code = "CAPABILITY_UNAVAILABLE";
+    throw error;
+  }
+  const proposedValue =
+    offer.capabilityId === "form.clear_value" ? "" : offer.proposedArguments?.value;
+  if (typeof proposedValue !== "string") {
+    const error = new Error("A visible FormBuilder offer requires a string value");
+    error.name = "CoworkProtocolError";
+    error.code = "INVALID_ARGUMENTS";
+    throw error;
+  }
+  return {
+    offerId: offer.offerId,
+    label: offer.summary,
+    capabilityId: offer.capabilityId,
+    targetId: offer.targetId,
+    proposedValue
+  };
+}
 
 function humanPresentation(humanPresence) {
   if (humanPresence === "afk-long") {
@@ -36,10 +64,13 @@ export function buildPanelViewModel({ session, focusPacket, offers, capabilityLe
       contextCharacters === undefined
         ? "No context sent"
         : `${contextCharacters} context characters`,
-    actionChips: offers.slice(0, 3).map((offer) => ({
-      offerId: offer.offerId,
-      label: offer.summary
-    }))
+    soloAllowed: actionModeAllows(session.actionMode, "solo"),
+    actionChips: actionModeAllows(session.actionMode, "offer")
+      ? offers
+          .filter((offer) => MUTATING_FORM_CAPABILITIES.has(offer.capabilityId))
+          .slice(0, 3)
+          .map(prepareVisibleActionOffer)
+      : []
   };
 }
 

@@ -1,6 +1,7 @@
 const SELECTED_TEXT_LIMIT = 160;
 const FOCUS_TEXT_LIMIT = 350;
 const EVENT_TEXT_LIMIT = 350;
+const OFFER_SUMMARY_LIMIT = 200;
 const EVENT_REFERENCE_LIMIT = 8;
 const EVENT_REFERENCE_TEXT_LIMIT = 120;
 const HUMAN_PRESENCE_VALUES = new Set(["present", "afk-short", "afk-long"]);
@@ -283,6 +284,7 @@ export function authorizeSoloAction(request) {
 }
 
 export function createActionOffer(input) {
+  const summary = truncateWithEllipsis(input.summary, OFFER_SUMMARY_LIMIT);
   return {
     protocolVersion: "0.1",
     type: "action-offer",
@@ -292,11 +294,15 @@ export function createActionOffer(input) {
     targetId: input.targetId,
     pageVersion: input.pageVersion,
     proposedArguments: input.proposedArguments,
-    summary: input.summary,
+    summary,
     effect: input.effect,
     requiresHumanConfirmation: true,
     undoAvailable: input.undoAvailable,
-    expiresAt: input.expiresAt
+    expiresAt: input.expiresAt,
+    metrics: {
+      summaryCharacters: input.summary.length,
+      summaryIncludedCharacters: summary.length
+    }
   };
 }
 
