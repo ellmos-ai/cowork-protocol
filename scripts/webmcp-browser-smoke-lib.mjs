@@ -257,4 +257,66 @@ export function validateBrowserHostBridgeObservation(observed) {
   };
 }
 
+export function validateZoomReflowObservation(observed) {
+  requireCondition(
+    observed && typeof observed === "object",
+    "Browser zoom observation is required"
+  );
+  const near = (value, expected, tolerance = 0.02) =>
+    typeof value === "number" && Math.abs(value - expected) <= tolerance;
+
+  requireCondition(
+    observed.requestedZoomPercent === 200 &&
+      near(observed.browserZoomFactor, 2) &&
+      near(observed.devicePixelRatio, 2) &&
+      near(observed.visualViewportScale, 1),
+    "Browser zoom must be a two-times page zoom with a one-times visual viewport scale"
+  );
+  requireCondition(
+    observed.requestedSurfaceWidth === 1440 &&
+      observed.requestedSurfaceHeight === 1200 &&
+      observed.viewportCssWidth > 0 &&
+      observed.viewportCssHeight > 0 &&
+      observed.viewportCssWidth <= observed.requestedSurfaceWidth / 2 &&
+      observed.viewportCssHeight <= observed.requestedSurfaceHeight / 2 &&
+      observed.viewportPhysicalWidth > observed.requestedSurfaceWidth - 64 &&
+      observed.viewportPhysicalWidth <= observed.requestedSurfaceWidth + 2 &&
+      observed.viewportPhysicalHeight > observed.requestedSurfaceHeight - 240 &&
+      observed.viewportPhysicalHeight <= observed.requestedSurfaceHeight + 2 &&
+      near(observed.viewportPhysicalWidth / observed.viewportCssWidth, 2) &&
+      near(observed.viewportPhysicalHeight / observed.viewportCssHeight, 2),
+    "The fixed 1440-by-1200 browser surface must reflow to a half-size CSS viewport " +
+      `(observed CSS ${observed.viewportCssWidth}x${observed.viewportCssHeight}, ` +
+      `physical ${observed.viewportPhysicalWidth}x${observed.viewportPhysicalHeight})`
+  );
+
+  const clippedControls = Array.isArray(observed.horizontallyClippedControls)
+    ? observed.horizontallyClippedControls
+    : [];
+  const textClippedControls = Array.isArray(observed.textClippedControls)
+    ? observed.textClippedControls
+    : [];
+  requireCondition(
+    isNonNegativeInteger(observed.interactiveControlCount) &&
+      observed.interactiveControlCount > 0 &&
+      observed.reachableControlCount === observed.interactiveControlCount &&
+      clippedControls.length === 0 &&
+      textClippedControls.length === 0 &&
+      typeof observed.documentHorizontalOverflow === "number" &&
+      observed.documentHorizontalOverflow <= 1,
+    "Every interactive control must remain horizontally visible and reachable at 200-percent zoom"
+  );
+
+  return {
+    browserZoomClaim: true,
+    requestedZoomPercent: observed.requestedZoomPercent,
+    browserZoomFactor: observed.browserZoomFactor,
+    viewportCssWidth: observed.viewportCssWidth,
+    viewportPhysicalWidth: observed.viewportPhysicalWidth,
+    interactiveControls: observed.interactiveControlCount,
+    reachableControls: observed.reachableControlCount,
+    horizontalOverflow: observed.documentHorizontalOverflow
+  };
+}
+
 export { EXPECTED_TOOL_NAMES };

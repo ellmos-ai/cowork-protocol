@@ -1,12 +1,13 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { createStaticServer } from "./serve.mjs";
 import {
   validateBrowserHostBridgeObservation,
-  validateNativeWebMcpObservation
+  validateNativeWebMcpObservation,
+  validateZoomReflowObservation
 } from "./webmcp-browser-smoke-lib.mjs";
 
 const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-webmcp-smoke-"));
@@ -169,6 +170,14 @@ async function dispatchTrustedClick(call, elementExpression, label) {
 
 try {
   const chromePath = await resolveChromePath();
+  const zoomLevel = Math.log(2) / Math.log(1.2);
+  const defaultProfilePath = path.join(profilePath, "Default");
+  await mkdir(defaultProfilePath, { recursive: true });
+  await writeFile(
+    path.join(defaultProfilePath, "Preferences"),
+    JSON.stringify({ partition: { default_zoom_level: { x: zoomLevel } } }),
+    "utf8"
+  );
   server = createStaticServer({ root: process.cwd() });
   await new Promise((resolve, reject) => {
     server.once("error", reject);
@@ -187,7 +196,9 @@ try {
       "--disable-gpu",
       "--enable-features=WebMCP,WebMCPTesting",
       "--enable-blink-features=WebMCP",
+      "--force-device-scale-factor=1",
       "--remote-debugging-port=0",
+      "--window-size=1440,1200",
       `--user-data-dir=${profilePath}`,
       showcaseUrl
     ],
@@ -206,6 +217,71 @@ try {
   const call = cdpClient(socket);
   await call("Runtime.enable");
   await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  const zoomObserved = await evaluateValue(call, `(async () => {
+    const selector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([type=hidden]):not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      "[tabindex]:not([tabindex='-1'])"
+    ].join(",");
+    const controls = [...new Set(document.querySelectorAll(selector))].filter((element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    });
+    const horizontallyClippedControls = [];
+    const textClippedControls = [];
+    let reachableControlCount = 0;
+
+    for (const [index, element] of controls.entries()) {
+      const label = element.id || element.getAttribute("name") || element.getAttribute("aria-label") ||
+        element.textContent.trim().slice(0, 60) || "control-" + index;
+      element.focus({ preventScroll: false });
+      element.scrollIntoView({ block: "center", inline: "nearest" });
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const rect = element.getBoundingClientRect();
+      const horizontallyVisible = rect.left >= -1 && rect.right <= window.innerWidth + 1;
+      const verticallyVisible = rect.top < window.innerHeight && rect.bottom > 0;
+      if (horizontallyVisible && verticallyVisible && document.activeElement === element) {
+        reachableControlCount += 1;
+      }
+      if (!horizontallyVisible) horizontallyClippedControls.push(label);
+      const style = getComputedStyle(element);
+      if (
+        element.scrollWidth > element.clientWidth + 1 &&
+        (style.overflowX === "hidden" || style.overflowX === "clip")
+      ) {
+        textClippedControls.push(label);
+      }
+    }
+
+    const viewportCssWidth = window.innerWidth;
+    const viewportCssHeight = window.innerHeight;
+    const devicePixelRatio = window.devicePixelRatio;
+    return {
+      requestedZoomPercent: 200,
+      requestedSurfaceWidth: 1440,
+      requestedSurfaceHeight: 1200,
+      browserZoomFactor: devicePixelRatio,
+      devicePixelRatio,
+      visualViewportScale: window.visualViewport?.scale ?? 1,
+      viewportCssWidth,
+      viewportCssHeight,
+      viewportPhysicalWidth: viewportCssWidth * devicePixelRatio,
+      viewportPhysicalHeight: viewportCssHeight * devicePixelRatio,
+      documentHorizontalOverflow: Math.max(
+        document.documentElement.scrollWidth,
+        document.body.scrollWidth
+      ) - document.documentElement.clientWidth,
+      interactiveControlCount: controls.length,
+      reachableControlCount,
+      horizontallyClippedControls,
+      textClippedControls
+    };
+  })()`);
 
   const evaluation = await call("Runtime.evaluate", {
     expression: `(async () => {
@@ -381,9 +457,11 @@ try {
   })()`);
   const summary = validateNativeWebMcpObservation(observed);
   const bridgeSummary = validateBrowserHostBridgeObservation(bridgeObserved);
+  const zoomSummary = validateZoomReflowObservation(zoomObserved);
   console.log(JSON.stringify({
     ...summary,
     bridge: bridgeSummary,
+    zoom: zoomSummary,
     hostTokenClaim: false,
     toolNames: observed.toolNames
   }, null, 2));

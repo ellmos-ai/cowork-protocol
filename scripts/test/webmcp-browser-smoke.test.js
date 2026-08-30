@@ -3,7 +3,8 @@ import test from "node:test";
 
 import {
   validateBrowserHostBridgeObservation,
-  validateNativeWebMcpObservation
+  validateNativeWebMcpObservation,
+  validateZoomReflowObservation
 } from "../webmcp-browser-smoke-lib.mjs";
 
 const expectedTools = [
@@ -192,6 +193,61 @@ test("native WebMCP browser evidence rejects an unbounded or reusable context ex
   assert.throws(
     () => validateNativeWebMcpObservation(observed),
     /one-shot context expansion must stay within 1,200 adapter characters/
+  );
+});
+
+function validZoomObservation() {
+  return {
+    requestedZoomPercent: 200,
+    requestedSurfaceWidth: 1440,
+    requestedSurfaceHeight: 1200,
+    browserZoomFactor: 2,
+    devicePixelRatio: 2,
+    visualViewportScale: 1,
+    viewportCssWidth: 712,
+    viewportCssHeight: 524,
+    viewportPhysicalWidth: 1424,
+    viewportPhysicalHeight: 1048,
+    documentHorizontalOverflow: 0,
+    interactiveControlCount: 19,
+    reachableControlCount: 19,
+    horizontallyClippedControls: [],
+    textClippedControls: []
+  };
+}
+
+test("200-percent browser zoom evidence requires reflow and every control to remain reachable", () => {
+  assert.deepEqual(validateZoomReflowObservation(validZoomObservation()), {
+    browserZoomClaim: true,
+    requestedZoomPercent: 200,
+    browserZoomFactor: 2,
+    viewportCssWidth: 712,
+    viewportPhysicalWidth: 1424,
+    interactiveControls: 19,
+    reachableControls: 19,
+    horizontalOverflow: 0
+  });
+});
+
+test("200-percent browser zoom evidence rejects clipped or unreachable controls", () => {
+  const observed = validZoomObservation();
+  observed.reachableControlCount = 18;
+  observed.horizontallyClippedControls = ["stop-speech"];
+
+  assert.throws(
+    () => validateZoomReflowObservation(observed),
+    /Every interactive control must remain horizontally visible and reachable at 200-percent zoom/
+  );
+});
+
+test("200-percent browser zoom evidence rejects pinch zoom posing as browser zoom", () => {
+  const observed = validZoomObservation();
+  observed.devicePixelRatio = 1;
+  observed.visualViewportScale = 2;
+
+  assert.throws(
+    () => validateZoomReflowObservation(observed),
+    /Browser zoom must be a two-times page zoom with a one-times visual viewport scale/
   );
 });
 
