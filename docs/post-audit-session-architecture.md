@@ -208,54 +208,69 @@ session or conversation.
 ### USECASE_SESSION_001 — detach without installation
 
 **Precondition:** FormBuilder is open in a browser supporting Document
-Picture-in-Picture.  
-**Input:** The human chooses `Detach`.  
+Picture-in-Picture.
+
+**Input:** The human chooses `Detach`.
+
 **Expected:** The existing Cowork surface moves into an independently movable
 always-on-top browser window. Presence, focus, offers and conversation remain
 the same session. Closing the detached window docks the same surface back into
-FormBuilder.  
+FormBuilder.
+
 **Proves:** surface handoff without a second model or copied state.
 
 ### USECASE_SESSION_002 — tray handoff after permission
 
 **Precondition:** A Companion is running and the origin received local
-connection permission.  
-**Input:** The human chooses `Open in Companion`.  
+connection permission.
+
+**Input:** The human chooses `Open in Companion`.
+
 **Expected:** The Companion accepts the exact snapshot revision, becomes the
 primary surface and receives subsequent deltas. The Embed collapses to a
-connected relay indicator.  
+connected relay indicator.
+
 **Proves:** no-extension website-to-Companion continuity.
 
 ### USECASE_SESSION_003 — AFK continuation and return
 
 **Precondition:** The human grants a bounded solo lease while the application
-connection stays available.  
-**Input:** Human presence changes to away and later present.  
+connection stays available.
+
+**Input:** Human presence changes to away and later present.
+
 **Expected:** The same Cowork model seat continues only within the lease. On
 return, the human receives a compact verified/failed/pending briefing rather
-than a history replay.  
+than a history replay.
+
 **Proves:** shared context, explicit authority and token-bounded handback.
 
 ### USECASE_SESSION_004 — provider extension uses Cowork infrastructure
 
 **Precondition:** The human chose a Codex, Claude or other provider extension as
-the working chat surface.  
+the working chat surface.
+
 **Input:** The provider agent invokes Cowork/WebMCP tools supplied by the page
-or optional Cowork bridge.  
+or optional Cowork bridge.
+
 **Expected:** The visible provider chat remains the human's conversation
 context while both human and agent can use Cowork modes, focus, rights and
-actions. Cowork never claims to possess the provider's private chat memory.  
+actions. Cowork never claims to possess the provider's private chat memory.
+
 **Proves:** foreign tools use Cowork infrastructure without requiring the
 Cowork Companion as their chat UI.
 
 ### USECASE_SESSION_005 — page closes during a session
 
 **Precondition:** The Companion owns the session and the page provides the only
-application action channel.  
-**Input:** The page closes.  
+application action channel.
+
+**Input:** The page closes.
+
 **Expected:** Context and prepared work remain available, while page actions
 become offline and no mutation is claimed. Reopening and rejoining at an exact
-revision restores the action channel.  
+revision restores the action channel.
+
 **Proves:** honest separation between collaboration state and application
 state.
 
@@ -263,14 +278,17 @@ state.
 
 **Precondition:** Three sites expose equivalent Cowork/WebMCP capabilities and
 select `protocol-only`, `protocol-and-ui` and
-`protocol-and-user-optional-ui`.  
+`protocol-and-user-optional-ui`.
+
 **Input:** Compatible clients discover the protocol; the user explicitly
-activates the optional page UI on the third site.  
+activates the optional page UI on the third site.
+
 **Expected:** All three clients receive protocol access. The first site mounts
 no page UI, the second mounts only its selected provider automatically, and the
 third mounts only its selected provider after activation. A Cowork Side Panel,
 Companion, provider chat or other external client never needs to be inserted
-into the page to consume the protocol.  
+into the page to consume the protocol.
+
 **Proves:** UI-provider neutrality and operator control without coupling the
 collaboration contract to the Cowork reference surface.
 
