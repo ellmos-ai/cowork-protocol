@@ -1,44 +1,56 @@
 # Architecture
 
+The accepted [post-audit session architecture](post-audit-session-architecture.md)
+separates the headless, provider-neutral protocol from every UI. A website may
+choose protocol only, protocol plus an automatically mounted UI, or protocol
+plus a user-activated optional UI. External surfaces such as a browser Side
+Panel, desktop Companion or deliberately selected third-party provider chat
+can consume the protocol without being inserted into the website. Cowork-owned
+surfaces share one Session Authority; a provider chat remains its own
+conversation authority instead of pretending that private provider context is
+ours. The diagrams below distinguish this accepted direction from the parts
+already implemented and browser-tested.
+
 This UML-like C4 component view answers one question: which component owns context, authority and application-specific behavior?
 
 ![Cowork Protocol architecture overview](../design/architecture-overview.svg)
 
-The overview above is the compact submission view: human intent enters through the Cowork Panel, the Protocol Core keeps context and authority bounded, and the runtime selects the strongest connector the current page actually provides. The Mermaid views below remain the source-backed engineering detail and text alternatives.
+The overview above is the compact submission view: human intent can enter
+through any compatible surface, the Protocol Core keeps context and authority
+bounded, and the runtime selects the strongest connector the current page
+actually provides. The Mermaid views below remain the source-backed
+engineering detail and text alternatives.
 
 ```mermaid
 flowchart TB
   HUMAN["Human\nfocus, speech, click, presence"]
   AGENT["Web agent\nhypothesis, proposal, scoped work"]
   BROWSER["WebMCP-capable browser\nModelContext mediation"]
-  PANEL["Cowork Panel\nmodes, offers, feedback, receipts"]
+  SURFACES["Interchangeable surfaces\nEmbed, PiP, Side Panel, Desktop/tray or provider chat"]
+  SESSION["Session Authority\nrevision, surface lease, model-seat lease"]
+  CONTEXT["Context Manager\ncompact summary and bounded recent turns"]
+  GATEWAY["Model Gateway\none serialized inference queue"]
   CORE["Protocol Core\ncausal events, budgets, rights, leases"]
-  CONVERSATION["Conversation Transport\nbounded turn and normalized reply"]
-  MODELHOST["Same-origin Model Host\nserver-side provider gateway"]
-  INBOX["Conversation Inbox\nlatest pending turn"]
-  LOCAL["Local Demo Helper\ndeterministic fallback"]
   NATIVE["Native WebMCP Connector"]
   WEBBRIDGE["WebMCP Bridge"]
   LEGACY["Legacy DOM/A11y/Visual-request Bridge"]
-  EXTENSION["Browser Companion Extension\ndefault-off semantic and crop host"]
+  EXTENSION["Browser Extension Relay\nheadless near page; UI in Side Panel"]
   LEGACYPAGE["Arbitrary web page\nCowork and WebMCP absent"]
   FORM["FormBuilder Showcase"]
 
-  HUMAN -->|"authorizes and evaluates"| PANEL
-  PANEL -->|"utterance, compact focus and presence"| CONVERSATION
-  CONVERSATION <-->|"injected sendTurn"| AGENT
-  CONVERSATION -->|"exact bounded turn; no browser key"| MODELHOST
-  MODELHOST <-->|"server-side provider request"| AGENT
-  CONVERSATION -->|"publish latest turn"| INBOX
-  INBOX <-->|"latest turn and exact-id reply"| NATIVE
-  LOCAL -.->|"fallback reply, no model claim"| CONVERSATION
-  CONVERSATION -->|"message and unexecuted offers"| PANEL
-  PANEL -->|"PresenceEvent, authorization, FeedbackEvent"| CORE
+  HUMAN -->|"selects, authorizes and evaluates"| SURFACES
+  SURFACES <-->|"commands and versioned projections"| SESSION
+  SESSION -->|"Cowork-owned context"| CONTEXT
+  CONTEXT <-->|"one bounded turn at a time"| GATEWAY
+  GATEWAY <-->|"exclusive Cowork model seat"| AGENT
+  SURFACES -.->|"provider-owned private chat context"| AGENT
+  SESSION <-->|"presence, modes, rights and causal journal"| CORE
+  SURFACES -->|"authorization and FeedbackEvent"| CORE
   CORE -->|"bounded focus, latest feedback, or offer"| AGENT
   AGENT -->|"context request or proposal"| CORE
   AGENT <-->|"discovers and invokes tools"| BROWSER
   BROWSER <-->|"registerTool, getTools, executeTool"| NATIVE
-  CORE -->|"verified receipt"| PANEL
+  CORE -->|"verified receipt"| SURFACES
   CORE <--> |"versioned protocol messages"| NATIVE
   CORE <--> |"degraded guarantees"| WEBBRIDGE
   CORE <--> |"best-effort signals"| LEGACY
@@ -48,7 +60,52 @@ flowchart TB
   FORM -->|"observed ChangeEvent with cause refs"| CORE
 ```
 
-Text alternative: the panel is the human control surface, the core enforces context and authority, and connectors translate application or browser data into the same protocol. A WebMCP-capable browser mediates discovery and invocation between the web agent and the native connector. The conversation transport accepts typed or spoken input through an injected host adapter, the same-origin model host, or a latest-only WebMCP pull inbox; the showcase uses a labeled deterministic helper when no host transport exists. The same-origin host validates the exact bounded turn and keeps provider endpoint, model ID and key on the server. Replies may describe offers, but only the panel can render them and only a human click can authorize them. FormBuilder reports value deltas as digest-based change events with explicit cause references. Only the native FormBuilder connector can promise stable targets and application-level verification. Bridge connectors must expose their reduced capability level.
+Text alternative: the visible surface is replaceable. Every Cowork-owned
+surface reads and writes one versioned Session Authority; one Context Manager
+stores only a compact summary and recent bounded turns, and one Model Gateway
+serializes inference under an exclusive renewable model-seat lease. A foreign
+provider chat may use the Protocol Core while retaining its private context.
+The core enforces modes, rights and causal events, while connectors translate
+application or browser data into the same contract. A WebMCP-capable browser
+mediates discovery and invocation between the web agent and the native
+connector. Replies may describe offers, but only a compatible human-facing
+surface can render them and only an explicit human authorization can approve
+them. FormBuilder reports value deltas as digest-based change events with
+explicit cause references. Only its native connector can promise stable
+targets and application-level verification; bridge connectors expose their
+reduced capability level.
+
+`packages/integration-contract` makes this split executable. Its declarations
+contain no preferred UI vendor. The site selects only its in-page presentation
+policy and, where applicable, the UI provider it intends to mount. An external
+surface negotiates protocol access without a page mount. A cooperating website
+may still select and embed the Cowork reference UI as an ordinary consumer,
+which is exactly what the FormBuilder showcase declares. The Cowork extension
+uses the browser-owned Side Panel supported by
+[Chrome](https://developer.chrome.com/docs/extensions/reference/api/sidePanel)
+and [Microsoft Edge](https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/sidebar);
+the content script remains a relay or bounded fallback adapter rather than a
+visual panel inside the website. Page embedding and extension injection are
+therefore separate decisions, not mutually exclusive product paths.
+
+`packages/session-authority`, `packages/context-manager`,
+`packages/model-gateway` and `packages/companion-link` implement the shared
+Cowork-owned path. FormBuilder may begin as temporary authority, detach the
+same DOM surface into Document Picture-in-Picture and then send one exact
+snapshot plus compact context to the loopback Companion. The Companion records
+the surface handoff and model-seat claim as two contiguous deltas, persists the
+session, and becomes the only inference path. Its independently movable
+Edge/Chrome app window and Windows tray are presentation clients of that same
+process. The embedded UI collapses and disables its model input but remains an
+application/UI replica that can pull later deltas. Browser Local Network Access
+permission is still explicitly granted by the human.
+
+The optional extension uses two execution worlds for Native-first behavior.
+A minimal main-world bridge can reach the page-owned
+`document.modelContext`; all visual and privileged extension work remains in
+the isolated extension world and Side Panel. If native Cowork tools exist, the
+extension invokes them directly and never starts its legacy fallback. If the
+page exposes no WebMCP, the separate bounded fallback path below applies.
 
 The human authorization surface accepts only losslessly JSON-serializable action arguments. A FormBuilder offer displays the exact proposed value, limits it to 350 Unicode code points in both its WebMCP schema and runtime guard, and expires it from the DOM on a scheduled render; agent-generated events cannot authorize it.
 

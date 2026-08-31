@@ -318,10 +318,10 @@ function validZoomObservation() {
     viewportPhysicalWidth: 1424,
     viewportPhysicalHeight: 1048,
     documentHorizontalOverflow: 0,
-    interactiveControlCount: 21,
-    reachableControlCount: 21,
-    focusVisibleControlCount: 21,
-    tabSequence: Array.from({ length: 21 }, (_, index) => `control-${index + 1}`),
+    interactiveControlCount: 23,
+    reachableControlCount: 23,
+    focusVisibleControlCount: 23,
+    tabSequence: Array.from({ length: 23 }, (_, index) => `control-${index + 1}`),
     unreachableControls: [],
     horizontallyClippedControls: [],
     textClippedControls: []
@@ -335,9 +335,9 @@ test("200-percent browser zoom evidence requires reflow and every control to rem
     browserZoomFactor: 2,
     viewportCssWidth: 712,
     viewportPhysicalWidth: 1424,
-    interactiveControls: 21,
-    reachableControls: 21,
-    focusVisibleControls: 21,
+    interactiveControls: 23,
+    reachableControls: 23,
+    focusVisibleControls: 23,
     horizontalOverflow: 0
   });
 });
@@ -370,13 +370,13 @@ function validAccessibilityObservation() {
     viewportCssWidth: 390,
     viewportCssHeight: 844,
     documentHorizontalOverflow: 0,
-    interactiveControlCount: 21,
-    reachableControlCount: 21,
-    focusVisibleControlCount: 21,
-    tabSequence: Array.from({ length: 21 }, (_, index) => `control-${index + 1}`),
+    interactiveControlCount: 23,
+    reachableControlCount: 23,
+    focusVisibleControlCount: 23,
+    tabSequence: Array.from({ length: 23 }, (_, index) => `control-${index + 1}`),
     horizontallyClippedControls: [],
     textClippedControls: [],
-    axInteractiveNodes: Array.from({ length: 21 }, (_, index) => ({
+    axInteractiveNodes: Array.from({ length: 23 }, (_, index) => ({
       backendDOMNodeId: index + 1,
       role: index === 0 ? "link" : "button",
       name: `Control ${index + 1}`
@@ -390,10 +390,10 @@ test("current accessibility evidence requires named AX controls and a complete 3
     {
       accessibilityClaim: true,
       viewportCssWidth: 390,
-      interactiveControls: 21,
-      namedAxControls: 21,
-      tabStops: 21,
-      focusVisibleControls: 21,
+      interactiveControls: 23,
+      namedAxControls: 23,
+      tabStops: 23,
+      focusVisibleControls: 23,
       horizontalOverflow: 0
     }
   );

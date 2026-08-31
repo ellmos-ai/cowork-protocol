@@ -1,0 +1,32 @@
+:root {
+  color-scheme: light;
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #fff9ef;
+  color: #172033;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 280px; }
+main { min-height: 100vh; padding: 22px; background: linear-gradient(145deg, #fffdf8, #eafbf7); }
+header, .section-row, .presence, .presence div { display: flex; align-items: center; }
+header { gap: 12px; }
+.mark { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 16px; background: #0f8f86; color: white; font-weight: 900; font-size: 24px; box-shadow: 0 7px 20px rgb(15 143 134 / 20%); }
+.eyebrow { margin: 0; color: #8a5a05; font: 800 11px/1.2 ui-monospace, Consolas, monospace; letter-spacing: .12em; text-transform: uppercase; }
+h1 { margin: 2px 0 0; font-size: 24px; line-height: 1.05; }
+h2 { margin: 0; font-size: 16px; }
+.presence { gap: 10px; margin: 22px 0 14px; }
+.presence div { flex: 1; gap: 8px; border: 1px solid #d7c8ae; border-radius: 14px; background: rgb(255 255 255 / 80%); padding: 9px 11px; font-size: 13px; font-weight: 750; }
+.human-icon { color: #16a36f; }
+.model-icon { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 6px; background: #ff705c; color: white; font-size: 11px; }
+.status-card, .offer-card { border: 1px solid #d7c8ae; border-radius: 20px; background: #fffefb; box-shadow: 0 12px 32px rgb(40 32 21 / 8%); padding: 16px; }
+.offer-card { margin-top: 14px; border-color: #d9b45b; }
+.section-row { justify-content: space-between; gap: 12px; }
+.mode { border-radius: 999px; background: #edf1f5; color: #526070; padding: 4px 9px; font-size: 12px; font-weight: 800; }
+.mode.active { background: #dcf8ed; color: #087653; }
+#status { margin: 14px 0 3px; font-weight: 750; }
+.detail, footer { color: #5c6572; font-size: 12px; }
+button { width: 100%; margin-top: 14px; border: 0; border-radius: 13px; cursor: pointer; font: 800 14px/1.3 system-ui, sans-serif; padding: 11px 12px; text-align: left; }
+button:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }
+.primary { background: #075985; color: white; }
+.secondary { background: #fff0ed; color: #a63324; border: 1px solid #ff9d90; text-align: center; }
+footer { margin-top: 18px; text-align: center; }

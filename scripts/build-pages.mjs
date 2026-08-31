@@ -19,8 +19,11 @@ const PUBLIC_FILES = [
   "packages/core/src/index.js",
   "packages/conversation/src/index.js",
   "packages/formbuilder-connector/src/index.js",
+  "packages/integration-contract/src/index.js",
   "packages/model-transport/src/browser.js",
-  "packages/native-webmcp/src/index.js"
+  "packages/native-webmcp/src/index.js",
+  "packages/reference-ui/src/index.js",
+  "packages/session-authority/src/index.js"
 ];
 
 export async function buildPages({ sourceRoot, outputRoot }) {

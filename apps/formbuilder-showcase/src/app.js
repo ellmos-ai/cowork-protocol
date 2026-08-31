@@ -22,6 +22,21 @@ import {
   selectModelTransport
 } from "../../../packages/model-transport/src/browser.js";
 import {
+  applySessionDeltaBatch,
+  createCoworkSessionAuthority,
+  createSessionBriefing
+} from "../../../packages/session-authority/src/index.js";
+import {
+  createCompanionHello,
+  createHttpCompanionLink
+} from "../../../packages/companion-link/src/index.js";
+import { createCoworkContextManager } from "../../../packages/context-manager/src/index.js";
+import {
+  copyIntegrationDeclaration,
+  createProtocolHostDeclaration
+} from "../../../packages/integration-contract/src/index.js";
+import { REFERENCE_UI_PROVIDER_ID } from "../../../packages/reference-ui/src/index.js";
+import {
   createShowcaseSubmission,
   SHOWCASE_SCHEMA
 } from "./formbuilder-use-case.js";
@@ -47,7 +62,21 @@ import {
 import { createRecognitionSession } from "./speech-controller.js";
 import { replyToShowcaseTurn } from "./local-conversation.js";
 
-const $ = (selector) => document.querySelector(selector);
+const SESSION_ID = "formbuilder-showcase";
+const EMBEDDED_SURFACE_ID = "formbuilder:embedded";
+const DETACHED_SURFACE_ID = "formbuilder:document-pip";
+const integrationDeclaration = createProtocolHostDeclaration({
+  hostId: "formbuilder-showcase",
+  transports: ["webmcp"],
+  integrationMode: "protocol-and-ui",
+  pageUiProviderId: REFERENCE_UI_PROVIDER_ID
+});
+const coworkPanel = document.querySelector(".cowork-panel");
+const panelHomeMarker = document.createComment("cowork-panel-home");
+coworkPanel.before(panelHomeMarker);
+
+const $ = (selector) =>
+  document.querySelector(selector) ?? coworkPanel.querySelector(selector);
 const fields = [...document.querySelectorAll(".form-field[data-field-id]")];
 const schemaFields = new Map(
   SHOWCASE_SCHEMA.form.elements.map((field) => [field.id, field])
@@ -59,7 +88,14 @@ for (const field of fields) {
   }
 }
 
-let session = createShowcaseSession();
+let session = {
+  ...createShowcaseSession(),
+  modelSeat: {
+    owner: "cowork",
+    contextAuthority: "cowork-session"
+  },
+  lastConversation: null
+};
 let focusPacket = null;
 let focusedField = null;
 let offers = [];
@@ -78,6 +114,91 @@ let pendingChangeCause = null;
 let leaseExpiryTimer = null;
 let offerExpiryTimer = null;
 let conversationBusy = false;
+let detachedSurfaceWindow = null;
+let companionReplicaSnapshot = null;
+let companionConnection = null;
+let contextTurnCounter = 0;
+
+const contextManager = createCoworkContextManager({ sessionId: SESSION_ID });
+
+function nextContextTurnId(role) {
+  contextTurnCounter += 1;
+  return `${role}-turn-${contextTurnCounter}`;
+}
+
+function readCurrentSessionSnapshot() {
+  return companionReplicaSnapshot ?? sessionAuthority.readSnapshot();
+}
+
+function authorityState(nextSession = session) {
+  const sessionReceipts = nextSession.receipts ?? receipts;
+  return {
+    ...nextSession,
+    focus: focusPacket,
+    pageVersion,
+    capabilityLevel,
+    pendingOfferIds: offers.slice(-3).map((offer) => offer.offerId),
+    latestChangeId: changeEvents.at(-1)?.changeId ?? null,
+    latestFeedbackOfferId: feedbackEvents.at(-1)?.relatedOfferId ?? null,
+    receiptSummary: {
+      total: sessionReceipts.length,
+      verified: sessionReceipts.filter((receipt) => receipt.status === "verified").length,
+      failed: sessionReceipts.filter((receipt) => receipt.status === "failed").length
+    }
+  };
+}
+
+const sessionAuthority = createCoworkSessionAuthority({
+  sessionId: SESSION_ID,
+  initialState: authorityState(session),
+  primarySurface: {
+    surfaceId: EMBEDDED_SURFACE_ID,
+    kind: "embedded",
+    reason: "FormBuilder opened"
+  }
+});
+session = sessionAuthority.readState();
+
+function commitSession(kind, nextSession = session, options = {}) {
+  if (companionReplicaSnapshot !== null) {
+    return {
+      committed: false,
+      revision: companionReplicaSnapshot.revision,
+      state: structuredClone(session),
+      reason: "companion-is-session-authority"
+    };
+  }
+  const result = sessionAuthority.commit({
+    kind,
+    nextState: authorityState(nextSession),
+    sourceSurfaceId:
+      options.sourceSurfaceId ?? session.surface?.primarySurfaceId ?? EMBEDDED_SURFACE_ID,
+    causeRefs: options.causeRefs ?? [],
+    payload: options.payload ?? null,
+    at: options.at ?? new Date().toISOString(),
+    recordUnchanged: options.recordUnchanged ?? false
+  });
+  session = result.state;
+  return result;
+}
+
+function claimSurface({ surfaceId, kind, reason }) {
+  if (companionReplicaSnapshot !== null) {
+    throw new CoworkProtocolError(
+      "COMPANION_IS_SESSION_AUTHORITY",
+      "Dock or detach the Cowork surface from the active Companion"
+    );
+  }
+  const lease = sessionAuthority.claimSurface({
+    surfaceId,
+    kind,
+    reason,
+    expectedRevision: sessionAuthority.readSnapshot().revision,
+    sourceSurfaceId: session.surface?.primarySurfaceId ?? EMBEDDED_SURFACE_ID
+  });
+  session = sessionAuthority.readState();
+  return lease;
+}
 
 const injectedHostModelTransport = window.coworkModelTransport;
 const discoveredHostModelTransport =
@@ -101,6 +222,181 @@ let conversationTransportLabel = hasHostModelTransport
 
 function setStatus(message) {
   $("#system-status").textContent = message;
+}
+
+function currentSessionBriefing() {
+  return createSessionBriefing({
+    snapshot: readCurrentSessionSnapshot(),
+    focus: focusPacket,
+    summary:
+      session.humanPresence === "present"
+        ? "The human and model are working together in FormBuilder."
+        : "The human is away; continue only inside the active solo lease.",
+    pendingOfferIds: offers.map((offer) => offer.offerId),
+    latestChangeIds: changeEvents.map((change) => change.changeId),
+    capabilityDigest: `${capabilityLevel}:${pageVersion}`
+  });
+}
+
+Object.defineProperty(window, "coworkSession", {
+  configurable: true,
+  value: Object.freeze({
+    readSnapshot: () => readCurrentSessionSnapshot(),
+    readDeltas: (afterRevision) =>
+      companionReplicaSnapshot === null
+        ? sessionAuthority.readDeltas({ afterRevision })
+        : null,
+    readBriefing: () => currentSessionBriefing(),
+    readContext: () => contextManager.readContext(),
+    syncFromCompanion: async () => {
+      if (!companionConnection) return readCurrentSessionSnapshot();
+      const batch = await companionConnection.link.pullDeltas({
+        linkSessionId: companionConnection.linkSessionId,
+        afterRevision: companionReplicaSnapshot.revision
+      });
+      companionReplicaSnapshot = applySessionDeltaBatch({
+        snapshot: companionReplicaSnapshot,
+        batch
+      });
+      session = companionReplicaSnapshot.state;
+      render();
+      return readCurrentSessionSnapshot();
+    },
+    subscribe: (listener) => sessionAuthority.subscribe(listener)
+  })
+});
+
+async function openInCompanion() {
+  if (companionConnection) return companionConnection;
+  const button = $("#open-companion");
+  button.disabled = true;
+  button.textContent = "Connecting…";
+  const endpoint =
+    new URLSearchParams(window.location.search).get("companionEndpoint") ??
+    "http://127.0.0.1:47831/cowork/v1";
+  try {
+    const snapshot = sessionAuthority.readSnapshot();
+    const link = createHttpCompanionLink({ endpoint });
+    const acknowledgement = await link.join({
+      hello: createCompanionHello({
+        sessionId: snapshot.sessionId,
+        surfaceId: snapshot.state.surface.primarySurfaceId,
+        revision: snapshot.revision,
+        origin: window.location.origin,
+        capabilityDigest: `${capabilityLevel}:${pageVersion}`
+      }),
+      snapshot,
+      context: contextManager.readContext()
+    });
+    companionReplicaSnapshot = applySessionDeltaBatch({
+      snapshot,
+      batch: acknowledgement.authorityDeltas
+    });
+    companionConnection = {
+      link,
+      linkSessionId: acknowledgement.linkSessionId
+    };
+    session = companionReplicaSnapshot.state;
+    coworkPanel.classList.add("is-companion-connected");
+    button.textContent = "Connected";
+    setStatus("Companion connected. This page is now a synchronized protocol replica.");
+    render();
+    return companionConnection;
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Open Companion";
+    setStatus(`${error.code ?? "COMPANION_UNAVAILABLE"}: ${error.message}`);
+    return null;
+  }
+}
+Object.defineProperty(window, "coworkIntegration", {
+  configurable: true,
+  value: Object.freeze({
+    readDeclaration: () => copyIntegrationDeclaration(integrationDeclaration)
+  })
+});
+
+function copySurfaceStyles(targetDocument) {
+  for (const styleSheet of document.styleSheets) {
+    if (styleSheet.href) {
+      const link = targetDocument.createElement("link");
+      link.rel = "stylesheet";
+      link.href = styleSheet.href;
+      targetDocument.head.append(link);
+      continue;
+    }
+    try {
+      const style = targetDocument.createElement("style");
+      style.textContent = [...styleSheet.cssRules].map((rule) => rule.cssText).join("\n");
+      targetDocument.head.append(style);
+    } catch {
+      // A cross-origin stylesheet remains unavailable to the detached document.
+    }
+  }
+}
+
+function dockCoworkSurface({ closeDetachedWindow = false } = {}) {
+  const windowToClose = detachedSurfaceWindow;
+  detachedSurfaceWindow = null;
+  if (coworkPanel.ownerDocument !== document && panelHomeMarker.parentNode) {
+    panelHomeMarker.parentNode.insertBefore(coworkPanel, panelHomeMarker.nextSibling);
+  }
+  document.querySelector(".workspace")?.classList.remove("cowork-surface-detached");
+  if (session.surface?.kind !== "embedded") {
+    claimSurface({
+      surfaceId: EMBEDDED_SURFACE_ID,
+      kind: "embedded",
+      reason: "Cowork surface docked back into FormBuilder"
+    });
+  }
+  if (closeDetachedWindow && windowToClose && !windowToClose.closed) {
+    windowToClose.close();
+  }
+  render();
+}
+
+async function detachCoworkSurface() {
+  if (detachedSurfaceWindow && !detachedSurfaceWindow.closed) {
+    dockCoworkSurface({ closeDetachedWindow: true });
+    setStatus("Cowork surface docked back into FormBuilder with the same session.");
+    return;
+  }
+  if (typeof window.documentPictureInPicture?.requestWindow !== "function") {
+    setStatus(
+      "DETACHED_SURFACE_UNAVAILABLE: this browser does not provide Document Picture-in-Picture."
+    );
+    return;
+  }
+
+  try {
+    const detached = await window.documentPictureInPicture.requestWindow({
+      width: 460,
+      height: 780
+    });
+    detachedSurfaceWindow = detached;
+    detached.document.title = "Cowork Protocol — Shared session";
+    detached.document.documentElement.lang = document.documentElement.lang;
+    detached.document.body.className = "cowork-detached-body";
+    copySurfaceStyles(detached.document);
+    document.querySelector(".workspace")?.classList.add("cowork-surface-detached");
+    detached.document.body.append(coworkPanel);
+    claimSurface({
+      surfaceId: DETACHED_SURFACE_ID,
+      kind: "document-pip",
+      reason: "Human detached the Cowork surface"
+    });
+    detached.addEventListener(
+      "pagehide",
+      () => dockCoworkSurface({ closeDetachedWindow: false }),
+      { once: true }
+    );
+    setStatus("Cowork surface detached. It is still the same session and model seat.");
+    render();
+  } catch (error) {
+    detachedSurfaceWindow = null;
+    document.querySelector(".workspace")?.classList.remove("cowork-surface-detached");
+    setStatus(`DETACHED_SURFACE_ERROR: ${error.message}`);
+  }
 }
 
 function scheduleLeaseExpiry(nowMilliseconds) {
@@ -194,6 +490,13 @@ function setFocus(field) {
   focusedField = field;
   fields.forEach((candidate) => candidate.classList.toggle("is-focused", candidate === field));
   focusPacket = buildFocus(field);
+  commitSession("focus-changed", session, {
+    payload: {
+      targetId: focusPacket.targetId,
+      pageVersion: focusPacket.pageVersion,
+      focusKind: focusPacket.focus.kind
+    }
+  });
   render();
 }
 
@@ -304,6 +607,14 @@ function recordReceiptFeedback(event, receipt, verdict, adjustmentInput) {
     createdAt: new Date().toISOString()
   });
   feedbackEvents = [...feedbackEvents, feedback].slice(-20);
+  commitSession("feedback-recorded", session, {
+    causeRefs: [`offer:${receipt.offerId}`],
+    payload: {
+      relatedOfferId: receipt.offerId,
+      verdict: feedback.verdict,
+      relatedChangeIds: feedback.relatedChangeIds
+    }
+  });
   setStatus("Human feedback recorded. The agent can read only the latest bounded event.");
   render();
 }
@@ -311,10 +622,14 @@ function recordReceiptFeedback(event, receipt, verdict, adjustmentInput) {
 function render() {
   const now = new Date().toISOString();
   const leaseBeforeTick = session.lease;
-  session = transitionShowcaseSession(session, {
-    type: "CLOCK_TICK",
-    now
-  });
+  commitSession(
+    "clock-tick",
+    transitionShowcaseSession(session, {
+      type: "CLOCK_TICK",
+      now
+    }),
+    { at: now }
+  );
   const expiryEffect = buildLeaseExpiryEffect(leaseBeforeTick, session.lease);
   if (expiryEffect !== null) {
     clearTimeout(leaseExpiryTimer);
@@ -324,7 +639,17 @@ function render() {
     setStatus(expiryEffect.status);
   }
   scheduleLeaseExpiry(Date.parse(now));
+  const offerIdsBeforeExpiry = offers.map((offer) => offer.offerId);
   offers = currentActionOffers({ offers, now, pageVersion });
+  if (offers.length !== offerIdsBeforeExpiry.length) {
+    commitSession("offers-expired", session, {
+      payload: {
+        expiredOfferIds: offerIdsBeforeExpiry.filter(
+          (offerId) => !offers.some((offer) => offer.offerId === offerId)
+        )
+      }
+    });
+  }
   clearTimeout(offerExpiryTimer);
   const nextOfferExpiry = nextActionOfferExpiry(offers);
   offerExpiryTimer =
@@ -350,6 +675,27 @@ function render() {
   $("#capability-badge").textContent = view.capabilityLabel;
   $("#model-transport-badge").textContent = conversationTransportLabel;
   $("#page-version").textContent = String(pageVersion);
+  $("#session-revision").textContent = String(readCurrentSessionSnapshot().revision);
+  const companionConnected = session.surface?.kind === "desktop";
+  $("#detach-cowork").textContent =
+    session.surface?.kind === "document-pip" ? "Dock in page" : "Detach";
+  $("#detach-cowork").disabled = companionConnected;
+  $("#detach-cowork").setAttribute(
+    "aria-pressed",
+    String(session.surface?.kind === "document-pip")
+  );
+  $("#surface-label").textContent = companionConnected
+    ? "Companion"
+    : session.surface?.kind === "document-pip"
+      ? "Detached"
+      : "Embedded";
+  $("#open-companion").disabled = companionConnected;
+  $("#open-companion").textContent = companionConnected
+    ? "Connected"
+    : "Open Companion";
+  $("#conversation-input").disabled = companionConnected;
+  $("#send-conversation").disabled = companionConnected || conversationBusy;
+  $("#talk").disabled = companionConnected;
   $("#toggle-agent").textContent =
     session.agentPresence === "paused" ? "Resume agent" : "Pause agent";
 
@@ -359,8 +705,32 @@ function render() {
   renderReceipts();
 }
 
-function presentConversationReply({ turn, reply, transportLabel }) {
+function presentConversationReply({ turn, reply, transportLabel, contextHumanTurnId }) {
   conversationTransportLabel = transportLabel;
+  const providerLed = transportLabel === "WebMCP agent reply";
+  contextManager.appendTurn({
+    turnId: nextContextTurnId("assistant"),
+    role: "assistant",
+    text: reply.message,
+    at: new Date().toISOString(),
+    causeRefs: contextHumanTurnId ? [contextHumanTurnId] : []
+  });
+  commitSession("conversation-reply-presented", {
+    ...session,
+    modelSeat: providerLed
+      ? { owner: "provider", contextAuthority: "provider-chat" }
+      : { owner: "cowork", contextAuthority: "cowork-session" },
+    lastConversation: {
+      human: turn.transcript,
+      assistant: reply.message,
+      status: "responded"
+    }
+  }, {
+    payload: {
+      transport: transportLabel,
+      providerLed
+    }
+  });
   let createdOffers = 0;
   let rejectedOffers = 0;
   for (const offer of reply.offers) {
@@ -395,6 +765,10 @@ function presentConversationReply({ turn, reply, transportLabel }) {
 
 async function sendConversationTurn(transcriptInput) {
   if (conversationBusy) return;
+  if (companionConnection !== null) {
+    setStatus("The Companion owns the shared model seat. Continue in its movable window.");
+    return;
+  }
   const input = $("#conversation-input");
   const sendButton = $("#send-conversation");
   const transcript = typeof transcriptInput === "string" ? transcriptInput.trim() : "";
@@ -407,6 +781,17 @@ async function sendConversationTurn(transcriptInput) {
   sendButton.disabled = true;
   sendButton.setAttribute("aria-busy", "true");
   $("#transcript").textContent = `You: ${transcript}\nHelper: Thinking with bounded context…`;
+  commitSession("conversation-turn-submitted", {
+    ...session,
+    modelSeat: { owner: "cowork", contextAuthority: "cowork-session" },
+    lastConversation: {
+      human: transcript,
+      assistant: "",
+      status: "pending"
+    }
+  }, {
+    payload: { transcriptCharacters: transcript.length }
+  });
   try {
     const result = await conversationClient.submit({
       transcript,
@@ -428,13 +813,21 @@ async function sendConversationTurn(transcriptInput) {
     if (!hasHostModelTransport) {
       conversationInbox.publish(result.turn);
     }
+    const contextHumanTurnId = nextContextTurnId("human");
+    contextManager.appendTurn({
+      turnId: contextHumanTurnId,
+      role: "human",
+      text: result.turn.transcript,
+      at: new Date().toISOString()
+    });
     input.value = "";
     presentConversationReply({
       turn: result.turn,
       reply: result.reply,
       transportLabel: hasHostModelTransport
         ? "Connected model bridge"
-        : "Local demo helper"
+        : "Local demo helper",
+      contextHumanTurnId
     });
   } catch (error) {
     $("#transcript").textContent = `Conversation unavailable: ${error.message}`;
@@ -508,6 +901,14 @@ function createVisibleOffer({ capabilityId, targetId, value, summary }) {
     expiresAt: new Date(now.getTime() + 60_000).toISOString()
   });
   offers = [...offers, offer];
+  commitSession("offer-presented", session, {
+    causeRefs: [`offer:${offer.offerId}`],
+    payload: {
+      offerId: offer.offerId,
+      targetId: offer.targetId,
+      pageVersion: offer.pageVersion
+    }
+  });
   setStatus("Agent proposal added. Only a real click on the offer can authorize it.");
   render();
   return offer;
@@ -597,9 +998,17 @@ function executeOffer(event, offer) {
       undoAvailable: plan.undoAvailable,
       pageVersion
     });
-    session = transitionShowcaseSession(session, { type: "RECEIPT_RECORDED", receipt });
+    commitSession(
+      "receipt-recorded",
+      transitionShowcaseSession(session, { type: "RECEIPT_RECORDED", receipt }),
+      { causeRefs: [`offer:${offer.offerId}`] }
+    );
     receipts = session.receipts;
     offers = offers.filter((candidate) => candidate.offerId !== offer.offerId);
+    commitSession("offer-resolved", session, {
+      causeRefs: [`offer:${offer.offerId}`],
+      payload: { offerId: offer.offerId, receiptStatus: receipt.status }
+    });
     setStatus(
       verified
         ? "Action verified after the human click."
@@ -638,12 +1047,16 @@ function startAway(duration) {
     expiresAt: new Date(now + 120_000).toISOString()
   };
   leaseCallsUsed = 0;
-  session = transitionShowcaseSession(session, {
-    type: "HUMAN_AWAY",
-    duration,
-    lease,
-    now: new Date(now).toISOString()
-  });
+  commitSession(
+    "human-away",
+    transitionShowcaseSession(session, {
+      type: "HUMAN_AWAY",
+      duration,
+      lease,
+      now: new Date(now).toISOString()
+    }),
+    { causeRefs: [`lease:${lease.leaseId}`], at: new Date(now).toISOString() }
+  );
   setStatus("Agent Solo is active only inside the displayed two-minute field lease.");
   render();
 }
@@ -677,7 +1090,11 @@ function executeSoloAction({ capabilityId, targetId, value }) {
     proposedArguments: { value },
     currentValue: control.value
   });
-  session = transitionShowcaseSession(session, { type: "SOLO_ATTEMPT_STARTED" });
+  commitSession(
+    "solo-attempt-started",
+    transitionShowcaseSession(session, { type: "SOLO_ATTEMPT_STARTED" }),
+    { causeRefs: [`lease:${leaseId}`] }
+  );
   leaseCallsUsed = session.leaseCallsUsed;
   const callNumber = leaseCallsUsed;
   const change = applyControlValue(control, plan.nextValue, {
@@ -696,7 +1113,11 @@ function executeSoloAction({ capabilityId, targetId, value }) {
     undoAvailable: plan.undoAvailable,
     pageVersion
   });
-  session = transitionShowcaseSession(session, { type: "RECEIPT_RECORDED", receipt });
+  commitSession(
+    "solo-receipt-recorded",
+    transitionShowcaseSession(session, { type: "RECEIPT_RECORDED", receipt }),
+    { causeRefs: [`lease:${leaseId}`] }
+  );
   receipts = session.receipts;
   setStatus(
     verified
@@ -715,11 +1136,14 @@ function returnHuman() {
     now: new Date().toISOString(),
     pageVersion
   });
-  session = transitionShowcaseSession(session, {
-    type: "HUMAN_RETURNED",
-    receipts,
-    pendingQuestion: offers.length ? "Review the remaining action offer?" : null
-  });
+  commitSession(
+    "human-returned",
+    transitionShowcaseSession(session, {
+      type: "HUMAN_RETURNED",
+      receipts,
+      pendingQuestion: offers.length ? "Review the remaining action offer?" : null
+    })
+  );
   const summary = session.returnSummary;
   const message = `${summary.verified} verified, ${summary.failed} failed.`;
   setStatus(`Welcome back. ${message}`);
@@ -728,9 +1152,12 @@ function returnHuman() {
 }
 
 function toggleAgent() {
-  session = transitionShowcaseSession(session, {
-    type: session.agentPresence === "paused" ? "AGENT_RESUMED" : "AGENT_PAUSED"
-  });
+  const transitionType =
+    session.agentPresence === "paused" ? "AGENT_RESUMED" : "AGENT_PAUSED";
+  commitSession(
+    transitionType === "AGENT_RESUMED" ? "agent-resumed" : "agent-paused",
+    transitionShowcaseSession(session, { type: transitionType })
+  );
   setStatus(session.agentPresence === "paused" ? "Agent paused. Human Solo is active." : "Agent resumed.");
   render();
 }
@@ -899,9 +1326,10 @@ for (const field of fields) {
     observedValues.set(field.dataset.fieldId, nextValue);
     pageVersion += 1;
     if (focusedField === field) focusPacket = buildFocus(field);
+    let change = null;
     if (session.changeCausality) {
       changeCounter += 1;
-      const change = observeControlChange({
+      change = observeControlChange({
         changeId: `change-${pageVersion}-${changeCounter}`,
         fieldId: field.dataset.fieldId,
         label: field.dataset.label,
@@ -913,13 +1341,21 @@ for (const field of fields) {
       if (change) changeEvents = [...changeEvents, change].slice(-20);
       setStatus(`Change ${pageVersion} observed on ${field.dataset.label}; causes were recorded without creating a model turn.`);
     }
+    commitSession("page-change-observed", session, {
+      causeRefs: change?.causeRefs ?? [],
+      payload: {
+        changeId: change?.changeId ?? null,
+        targetId: focusPacket?.targetId ?? `form-field:${field.dataset.fieldId}`,
+        pageVersion
+      }
+    });
     render();
   });
 }
 
 $("#attention-mode").addEventListener("change", (event) => {
-  session = { ...session, attentionMode: event.target.value };
-  if (session.attentionMode === "off") {
+  const nextSession = { ...session, attentionMode: event.target.value };
+  if (nextSession.attentionMode === "off") {
     focusPacket = null;
     focusedField = null;
     fields.forEach((field) => field.classList.remove("is-focused"));
@@ -927,17 +1363,25 @@ $("#attention-mode").addEventListener("change", (event) => {
   } else if (focusedField) {
     focusPacket = buildFocus(focusedField);
   }
+  commitSession("attention-mode-changed", nextSession, {
+    payload: { attentionMode: event.target.value }
+  });
   render();
 });
 
 $("#change-causality").addEventListener("change", (event) => {
-  session = { ...session, changeCausality: event.target.checked };
-  if (!session.changeCausality) changeEvents = [];
+  const nextSession = { ...session, changeCausality: event.target.checked };
+  if (!nextSession.changeCausality) changeEvents = [];
+  commitSession("causality-mode-changed", nextSession, {
+    payload: { enabled: event.target.checked }
+  });
   setStatus(event.target.checked ? "Change and causality lens enabled." : "Change and causality lens disabled.");
 });
 
 $("#action-mode").addEventListener("change", (event) => {
-  session = { ...session, actionMode: event.target.value };
+  commitSession("action-mode-changed", { ...session, actionMode: event.target.value }, {
+    payload: { actionMode: event.target.value }
+  });
   setStatus(`Action mode changed to ${event.target.selectedOptions[0].text}.`);
   render();
 });
@@ -956,6 +1400,12 @@ $("#expand-context").addEventListener("click", () => {
 });
 
 $("#demo-offer").addEventListener("click", addDemoOffer);
+$("#detach-cowork").addEventListener("click", () => {
+  void detachCoworkSurface();
+});
+$("#open-companion").addEventListener("click", () => {
+  void openInCompanion();
+});
 $("#conversation-form").addEventListener("submit", (event) => {
   event.preventDefault();
   void sendConversationTurn($("#conversation-input").value);
@@ -973,11 +1423,29 @@ $("#demo-form").addEventListener("submit", (event) => {
   submitFormBuilderResponse();
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (companionReplicaSnapshot !== null) return;
+  sessionAuthority.record({
+    kind: "surface-visibility",
+    sourceSurfaceId: EMBEDDED_SURFACE_ID,
+    payload: { visibility: document.visibilityState }
+  });
+  const revisionLabel = $("#session-revision");
+  if (revisionLabel) {
+    revisionLabel.textContent = String(sessionAuthority.readSnapshot().revision);
+  }
+});
+
 window.addEventListener("beforeunload", () => {
   registrationController?.abort();
   clearTimeout(leaseExpiryTimer);
   clearTimeout(offerExpiryTimer);
   if (responseDownloadUrl) URL.revokeObjectURL(responseDownloadUrl);
+  if (detachedSurfaceWindow && !detachedSurfaceWindow.closed) {
+    detachedSurfaceWindow.close();
+  }
+  delete window.coworkSession;
+  delete window.coworkIntegration;
 });
 
 configureSpeech();

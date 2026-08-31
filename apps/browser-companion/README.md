@@ -1,9 +1,22 @@
 # Cowork Protocol Browser Companion
 
-This optional Manifest V3 extension is the temporary bridge for pages that
-offer neither Cowork Protocol nor WebMCP. It is disabled by default. The user
-toggles it from the browser toolbar, points at a control, and can turn it off
-again without reloading the page.
+This optional Manifest V3 extension is a user-selected Cowork surface and
+precision bridge. It is disabled by default. When enabled, it consumes native
+Cowork/WebMCP first. Only when neither is available does it activate the
+bounded semantic/accessibility/visual fallback.
+
+The current artifact separates a headless content relay from a browser-owned
+Chrome/Edge Side Panel. The visual surface remains on the extension origin and
+outside the website; the browser acceptance rejects any injected Cowork UI
+root in the page. Two separate Chrome 152 acceptances cover both branches:
+native FormBuilder exposes nine Cowork tools with no fallback, while the
+no-WebMCP fixture activates the bounded fallback and trusted-click gate.
+
+This does not prohibit a cooperating website from embedding the Cowork
+reference UI itself. Voluntary page embedding is a separate
+`protocol-and-ui` or `protocol-and-user-optional-ui` integration and gives users
+the Cowork experience without installing this extension. The extension merely
+stops imposing its own visual surface on the website DOM.
 
 The context ladder is deliberately small:
 
@@ -61,6 +74,7 @@ one-shot crop from the isolated extension context.
 ```powershell
 $env:COWORK_COMPANION_BROWSER_PATH='C:\path\to\chrome-for-testing\chrome.exe'
 npm run smoke:companion
+npm run smoke:companion-native
 ```
 
 Chrome builds that do not load extensions in headless mode can run the same
@@ -91,3 +105,9 @@ toggle-on/off behavior, 350/1,200-character semantic tiers, a real 160,000-pixel
 PNG crop, one-shot isolated delivery, an inert value offer, a trusted browser
 click and verified mutation. It keeps model-client, external-model, host-token
 and full-page-delivery claims false.
+
+The Native-first smoke enables WebMCP on FormBuilder and proves
+`mode: native-cowork`, nine discovered native tools, a native focus response,
+`fallbackActive: false` and `pageUiInjected: false`. The extension uses a
+small main-world bridge solely to reach the browser's page-owned WebMCP API;
+its visual and privileged code remain in the isolated extension worlds.

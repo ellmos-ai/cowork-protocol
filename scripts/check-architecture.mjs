@@ -19,12 +19,21 @@ assert.match(svg, /<desc id="description">[^<]{120,}<\/desc>/);
 assert.match(svg, /1 · Native Cowork/);
 assert.match(svg, /2 · Existing WebMCP/);
 assert.match(svg, /3 · No WebMCP/);
-assert.match(svg, /Browser Companion/);
-assert.match(svg, /350 → 1,200 → 400×400 one-shot · trusted click/);
+assert.match(svg, /Interchangeable UI/);
+assert.match(svg, /Session Authority/);
+assert.match(svg, /Context \+ gateway/);
+assert.match(svg, /ONE ACTIVE SEAT/);
+assert.match(svg, /PROTOCOL CORE · STRONGEST AVAILABLE CONNECTOR/);
+assert.match(svg, /Source-backed component view/);
+assert.match(svg, /Browser relay \+ Side Panel/);
+assert.match(svg, /350 → 1,200 → 400×400 one-shot · user gate/);
 assert.match(svg, /visible offer → human click → observed verification/);
 
 assert.match(docs, /!\[Cowork Protocol architecture overview\]\(\.\.\/design\/architecture-overview\.svg\)/);
-assert.match(docs, /The Mermaid views below remain the source-backed engineering detail and text alternatives\./);
+assert.match(
+  docs,
+  /The Mermaid views below remain the source-backed\s+engineering detail and text alternatives\./
+);
 assert.match(readme, /\[!\[Cowork Protocol architecture:[^\]]+\]\(design\/architecture-overview\.png\)\]\(docs\/architecture\.md\)/);
 
 assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
@@ -35,7 +44,8 @@ console.log(
   JSON.stringify(
     {
       architectureArtifactClaim: true,
-      supportedConnectorPaths: ["native-cowork", "existing-webmcp", "no-webmcp-companion"],
+      supportedConnectorPaths: ["native-cowork", "existing-webmcp", "no-webmcp-relay"],
+      providerNeutralSurfaceClaim: true,
       accessibleSvg: true,
       documented: true,
       png: { width: 1800, height: 1050 }

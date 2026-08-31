@@ -31,7 +31,19 @@ test("the browser companion builds a self-contained MV3 extension", async () => 
     assert.deepEqual(manifest.host_permissions, ["<all_urls>"]);
     assert.deepEqual(manifest.content_scripts[0].matches, ["<all_urls>"]);
     assert.equal(manifest.background.type, "module");
-    assert.equal(manifest.action.default_title, "Toggle Cowork Companion");
+    assert.equal(manifest.action.default_title, "Open Cowork Protocol");
+    assert.deepEqual(manifest.permissions, ["sidePanel"]);
+    assert.equal(manifest.side_panel.default_path, "sidepanel.html");
+    assert.equal(manifest.content_scripts[0].world, "MAIN");
+    assert.deepEqual(manifest.content_scripts[0].js, ["native-page-bridge.js"]);
+    assert.equal(report.files.includes("native-page-bridge.js"), true);
+    assert.equal(
+      report.files.includes("modules/apps/browser-companion/src/native-page-client.js"),
+      true
+    );
+    assert.equal(report.files.includes("sidepanel.html"), true);
+    assert.equal(report.files.includes("sidepanel.css"), true);
+    assert.equal(report.files.includes("sidepanel.js"), true);
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

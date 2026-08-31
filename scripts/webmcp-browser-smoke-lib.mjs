@@ -14,6 +14,8 @@ function requireCondition(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+const CURRENT_INTERACTIVE_CONTROL_COUNT = 23;
+
 function isNonNegativeInteger(value) {
   return Number.isInteger(value) && value >= 0;
 }
@@ -384,7 +386,7 @@ export function validateZoomReflowObservation(observed) {
   const tabSequence = Array.isArray(observed.tabSequence) ? observed.tabSequence : [];
   requireCondition(
     isNonNegativeInteger(observed.interactiveControlCount) &&
-      observed.interactiveControlCount === 21 &&
+      observed.interactiveControlCount === CURRENT_INTERACTIVE_CONTROL_COUNT &&
       observed.reachableControlCount === observed.interactiveControlCount &&
       observed.focusVisibleControlCount === observed.interactiveControlCount &&
       tabSequence.length === observed.interactiveControlCount &&
@@ -424,7 +426,7 @@ export function validateAccessibilityObservation(observed) {
     : [];
   const axDomIds = axNodes.map((node) => node?.backendDOMNodeId);
   requireCondition(
-    axNodes.length === 21 &&
+    axNodes.length === CURRENT_INTERACTIVE_CONTROL_COUNT &&
       axNodes.every(
         (node) =>
           Number.isInteger(node?.backendDOMNodeId) &&
@@ -448,11 +450,11 @@ export function validateAccessibilityObservation(observed) {
   requireCondition(
     observed.viewportCssWidth === 390 &&
       observed.viewportCssHeight === 844 &&
-      observed.interactiveControlCount === 21 &&
-      observed.reachableControlCount === 21 &&
-      observed.focusVisibleControlCount === 21 &&
-      tabSequence.length === 21 &&
-      new Set(tabSequence).size === 21 &&
+      observed.interactiveControlCount === CURRENT_INTERACTIVE_CONTROL_COUNT &&
+      observed.reachableControlCount === CURRENT_INTERACTIVE_CONTROL_COUNT &&
+      observed.focusVisibleControlCount === CURRENT_INTERACTIVE_CONTROL_COUNT &&
+      tabSequence.length === CURRENT_INTERACTIVE_CONTROL_COUNT &&
+      new Set(tabSequence).size === CURRENT_INTERACTIVE_CONTROL_COUNT &&
       clippedControls.length === 0 &&
       textClippedControls.length === 0 &&
       typeof observed.documentHorizontalOverflow === "number" &&

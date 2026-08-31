@@ -1,0 +1,401 @@
+import { spawn } from "node:child_process";
+import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { createCompanionSessionHost } from "../apps/desktop-companion/src/host.js";
+import { createStaticServer } from "./serve.mjs";
+
+const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-session-surface-smoke-"));
+let server;
+let browser;
+let companionHost;
+
+async function firstExisting(paths) {
+  for (const candidate of paths) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      // Try the next explicit browser location.
+    }
+  }
+  return null;
+}
+
+async function resolveChromePath() {
+  if (process.env.COWORK_CHROME_PATH) {
+    await access(process.env.COWORK_CHROME_PATH);
+    return process.env.COWORK_CHROME_PATH;
+  }
+  const candidate = await firstExisting([
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable"
+  ]);
+  if (!candidate) throw new Error("Chrome was not found; set COWORK_CHROME_PATH");
+  return candidate;
+}
+
+async function waitForJson(url, attempts = 60) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return response.json();
+    } catch {
+      // Retry only the isolated browser process started below.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(`Timed out waiting for ${url}`);
+}
+
+async function waitForDevToolsPort(attempts = 60) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const contents = await readFile(path.join(profilePath, "DevToolsActivePort"), "utf8");
+      const port = Number(contents.split(/\r?\n/, 1)[0]);
+      if (Number.isInteger(port) && port > 0) return port;
+    } catch {
+      // Retry only the isolated profile created above.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error("Timed out waiting for Chrome's isolated DevTools port");
+}
+
+function connect(webSocketDebuggerUrl) {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(webSocketDebuggerUrl);
+    socket.addEventListener("open", () => resolve(socket), { once: true });
+    socket.addEventListener("error", reject, { once: true });
+  });
+}
+
+function cdpClient(socket, onEvent = () => {}) {
+  let nextId = 0;
+  const pending = new Map();
+  socket.addEventListener("message", (event) => {
+    const message = JSON.parse(event.data);
+    if (message.id === undefined) {
+      onEvent(message);
+      return;
+    }
+    const request = pending.get(message.id);
+    if (!request) return;
+    pending.delete(message.id);
+    if (message.error) request.reject(new Error(JSON.stringify(message.error)));
+    else request.resolve(message.result);
+  });
+  return (method, params = {}) => {
+    const id = ++nextId;
+    socket.send(JSON.stringify({ id, method, params }));
+    return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+  };
+}
+
+async function evaluateValue(call, expression) {
+  const evaluation = await call("Runtime.evaluate", {
+    expression,
+    awaitPromise: true,
+    returnByValue: true
+  });
+  if (evaluation.exceptionDetails) throw new Error(JSON.stringify(evaluation.exceptionDetails));
+  return evaluation.result.value;
+}
+
+async function waitForValue(call, expression, predicate, attempts = 60) {
+  let latest;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    latest = await evaluateValue(call, expression);
+    if (predicate(latest)) return latest;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Timed out waiting for browser state: ${JSON.stringify(latest)}`);
+}
+
+async function trustedClick(call, selector) {
+  const point = await evaluateValue(call, `(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    if (!(element instanceof HTMLElement)) return null;
+    const rect = element.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  })()`);
+  if (!point) throw new Error(`Trusted-click target not found: ${selector}`);
+  await call("Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    x: point.x,
+    y: point.y,
+    button: "left",
+    clickCount: 1
+  });
+  await call("Input.dispatchMouseEvent", {
+    type: "mouseReleased",
+    x: point.x,
+    y: point.y,
+    button: "left",
+    clickCount: 1
+  });
+}
+
+try {
+  const chromePath = await resolveChromePath();
+  server = createStaticServer({ root: process.cwd() });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Showcase server has no port");
+  const showcaseOrigin = `http://127.0.0.1:${address.port}`;
+  companionHost = createCompanionSessionHost({
+    allowedOrigins: [showcaseOrigin],
+    port: 0,
+    createLinkSessionId: () => "browser-surface-link",
+    sendModelTurn: async () => ({ message: "Shared browser smoke reply" })
+  });
+  const companionAddress = await companionHost.listen();
+  const companionEndpoint =
+    `http://${companionAddress.hostname}:${companionAddress.port}/cowork/v1`;
+  const showcaseUrl =
+    `${showcaseOrigin}/apps/formbuilder-showcase/?companionEndpoint=` +
+    encodeURIComponent(companionEndpoint);
+  const headful = process.env.COWORK_SURFACE_HEADFUL === "1";
+  const chromeArguments = [
+    ...(headful ? [] : ["--headless=new"]),
+    "--disable-gpu",
+    "--enable-features=WebMCP,WebMCPTesting,DocumentPictureInPictureAPI",
+    "--enable-blink-features=WebMCP",
+    "--remote-debugging-port=0",
+    "--window-size=1100,1000",
+    `--user-data-dir=${profilePath}`,
+    showcaseUrl
+  ];
+  browser = spawn(chromePath, chromeArguments, {
+    windowsHide: !headful,
+    stdio: "ignore"
+  });
+
+  const debugPort = await waitForDevToolsPort();
+  const version = await waitForJson(`http://127.0.0.1:${debugPort}/json/version`);
+  const protocolSchema = await waitForJson(
+    `http://127.0.0.1:${debugPort}/json/protocol`
+  );
+  const permissionTypes = protocolSchema.domains
+    ?.find(({ domain }) => domain === "Browser")
+    ?.types?.find(({ id }) => id === "PermissionType")?.enum ?? [];
+  const localNetworkPermission = [
+    "loopbackNetwork",
+    "localNetwork",
+    "localNetworkAccess"
+  ].find((name) => permissionTypes.includes(name));
+  if (!localNetworkPermission) {
+    throw new Error("Chrome exposes no local-network permission for the Companion smoke");
+  }
+  const targets = await waitForJson(`http://127.0.0.1:${debugPort}/json`);
+  const target = targets.find(
+    (candidate) => candidate.type === "page" && candidate.url.includes("formbuilder-showcase")
+  );
+  if (!target) throw new Error("Showcase page target not found");
+
+  const socket = await connect(target.webSocketDebuggerUrl);
+  const networkEvidence = [];
+  const call = cdpClient(socket, (message) => {
+    if (
+      message.method === "Network.loadingFailed" ||
+      message.method === "Network.responseReceived"
+    ) {
+      networkEvidence.push({ method: message.method, params: message.params });
+    }
+  });
+  await call("Runtime.enable");
+  await call("Page.enable");
+  await call("Network.enable");
+  await call("Page.bringToFront");
+  await call("Browser.grantPermissions", {
+    permissions: [localNetworkPermission],
+    origin: showcaseOrigin
+  });
+
+  const initial = await waitForValue(
+    call,
+    `(() => ({
+      ready: Boolean(window.coworkSession && document.querySelector("#detach-cowork")),
+      supported: typeof window.documentPictureInPicture?.requestWindow === "function",
+      snapshot: window.coworkSession?.readSnapshot?.() ?? null,
+      integration: window.coworkIntegration?.readDeclaration?.() ?? null
+    }))()`,
+    (value) => value?.ready === true
+  );
+  if (!initial.supported) {
+    throw new Error("Document Picture-in-Picture is unavailable in the selected browser mode");
+  }
+
+  await trustedClick(call, "#detach-cowork");
+  const detached = await waitForValue(
+    call,
+    `(() => ({
+      hasDetachedWindow: Boolean(window.documentPictureInPicture?.window),
+      panelInDetachedDocument: Boolean(
+        window.documentPictureInPicture?.window?.document.querySelector(".cowork-panel")
+      ),
+      mainPanelAbsent: document.querySelector(".cowork-panel") === null,
+      snapshot: window.coworkSession.readSnapshot(),
+      buttonLabel: window.documentPictureInPicture?.window?.document
+        .querySelector("#detach-cowork")?.textContent ?? null
+    }))()`,
+    (value) =>
+      value?.hasDetachedWindow === true &&
+      value?.panelInDetachedDocument === true &&
+      value?.snapshot?.state?.surface?.kind === "document-pip"
+  );
+
+  await evaluateValue(call, `(() => {
+    window.documentPictureInPicture.window.close();
+    return true;
+  })()`);
+  const restored = await waitForValue(
+    call,
+    `(() => ({
+      detachedWindowClosed: window.documentPictureInPicture?.window == null,
+      panelRestored: Boolean(document.querySelector(".cowork-panel")),
+      snapshot: window.coworkSession.readSnapshot(),
+      buttonLabel: document.querySelector("#detach-cowork")?.textContent ?? null
+    }))()`,
+    (value) =>
+      value?.detachedWindowClosed === true &&
+      value?.panelRestored === true &&
+      value?.snapshot?.state?.surface?.kind === "embedded"
+  );
+
+  await trustedClick(call, "#open-companion");
+  let companion;
+  try {
+    companion = await waitForValue(
+      call,
+      `(() => ({
+      snapshot: window.coworkSession.readSnapshot(),
+      buttonLabel: document.querySelector("#open-companion")?.textContent ?? null,
+      status: document.querySelector("#system-status")?.textContent ?? null,
+      conversationDisabled: document.querySelector("#conversation-input")?.disabled ?? null,
+      collapsed: document.querySelector(".cowork-panel")?.classList
+        .contains("is-companion-connected") ?? false
+      }))()`,
+      (value) =>
+        value?.snapshot?.state?.surface?.kind === "desktop" &&
+        value?.buttonLabel === "Connected"
+    );
+  } catch (error) {
+    throw new Error(
+      `${error.message}; network=${JSON.stringify(networkEvidence.slice(-8))}`
+    );
+  }
+  const companionSnapshot = companionHost.readSnapshot("browser-surface-link");
+  const companionWindowTarget = await call("Target.createTarget", {
+    url: `${companionEndpoint}/ui`,
+    newWindow: true,
+    width: 430,
+    height: 760
+  });
+  let companionWindowDescriptor = null;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const currentTargets = await waitForJson(`http://127.0.0.1:${debugPort}/json`, 1);
+    companionWindowDescriptor = currentTargets.find(
+      (candidate) => candidate.id === companionWindowTarget.targetId
+    );
+    if (companionWindowDescriptor) break;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  if (!companionWindowDescriptor) throw new Error("Companion app window target not found");
+  const companionWindowSocket = await connect(companionWindowDescriptor.webSocketDebuggerUrl);
+  const companionWindowCall = cdpClient(companionWindowSocket);
+  await companionWindowCall("Runtime.enable");
+  await companionWindowCall("Page.enable");
+  const visibleCompanion = await waitForValue(
+    companionWindowCall,
+    `(() => ({
+      providerId: document.documentElement.dataset.uiProvider,
+      title: document.querySelector("h1")?.textContent ?? null,
+      sessionId: document.querySelector("#session-heading")?.textContent ?? null,
+      mode: document.querySelector("#mode")?.textContent ?? null,
+      human: document.querySelector("#human-label")?.textContent ?? null,
+      model: document.querySelector("#model-label")?.textContent ?? null,
+      audioControlCount: ["#talk", "#stop-speech", "#speak"]
+        .filter((selector) => document.querySelector(selector)).length,
+      modelInputEnabled: !document.querySelector("#conversation-input")?.disabled
+    }))()`,
+    (value) => value?.sessionId === initial.snapshot.sessionId && value.modelInputEnabled === true
+  );
+  await evaluateValue(companionWindowCall, `(() => {
+    document.querySelector("#conversation-input").value = "Continue in the Companion.";
+    document.querySelector("#conversation-form").requestSubmit();
+    return true;
+  })()`);
+  const companionConversation = await waitForValue(
+    companionWindowCall,
+    `(() => ({
+      status: document.querySelector("#status")?.textContent ?? null,
+      turnCount: document.querySelectorAll("#turns li").length
+    }))()`,
+    (value) => value?.status === "Shared browser smoke reply" && value.turnCount === 2
+  );
+
+  if (
+    initial.integration?.presentation?.mode !== "protocol-and-ui" ||
+    initial.integration?.presentation?.pageUiProviderId !== "cowork-reference-ui" ||
+    detached.snapshot.sessionId !== initial.snapshot.sessionId ||
+    restored.snapshot.sessionId !== initial.snapshot.sessionId ||
+    detached.snapshot.revision <= initial.snapshot.revision ||
+    restored.snapshot.revision <= detached.snapshot.revision ||
+    detached.mainPanelAbsent !== true ||
+    detached.buttonLabel !== "Dock in page" ||
+    restored.buttonLabel !== "Detach" ||
+    companion.collapsed !== true ||
+    companion.conversationDisabled !== true ||
+    companionSnapshot?.revision !== companion.snapshot.revision ||
+    companionSnapshot?.state?.surface?.kind !== "desktop" ||
+    visibleCompanion.providerId !== "cowork-reference-ui" ||
+    visibleCompanion.title !== "Companion" ||
+    visibleCompanion.mode !== "cowork" ||
+    visibleCompanion.audioControlCount !== 3 ||
+    companionConversation.turnCount !== 2
+  ) {
+    throw new Error("Detached surface did not preserve one versioned Cowork session");
+  }
+
+  console.log(JSON.stringify({
+    detachedSurfaceClaim: true,
+    sameSessionClaim: true,
+    protocolUiSeparationClaim: true,
+    noExtensionCompanionHandoffClaim: true,
+    independentCompanionWindowClaim: true,
+    sharedModelGatewayClaim: true,
+    companionAudioControlsClaim: true,
+    browserVersion: version.Browser,
+    localNetworkPermission,
+    headful,
+    sessionId: initial.snapshot.sessionId,
+    integrationMode: initial.integration.presentation.mode,
+    revisions: {
+      initial: initial.snapshot.revision,
+      detached: detached.snapshot.revision,
+      restored: restored.snapshot.revision,
+      companion: companion.snapshot.revision
+    },
+    surfaceKinds: [
+      initial.snapshot.state.surface.kind,
+      detached.snapshot.state.surface.kind,
+      restored.snapshot.state.surface.kind,
+      companion.snapshot.state.surface.kind
+    ]
+  }, null, 2));
+  companionWindowSocket.close();
+  socket.close();
+} finally {
+  browser?.kill();
+  await companionHost?.close();
+  if (server?.listening) await new Promise((resolve) => server.close(resolve));
+  await rm(profilePath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+}

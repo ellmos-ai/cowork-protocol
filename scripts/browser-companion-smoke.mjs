@@ -156,6 +156,16 @@ async function evaluateValue(call, expression, contextId) {
   return result.result.value;
 }
 
+async function waitForValue(call, expression, predicate, attempts = 80) {
+  let value;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    value = await evaluateValue(call, expression);
+    if (predicate(value)) return value;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Timed out waiting for browser value: ${JSON.stringify(value)}`);
+}
+
 async function captureEvidenceFrame(call, filename) {
   if (!evidenceDirectory) return null;
   await mkdir(evidenceDirectory, { recursive: true });
@@ -309,7 +319,16 @@ try {
   await call("Runtime.enable");
   await call("Page.bringToFront");
   await call("Page.reload", { ignoreCache: true });
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  await call("Runtime.disable");
+  contexts.clear();
+  await call("Runtime.enable");
   const extensionContextId = await waitForExtensionContext(contexts);
+  const extensionContext = contexts.get(extensionContextId);
+  const extensionOrigin = extensionContext?.origin?.startsWith("chrome-extension://")
+    ? extensionContext.origin
+    : extensionContext?.name?.match(/chrome-extension:\/\/[^/]+/)?.[0];
+  if (!extensionOrigin) throw new Error("Extension origin was not exposed by Chrome");
   const extensionState = (expression) =>
     evaluateValue(
       call,
@@ -384,45 +403,93 @@ try {
       expiresAt: "2099-09-01T10:05:00.000Z"
     })`
   );
-  const offer = await evaluateValue(call, `(() => {
-    const root = document.querySelector("#cowork-browser-companion-root");
-    const button = root?.shadowRoot?.querySelector("[data-cowork-offer-id]");
-    return {
-      valueBeforeOffer: ${JSON.stringify(valueBeforeOffer)},
-      valueBeforeHumanClick: document.querySelector("#project-title").value,
-      visibleOfferCount: root?.shadowRoot?.querySelectorAll("[data-cowork-offer-id]").length ?? 0,
-      visibleOfferText: button?.textContent ?? ""
-    };
-  })()`);
+  await call("Target.createTarget", {
+    url: `${extensionOrigin}/sidepanel.html`
+  });
+  const sidePanelTarget = await waitForPageTarget(
+    debugPort,
+    (candidate) => candidate.url === `${extensionOrigin}/sidepanel.html`
+  );
+  const sidePanelSocket = await connect(sidePanelTarget.webSocketDebuggerUrl);
+  const sidePanelCall = cdpClient(sidePanelSocket);
+  await sidePanelCall("Runtime.enable");
+  await sidePanelCall("Page.enable");
+  await sidePanelCall("Page.bringToFront");
+  const sidePanelState = () =>
+    evaluateValue(
+      sidePanelCall,
+      `(async () => {
+        const envelope = await chrome.runtime.sendMessage({
+          type: "cowork:sidepanel:get-state"
+        });
+        return envelope?.result?.state ?? null;
+      })()`
+    );
+  const sidePanelOffer = await waitForValue(
+    sidePanelCall,
+    `(() => {
+      const button = document.querySelector("#offer-action");
+      return {
+        visible: Boolean(button && !document.querySelector("#offer-card").hidden),
+        text: button?.textContent ?? "",
+        offerId: button?.dataset.offerId ?? ""
+      };
+    })()`,
+    (value) => value?.visible === true
+  );
+  const offer = {
+    valueBeforeOffer,
+    valueBeforeHumanClick: await evaluateValue(
+      call,
+      'document.querySelector("#project-title").value'
+    ),
+    visibleOfferCount: sidePanelOffer.visible ? 1 : 0,
+    visibleOfferText: sidePanelOffer.text,
+    offerId: sidePanelOffer.offerId,
+    pageUiInjected: await evaluateValue(
+      call,
+      'document.querySelector("#cowork-browser-companion-root") !== null'
+    )
+  };
   const evidenceScreenshots = [];
   const offerScreenshot = await captureEvidenceFrame(
-    call,
+    sidePanelCall,
     "browser-companion-offer-awaiting-click.png"
   );
   if (offerScreenshot) evidenceScreenshots.push(offerScreenshot);
   await trustedClick(
-    call,
-    'document.querySelector("#cowork-browser-companion-root")?.shadowRoot?.querySelector("[data-cowork-offer-id]")',
-    "Cowork visible action offer"
+    sidePanelCall,
+    'document.querySelector("#offer-action")',
+    "Cowork Side Panel action offer"
   );
   await new Promise((resolve) => setTimeout(resolve, 150));
-  const clickSurface = await evaluateValue(call, `(() => {
-    const root = document.querySelector("#cowork-browser-companion-root");
-    return {
-      valueAfterHumanClick: document.querySelector("#project-title").value,
-      status: root?.shadowRoot?.querySelector(".status")?.textContent ?? ""
-    };
-  })()`);
+  const afterClickState = await sidePanelState();
+  const clickSurface = {
+    valueAfterHumanClick: await evaluateValue(
+      call,
+      'document.querySelector("#project-title").value'
+    ),
+    status: afterClickState.statusText
+  };
   const verifiedScreenshot = await captureEvidenceFrame(
-    call,
+    sidePanelCall,
     "browser-companion-verified-after-click.png"
   );
   if (verifiedScreenshot) evidenceScreenshots.push(verifiedScreenshot);
-  const afterClickState = await extensionState("api.state()");
-  const disabledState = await extensionState("api.setEnabled(false)");
-  disabledState.surfaceHidden = await evaluateValue(
+  await trustedClick(sidePanelCall, 'document.querySelector("#toggle")', "Pause relay");
+  const disabledState = await waitForValue(
+    sidePanelCall,
+    `(async () => {
+      const envelope = await chrome.runtime.sendMessage({
+        type: "cowork:sidepanel:get-state"
+      });
+      return envelope?.result?.state ?? null;
+    })()`,
+    (value) => value?.enabled === false
+  );
+  disabledState.pageUiAbsent = await evaluateValue(
     call,
-    'document.querySelector("#cowork-browser-companion-root")?.hidden === true'
+    'document.querySelector("#cowork-browser-companion-root") === null'
   );
 
   const report = validateBrowserCompanionObservation({
@@ -444,6 +511,7 @@ try {
   });
   if (evidenceScreenshots.length > 0) report.evidenceScreenshots = evidenceScreenshots;
   console.log(JSON.stringify(report, null, 2));
+  sidePanelSocket.close();
   socket.close();
 } finally {
   await stopOwnedBrowser(browser);

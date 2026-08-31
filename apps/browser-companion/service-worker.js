@@ -2,6 +2,7 @@ import { computeVisualCrop } from "./modules/apps/browser-companion/src/protocol
 
 const MAX_STORED_REGIONS = 4;
 const storedRegions = new Map();
+let lastPageTabId = null;
 
 function removeOldestRegion() {
   const oldest = storedRegions.keys().next().value;
@@ -108,29 +109,87 @@ function consumeVisualRegion(message) {
   };
 }
 
+async function setBadge(tabId, enabled) {
+  await chrome.action.setBadgeText({
+    tabId,
+    text: enabled ? "ON" : ""
+  });
+  await chrome.action.setBadgeBackgroundColor({ tabId, color: "#0f766e" });
+}
+
+async function resolvePageTabId(sender) {
+  const senderUrl = sender?.url ?? sender?.tab?.url ?? "";
+  if (Number.isInteger(sender?.tab?.id) && !senderUrl.includes("-extension://")) {
+    lastPageTabId = sender.tab.id;
+    return lastPageTabId;
+  }
+  if (Number.isInteger(lastPageTabId)) return lastPageTabId;
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (!Number.isInteger(tab?.id)) throw new Error("PAGE_TAB_UNAVAILABLE");
+  lastPageTabId = tab.id;
+  return lastPageTabId;
+}
+
+async function sidePanelOperation(message, sender) {
+  const tabId = await resolvePageTabId(sender);
+  if (message.type === "cowork:sidepanel:get-state") {
+    return { ok: true, state: await chrome.tabs.sendMessage(tabId, { type: "cowork:get-state" }) };
+  }
+  if (message.type === "cowork:sidepanel:toggle") {
+    const current = await chrome.tabs.sendMessage(tabId, { type: "cowork:get-state" });
+    const state = await chrome.tabs.sendMessage(tabId, {
+      type: "cowork:set-enabled",
+      enabled: !current?.enabled
+    });
+    await setBadge(tabId, state?.enabled === true);
+    return { ok: true, state };
+  }
+  if (message.type === "cowork:sidepanel:confirm-offer") {
+    const result = await chrome.tabs.sendMessage(tabId, {
+      type: "cowork:confirm-offer",
+      offerId: message.offerId,
+      humanGesture: message.humanGesture === true
+    });
+    return result;
+  }
+  throw new Error("UNSUPPORTED_SIDE_PANEL_OPERATION");
+}
+
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) return;
+  lastPageTabId = tab.id;
   try {
-    const state = await chrome.tabs.sendMessage(tab.id, { type: "cowork:toggle" });
-    await chrome.action.setBadgeText({
-      tabId: tab.id,
-      text: state?.enabled ? "ON" : ""
+    const state = await chrome.tabs.sendMessage(tab.id, {
+      type: "cowork:set-enabled",
+      enabled: true
     });
-    await chrome.action.setBadgeBackgroundColor({ tabId: tab.id, color: "#0f766e" });
+    await setBadge(tab.id, state?.enabled === true);
+    await chrome.sidePanel.open({ tabId: tab.id });
   } catch {
-    await chrome.action.setBadgeText({ tabId: tab.id, text: "" });
+    await setBadge(tab.id, false);
   }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (
-    message?.type !== "cowork:capture-visible-tab" &&
-    message?.type !== "cowork:consume-visual-region"
-  ) return false;
-  const operation =
-    message.type === "cowork:capture-visible-tab"
-      ? cropVisibleTab(message, sender)
-      : Promise.resolve().then(() => consumeVisualRegion(message));
+  if (message?.type === "cowork:surface-state") {
+    if (Number.isInteger(sender.tab?.id)) lastPageTabId = sender.tab.id;
+    return false;
+  }
+  const sidePanelTypes = new Set([
+    "cowork:sidepanel:get-state",
+    "cowork:sidepanel:toggle",
+    "cowork:sidepanel:confirm-offer"
+  ]);
+  let operation;
+  if (message?.type === "cowork:capture-visible-tab") {
+    operation = cropVisibleTab(message, sender);
+  } else if (message?.type === "cowork:consume-visual-region") {
+    operation = Promise.resolve().then(() => consumeVisualRegion(message));
+  } else if (sidePanelTypes.has(message?.type)) {
+    operation = sidePanelOperation(message, sender);
+  } else {
+    return false;
+  }
   operation
     .then((result) => sendResponse({ ok: true, result }))
     .catch((error) => sendResponse({ ok: false, code: error.message }));

@@ -496,9 +496,24 @@ try {
     inputValueAfterClick: document.querySelector("#full-name")?.value,
     receiptStatusText: document.querySelector("#receipt-list li")?.textContent.trim()
   }))()`);
+  const sharedContext = await evaluateValue(
+    call,
+    `window.coworkSession.readContext()`
+  );
+  if (
+    sharedContext?.type !== "context-snapshot" ||
+    sharedContext.sessionId !== "formbuilder-showcase" ||
+    sharedContext.revision < 4 ||
+    sharedContext.recentTurns.length < 4 ||
+    !sharedContext.recentTurns.some(({ role }) => role === "human") ||
+    !sharedContext.recentTurns.some(({ role }) => role === "assistant")
+  ) {
+    throw new Error("Cowork-owned conversation turns did not reach the shared Context Manager");
+  }
   const conversationObserved = {
     ...conversationBeforeClick,
     ...conversationAfterClick,
+    sharedContext,
     webMcpInbox: {
       readPacket: turnExecution.packet,
       replyPacket: replyExecution.packet,
@@ -584,6 +599,7 @@ try {
   console.log(JSON.stringify({
     ...summary,
     conversation: conversationSummary,
+    sharedContextClaim: true,
     bridge: bridgeSummary,
     zoom: zoomSummary,
     hostTokenClaim: false,

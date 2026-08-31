@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Cowork Protocol</title>
+    <link rel="stylesheet" href="sidepanel.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="mark" aria-hidden="true">C</div>
+        <div>
+          <p class="eyebrow">Cowork Protocol</p>
+          <h1>Shared control</h1>
+        </div>
+      </header>
+
+      <section class="presence" aria-label="Collaboration presence">
+        <div><span class="human-icon" aria-hidden="true">●</span><span id="human-label">Human present</span></div>
+        <div><span class="model-icon" aria-hidden="true">A</span><span id="model-label">Agent paused</span></div>
+      </section>
+
+      <section class="status-card" aria-labelledby="status-title">
+        <div class="section-row">
+          <h2 id="status-title">Connection</h2>
+          <span id="mode" class="mode">Off</span>
+        </div>
+        <p id="status" role="status">Choose Start to attach the bounded relay.</p>
+        <p class="detail">Protocol first · fallback only when needed</p>
+        <button id="toggle" class="secondary" type="button">Start</button>
+      </section>
+
+      <section id="offer-card" class="offer-card" aria-labelledby="offer-title" hidden>
+        <p class="eyebrow">Offer · your decision</p>
+        <h2 id="offer-title">Proposed action</h2>
+        <button id="offer-action" class="primary" type="button"></button>
+      </section>
+
+      <footer>350 → 1,200 → one bounded visual request</footer>
+    </main>
+    <script src="sidepanel.js" type="module"></script>
+  </body>
+</html>

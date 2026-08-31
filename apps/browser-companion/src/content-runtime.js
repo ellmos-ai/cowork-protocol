@@ -1,8 +1,8 @@
 import { createLegacyHostCompanion } from "../../../packages/bridge/src/index.js";
 import { CoworkProtocolError } from "../../../packages/core/src/index.js";
 import { describeDomTarget, normalizeCompanionRequest } from "./protocol.js";
+import { createNativePageClient } from "./native-page-client.js";
 
-const ROOT_ID = "cowork-browser-companion-root";
 const RESPONSE_SOURCE = "cowork-browser-companion";
 const TARGET_SELECTOR = [
   "input",
@@ -48,79 +48,29 @@ function accessibilityText(element, documentLike) {
     .join("\n");
 }
 
-function createSurface(documentLike) {
-  const root = documentLike.createElement("div");
-  root.id = ROOT_ID;
-  root.style.position = "fixed";
-  root.style.right = "18px";
-  root.style.bottom = "18px";
-  root.style.zIndex = "2147483647";
-  const shadow = root.attachShadow({ mode: "open" });
-  shadow.innerHTML = `
-    <style>
-      :host { all: initial; }
-      .panel {
-        box-sizing: border-box;
-        width: min(340px, calc(100vw - 36px));
-        border: 1px solid #d9b45b;
-        border-radius: 18px;
-        background: #fffdf7;
-        color: #172033;
-        box-shadow: 0 16px 44px rgb(36 29 16 / 22%);
-        font: 600 14px/1.4 system-ui, sans-serif;
-        padding: 14px;
-      }
-      .eyebrow { color: #8a5a05; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
-      .status { margin: 5px 0 0; }
-      .offer { margin-top: 12px; }
-      button {
-        width: 100%;
-        border: 0;
-        border-radius: 12px;
-        background: #075985;
-        color: white;
-        cursor: pointer;
-        font: 700 14px/1.3 system-ui, sans-serif;
-        padding: 11px 12px;
-        text-align: left;
-      }
-      button:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }
-      .detail { color: #475569; font-size: 12px; font-weight: 500; margin-top: 5px; }
-    </style>
-    <section class="panel" aria-label="Cowork Browser Companion">
-      <div class="eyebrow">Cowork fallback</div>
-      <p class="status" role="status">Enabled · point at a control</p>
-      <div class="detail">No WebMCP required · bounded context only</div>
-      <div class="offer"></div>
-    </section>`;
-  documentLike.documentElement.append(root);
-  return {
-    root,
-    status: shadow.querySelector(".status"),
-    offer: shadow.querySelector(".offer")
-  };
-}
-
 export function installBrowserCompanion({ document, window, runtime }) {
   if (!document || !window || !runtime) {
     throw new TypeError("Browser companion requires document, window and extension runtime");
   }
 
   let enabled = false;
-  let surface = null;
   let companion = null;
   let currentElement = null;
   let pointer = { x: Math.round(window.innerWidth / 2), y: Math.round(window.innerHeight / 2) };
   let pageVersion = 0;
   let lastVisualDelivery = null;
   let lastTrustedHumanClick = false;
+  let statusText = "Off";
+  let pendingOffer = null;
+  let pendingOfferContract = null;
+  let runtimeMode = "off";
+  let nativeDiscovery = null;
   const stableElements = new Map();
+  const nativePageClient = createNativePageClient({ window });
 
   const mutationObserver = new MutationObserver((records) => {
     if (!enabled) return;
-    if (records.some((record) => !surface?.root.contains(record.target))) {
-      pageVersion += 1;
-    }
+    if (records.length > 0) pageVersion += 1;
   });
   mutationObserver.observe(document.documentElement, {
     attributes: true,
@@ -128,16 +78,29 @@ export function installBrowserCompanion({ document, window, runtime }) {
     subtree: true
   });
 
+  function publishSurfaceState() {
+    try {
+      const request = runtime.sendMessage({
+        type: "cowork:surface-state",
+        state: state()
+      });
+      request?.catch?.(() => {});
+    } catch {
+      // The relay remains usable if no Side Panel listener is currently alive.
+    }
+  }
+
   function updateStatus(text) {
-    if (surface) surface.status.textContent = text;
+    statusText = text;
+    publishSurfaceState();
   }
 
   function targetAtFocus() {
-    const active = semanticTarget(document.activeElement, surface?.root);
+    const active = semanticTarget(document.activeElement, null);
     if (active && document.activeElement !== document.body) return active;
     return currentElement ?? semanticTarget(
       document.elementFromPoint(pointer.x, pointer.y),
-      surface?.root
+      null
     );
   }
 
@@ -176,35 +139,12 @@ export function installBrowserCompanion({ document, window, runtime }) {
         return response.result;
       },
       presentActionOffer: async ({ offer }) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.dataset.coworkOfferId = offer.offerId;
-        button.textContent = offer.summary;
-        button.addEventListener("click", async (event) => {
-          if (!event.isTrusted) {
-            updateStatus("Ignored an untrusted synthetic click");
-            return;
-          }
-          lastTrustedHumanClick = true;
-          try {
-            const result = await companion.host.confirmAction({
-              offerId: offer.offerId,
-              event: {
-                origin: "human-click",
-                offerId: offer.offerId,
-                targetId: offer.targetId,
-                pageVersion: offer.pageVersion,
-                arguments: offer.proposedArguments
-              },
-              now: new Date().toISOString()
-            });
-            updateStatus(result.verified ? "Verified after your click" : "Verification failed");
-            button.remove();
-          } catch (error) {
-            updateStatus(codeOnly(error).code);
-          }
-        });
-        surface.offer.replaceChildren(button);
+        pendingOfferContract = offer;
+        pendingOffer = {
+          offerId: offer.offerId,
+          summary: offer.summary
+        };
+        updateStatus("Offer waiting for your approval");
       },
       executeAuthorizedAction: async ({ offer }) => {
         if (pageVersion !== offer.pageVersion) {
@@ -237,20 +177,97 @@ export function installBrowserCompanion({ document, window, runtime }) {
     });
   }
 
-  function setEnabled(nextEnabled) {
+  function createNativeCompanion(discovery) {
+    const toolNames = new Set(discovery.tools.map(({ name }) => name));
+    async function execute(toolName, input = {}) {
+      if (!toolNames.has(toolName)) {
+        throw new CoworkProtocolError(
+          "NATIVE_COWORK_TOOL_UNAVAILABLE",
+          `The page does not expose ${toolName}`
+        );
+      }
+      return nativePageClient.executeTool(toolName, input);
+    }
+    return {
+      agent: {
+        readFocus: () => execute("cowork_read_focus"),
+        requestContext: (input) => execute("cowork_request_context", {
+          reason:
+            typeof input?.reason === "string" && input.reason.trim() !== ""
+              ? input.reason.slice(0, 200)
+              : "The bounded focus packet needs one related context level."
+        }),
+        offerAction: (input) => execute("cowork_offer_action", {
+          capabilityId: input.capabilityId,
+          targetId: input.targetId,
+          value: input.value ?? input.proposedArguments?.value,
+          summary: input.summary
+        })
+      }
+    };
+  }
+
+  async function confirmPendingOffer({ offerId, humanGesture }) {
+    if (humanGesture !== true || pendingOffer?.offerId !== offerId || !companion) {
+      throw new CoworkProtocolError(
+        "HUMAN_CONFIRMATION_REQUIRED",
+        "The current Side Panel offer requires an explicit human click"
+      );
+    }
+    lastTrustedHumanClick = true;
+    const offer = pendingOfferContract;
+    const result = await companion.host.confirmAction({
+      offerId,
+      event: {
+        origin: "human-click",
+        offerId,
+        targetId: offer.targetId,
+        pageVersion: offer.pageVersion,
+        arguments: offer.proposedArguments
+      },
+      now: new Date().toISOString()
+    });
+    pendingOffer = null;
+    pendingOfferContract = null;
+    updateStatus(result.verified ? "Verified after your click" : "Verification failed");
+    return state();
+  }
+
+  async function setEnabled(nextEnabled) {
     enabled = nextEnabled;
     currentElement = null;
     stableElements.clear();
     lastVisualDelivery = null;
     lastTrustedHumanClick = false;
+    pendingOffer = null;
+    pendingOfferContract = null;
+    nativeDiscovery = null;
     if (enabled) {
-      surface ??= createSurface(document);
-      surface.root.hidden = false;
-      companion = createCompanion();
-      updateStatus("Enabled · point at a control");
+      try {
+        nativeDiscovery = await nativePageClient.discover();
+      } catch {
+        nativeDiscovery = null;
+      }
+      if (
+        nativeDiscovery?.mode === "native-cowork" ||
+        nativeDiscovery?.mode === "native-webmcp"
+      ) {
+        runtimeMode = nativeDiscovery.mode;
+        companion = createNativeCompanion(nativeDiscovery);
+        updateStatus(
+          runtimeMode === "native-cowork"
+            ? `Native Cowork connected · ${nativeDiscovery.coworkToolCount} tools`
+            : `Native WebMCP detected · ${nativeDiscovery.tools.length} tools`
+        );
+      } else {
+        runtimeMode = "legacy-host-companion";
+        companion = createCompanion();
+        updateStatus("Fallback enabled · point at a control");
+      }
     } else {
-      if (surface) surface.root.hidden = true;
       companion = null;
+      runtimeMode = "off";
+      updateStatus("Off");
     }
     return state();
   }
@@ -259,11 +276,19 @@ export function installBrowserCompanion({ document, window, runtime }) {
     return {
       protocolVersion: "0.1",
       enabled,
-      mode: enabled ? "legacy-host-companion" : "off",
+      mode: runtimeMode,
       pageVersion,
       webMcpRequired: false,
+      webMcpAvailable: nativeDiscovery?.webMcpAvailable === true,
+      coworkProtocolAvailable: nativeDiscovery?.coworkProtocolAvailable === true,
+      nativeToolCount: nativeDiscovery?.tools?.length ?? 0,
+      fallbackActive: runtimeMode === "legacy-host-companion",
       extensionTransport: true,
       browserWideAttachment: true,
+      surfaceLocation: "browser-side-panel",
+      inPageUi: false,
+      statusText,
+      pendingOffer,
       visualRegionStored: Boolean(lastVisualDelivery),
       visualDelivery: lastVisualDelivery,
       lastTrustedHumanClick
@@ -298,7 +323,7 @@ export function installBrowserCompanion({ document, window, runtime }) {
     (event) => {
       if (!enabled) return;
       pointer = { x: event.clientX, y: event.clientY };
-      const candidate = semanticTarget(event.target, surface?.root);
+      const candidate = semanticTarget(event.target, null);
       if (candidate) currentElement = candidate;
     },
     { capture: true, passive: true }
@@ -340,15 +365,48 @@ export function installBrowserCompanion({ document, window, runtime }) {
 
   runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === "cowork:toggle") {
-      sendResponse(setEnabled(!enabled));
-      return false;
+      setEnabled(!enabled)
+        .then(sendResponse)
+        .catch((error) => sendResponse({ error: codeOnly(error) }));
+      return true;
+    }
+    if (message?.type === "cowork:set-enabled") {
+      setEnabled(message.enabled === true)
+        .then(sendResponse)
+        .catch((error) => sendResponse({ error: codeOnly(error) }));
+      return true;
     }
     if (message?.type === "cowork:get-state") {
       sendResponse(state());
       return false;
     }
+    if (message?.type === "cowork:confirm-offer") {
+      confirmPendingOffer(message)
+        .then((result) => sendResponse({ ok: true, state: result }))
+        .catch((error) => sendResponse({ ok: false, error: codeOnly(error) }));
+      return true;
+    }
     return false;
   });
 
-  return { state, setEnabled, consumeVisualRegion };
+  publishSurfaceState();
+  return {
+    state,
+    setEnabled,
+    request: async (method, argumentsValue = {}) => {
+      if (!enabled || !companion) {
+        throw new CoworkProtocolError("COMPANION_DISABLED", "Cowork Companion is disabled");
+      }
+      const operation = companion.agent[method];
+      if (typeof operation !== "function") {
+        throw new CoworkProtocolError(
+          "COMPANION_METHOD_UNAVAILABLE",
+          "The requested Cowork operation is unavailable"
+        );
+      }
+      return operation(argumentsValue);
+    },
+    consumeVisualRegion,
+    confirmPendingOffer
+  };
 }

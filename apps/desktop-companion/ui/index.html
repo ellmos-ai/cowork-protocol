@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-ui-provider="cowork-reference-ui">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Cowork Protocol Companion</title>
+    <link rel="stylesheet" href="/cowork/v1/ui/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="brand-row">
+        <div class="mark" aria-hidden="true">C</div>
+        <div>
+          <p class="eyebrow">Cowork Protocol</p>
+          <h1>Companion</h1>
+        </div>
+        <span id="connection" class="connection">Waiting</span>
+      </header>
+
+      <section class="presence" aria-label="Collaboration presence">
+        <div class="presence-person"><span class="human-icon" aria-hidden="true">●</span><span id="human-label">Human present</span></div>
+        <div class="presence-person"><span class="model-icon" aria-hidden="true">A</span><span id="model-label">Agent active</span></div>
+      </section>
+
+      <section class="status-card" aria-labelledby="session-heading">
+        <div class="section-row">
+          <div>
+            <p class="eyebrow">One shared session</p>
+            <h2 id="session-heading">No page connected</h2>
+          </div>
+          <span id="mode" class="mode">Idle</span>
+        </div>
+        <p id="revision" class="detail">The Companion stays ready on loopback.</p>
+        <div class="presence-actions" aria-label="Human presence">
+          <button data-presence="afk-short" type="button">Briefly away</button>
+          <button data-presence="afk-long" type="button">Away longer</button>
+          <button data-presence="present" type="button">I’m back</button>
+        </div>
+      </section>
+
+      <section class="conversation-card" aria-labelledby="conversation-heading">
+        <div class="section-row">
+          <div>
+            <p class="eyebrow">Shared Context Manager</p>
+            <h2 id="conversation-heading">Conversation</h2>
+          </div>
+          <span id="context-budget" class="detail">0 turns</span>
+        </div>
+        <ol id="turns" class="turns" aria-live="polite"></ol>
+        <form id="conversation-form">
+          <label for="conversation-input">Talk or type to your model</label>
+          <textarea id="conversation-input" maxlength="350" rows="3" placeholder="Continue the shared task…"></textarea>
+          <div class="button-row">
+            <button class="primary" id="send" type="submit">Send</button>
+            <button id="talk" type="button" aria-label="Push to talk">● Talk</button>
+            <button id="stop-speech" type="button">Stop voice</button>
+          </div>
+        </form>
+        <label class="speak-toggle"><input id="speak" type="checkbox" checked> Speak replies</label>
+        <p id="status" role="status">Silence creates no model turn.</p>
+      </section>
+    </main>
+    <script src="/cowork/v1/ui/app.js" type="module"></script>
+  </body>
+</html>

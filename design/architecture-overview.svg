@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1050" viewBox="0 0 1800 1050" role="img" aria-labelledby="title description">
   <title id="title">Cowork Protocol architecture overview</title>
-  <desc id="description">A human and preferred model collaborate through the Cowork Panel and Protocol Core. The runtime selects native Cowork, a bounded WebMCP bridge, or the default-off Browser Companion for pages without WebMCP. Human clicks authorize changes and applications return verified receipts.</desc>
+  <desc id="description">A human collaborates through an interchangeable embedded, detached, extension, desktop, tray, or provider surface. One versioned Session Authority owns surface and model-seat leases. One Context Manager and serialized Model Gateway serve Cowork-owned surfaces, while the provider-neutral Protocol Core selects native Cowork, existing WebMCP, or a bounded no-WebMCP fallback. Human authorization gates changes and applications return verified receipts.</desc>
 
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
@@ -36,7 +36,7 @@
 
   <text x="90" y="86" class="eyebrow">WEBMCP COLLABORATION ARCHITECTURE</text>
   <text x="90" y="153" class="title">Cowork Protocol</text>
-  <text x="90" y="194" class="subtitle">A reusable working agreement between people, models and web applications.</text>
+  <text x="90" y="194" class="subtitle">One session · one active model seat · interchangeable surfaces · strongest available connector.</text>
 
   <g transform="translate(1220 74)">
     <rect x="0" y="0" width="112" height="40" rx="20" fill="#eaf4ff" stroke="#75a7f2" stroke-width="2"/>
@@ -62,39 +62,39 @@
   <text x="120" y="370" class="card-copy">focus · speech · selection</text>
   <text x="120" y="400" class="card-copy">trusted click · evaluation</text>
 
-  <text x="460" y="290" class="eyebrow">CONTROL SURFACE</text>
-  <text x="460" y="334" class="card-title">Cowork Panel</text>
-  <text x="460" y="370" class="card-copy">modes · offers · feedback</text>
-  <text x="460" y="400" class="card-copy">presence · verified receipts</text>
+  <text x="460" y="290" class="eyebrow">REPLACEABLE SURFACE</text>
+  <text x="460" y="334" class="card-title">Interchangeable UI</text>
+  <text x="460" y="370" class="card-copy">Embed · PiP · Side Panel</text>
+  <text x="460" y="400" class="card-copy">Desktop/tray · provider chat</text>
 
-  <text x="800" y="290" class="eyebrow">VERSIONED CONTRACT</text>
-  <text x="800" y="334" class="card-title">Protocol Core</text>
-  <text x="800" y="370" class="card-copy">bounded context · rights · leases</text>
-  <text x="800" y="400" class="card-copy">causal events · latest-only state</text>
+  <text x="800" y="290" class="eyebrow">ONE VERSIONED SESSION</text>
+  <text x="800" y="334" class="card-title">Session Authority</text>
+  <text x="800" y="370" class="card-copy">revision · surface &amp; model leases</text>
+  <text x="800" y="400" class="card-copy">presence · modes · causal journal</text>
 
-  <text x="1180" y="290" class="eyebrow">AGENT RUNTIME</text>
-  <text x="1180" y="334" class="card-title">Preferred model</text>
-  <text x="1180" y="370" class="card-copy">hypothesis · context request</text>
-  <text x="1180" y="400" class="card-copy">proposal · scoped work</text>
+  <text x="1180" y="290" class="eyebrow">COWORK-OWNED MODEL PATH</text>
+  <text x="1180" y="334" class="card-title">Context + gateway</text>
+  <text x="1180" y="370" class="card-copy">summary · bounded recent turns</text>
+  <text x="1180" y="400" class="card-copy">one serialized inference queue</text>
 
-  <text x="1550" y="290" class="eyebrow">OPTIONAL</text>
-  <text x="1550" y="334" class="card-title">Model host</text>
-  <text x="1550" y="370" class="card-copy">provider seam</text>
-  <text x="1550" y="400" class="card-copy">no browser key</text>
+  <text x="1550" y="290" class="eyebrow">ONE ACTIVE SEAT</text>
+  <text x="1550" y="334" class="card-title">Model seat</text>
+  <text x="1550" y="370" class="card-copy">Cowork model</text>
+  <text x="1550" y="400" class="card-copy">or provider chat</text>
 
   <path d="M390 345 H430" stroke="#352c26" stroke-width="3" marker-end="url(#arrow-dark)"/>
   <text x="410" y="236" text-anchor="middle" class="connector-label">authorize / evaluate</text>
   <path d="M730 345 H770" stroke="#352c26" stroke-width="3" marker-end="url(#arrow-dark)"/>
-  <text x="750" y="236" text-anchor="middle" class="connector-label">events</text>
+  <text x="750" y="236" text-anchor="middle" class="connector-label">commands / projections</text>
   <path d="M1110 329 H1150" stroke="#352c26" stroke-width="3" marker-end="url(#arrow-dark)"/>
   <path d="M1150 366 H1110" stroke="#352c26" stroke-width="3" marker-end="url(#arrow-dark)"/>
-  <text x="1130" y="236" text-anchor="middle" class="connector-label">focus ↔ proposal</text>
+  <text x="1130" y="236" text-anchor="middle" class="connector-label">bounded context ↔ turn</text>
   <path d="M1480 345 H1520" stroke="#8c9ead" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrow-dark)"/>
-  <text x="1500" y="236" text-anchor="middle" class="connector-label">optional seam</text>
+  <text x="1500" y="236" text-anchor="middle" class="connector-label">exclusive lease</text>
 
   <path d="M940 440 V510" stroke="#07877e" stroke-width="5" marker-end="url(#arrow-teal)"/>
-  <rect x="740" y="470" width="400" height="44" rx="22" fill="#087f76"/>
-  <text x="940" y="498" text-anchor="middle" class="chip" fill="#ffffff">STRONGEST AVAILABLE CONNECTOR</text>
+  <rect x="665" y="470" width="550" height="44" rx="22" fill="#087f76"/>
+  <text x="940" y="498" text-anchor="middle" class="chip" fill="#ffffff">PROTOCOL CORE · STRONGEST AVAILABLE CONNECTOR</text>
 
   <rect x="70" y="520" width="1660" height="460" rx="30" fill="#ffffff" opacity="0.74" stroke="#ddcfbf" stroke-width="2"/>
   <text x="105" y="565" class="eyebrow">CONNECTOR BOUNDARY</text>
@@ -132,12 +132,13 @@
   <text x="130" y="936" class="lane-copy">extension starts disabled</text>
   <path d="M405 912 H500" stroke="#da3824" stroke-width="4" marker-end="url(#arrow-dark)"/>
   <rect x="500" y="866" width="470" height="92" rx="20" fill="#fffefb" stroke="#e95b47" stroke-width="3"/>
-  <text x="530" y="906" class="lane-title">Browser Companion</text>
-  <text x="530" y="936" class="lane-copy">350 → 1,200 → 400×400 one-shot · trusted click</text>
+  <text x="530" y="906" class="lane-title">Browser relay + Side Panel</text>
+  <text x="530" y="936" class="lane-copy">350 → 1,200 → 400×400 one-shot · user gate</text>
   <path d="M970 912 H1065" stroke="#da3824" stroke-width="4" marker-end="url(#arrow-dark)"/>
   <rect x="1065" y="866" width="600" height="92" rx="20" fill="#fffefb" stroke="#e95b47" stroke-width="3"/>
   <text x="1095" y="906" class="lane-title">Arbitrary web page</text>
   <text x="1095" y="936" class="lane-copy">visible offer → human click → observed verification</text>
 
-  <text x="900" y="1020" text-anchor="middle" class="connector-label">Context stays bounded. Offers stay inert. Human authority stays visible.</text>
+  <text x="900" y="1012" text-anchor="middle" class="connector-label">Context stays bounded. Offers stay inert. Human authority stays visible.</text>
+  <text x="900" y="1038" text-anchor="middle" class="connector-label">Source-backed component view · design/architecture-overview.svg · 2026-08-31</text>
 </svg>

@@ -199,6 +199,10 @@ try {
       }
     }
     return {
+      url: location.href,
+      title: document.title,
+      readyState: document.readyState,
+      bodyTextPreview: document.body?.innerText?.slice(0, 160) ?? "",
       viewportCssWidth: window.innerWidth,
       viewportCssHeight: window.innerHeight,
       documentHorizontalOverflow: Math.max(

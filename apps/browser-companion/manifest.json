@@ -7,13 +7,29 @@
     "service_worker": "service-worker.js",
     "type": "module"
   },
+  "permissions": [
+    "sidePanel"
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
   "action": {
-    "default_title": "Toggle Cowork Companion"
+    "default_title": "Open Cowork Protocol"
   },
   "host_permissions": [
     "<all_urls>"
   ],
   "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "native-page-bridge.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
     {
       "matches": [
         "<all_urls>"
@@ -28,6 +44,7 @@
     {
       "resources": [
         "modules/apps/browser-companion/src/content-runtime.js",
+        "modules/apps/browser-companion/src/native-page-client.js",
         "modules/apps/browser-companion/src/protocol.js",
         "modules/packages/bridge/src/bounded-result.js",
         "modules/packages/bridge/src/companion.js",

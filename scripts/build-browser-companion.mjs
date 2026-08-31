@@ -4,21 +4,33 @@ import { pathToFileURL } from "node:url";
 
 const EXTENSION_FILES = [
   "apps/browser-companion/content-loader.js",
+  "apps/browser-companion/native-page-bridge.js",
   "apps/browser-companion/manifest.json",
   "apps/browser-companion/service-worker.js",
+  "apps/browser-companion/sidepanel.html",
+  "apps/browser-companion/sidepanel.css",
+  "apps/browser-companion/sidepanel.js",
   "apps/browser-companion/src/content-runtime.js",
+  "apps/browser-companion/src/native-page-client.js",
   "apps/browser-companion/src/protocol.js",
   "packages/bridge/src/bounded-result.js",
   "packages/bridge/src/companion.js",
   "packages/bridge/src/index.js",
   "packages/bridge/src/legacy.js",
-  "packages/core/src/index.js"
+  "packages/core/src/index.js",
+  "packages/reference-ui/src/index.js"
 ];
 
 function outputPathFor(relativePath) {
   if (relativePath === "apps/browser-companion/manifest.json") return "manifest.json";
   if (relativePath === "apps/browser-companion/content-loader.js") return "content-loader.js";
+  if (relativePath === "apps/browser-companion/native-page-bridge.js") {
+    return "native-page-bridge.js";
+  }
   if (relativePath === "apps/browser-companion/service-worker.js") return "service-worker.js";
+  if (relativePath === "apps/browser-companion/sidepanel.html") return "sidepanel.html";
+  if (relativePath === "apps/browser-companion/sidepanel.css") return "sidepanel.css";
+  if (relativePath === "apps/browser-companion/sidepanel.js") return "sidepanel.js";
   return `modules/${relativePath}`;
 }
 

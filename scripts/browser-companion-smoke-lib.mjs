@@ -21,6 +21,8 @@ export function validateBrowserCompanionObservation(observed) {
       observed.enabledState?.mode === "legacy-host-companion" &&
       observed.enabledState?.extensionTransport === true &&
       observed.enabledState?.browserWideAttachment === true &&
+      observed.enabledState?.surfaceLocation === "browser-side-panel" &&
+      observed.enabledState?.inPageUi === false &&
       observed.enabledState?.webMcpRequired === false,
     "The enabled extension must expose the legacy host companion transport"
   );
@@ -81,7 +83,8 @@ export function validateBrowserCompanionObservation(observed) {
   requireCondition(
     observed.offer?.valueBeforeOffer === "Draft" &&
       observed.offer?.valueBeforeHumanClick === "Draft" &&
-      observed.offer?.visibleOfferCount === 1,
+      observed.offer?.visibleOfferCount === 1 &&
+      observed.offer?.pageUiInjected === false,
     "The extension must not mutate the field before the trusted click"
   );
   requireCondition(
@@ -93,8 +96,9 @@ export function validateBrowserCompanionObservation(observed) {
   requireCondition(
     observed.disabledState?.enabled === false &&
       observed.disabledState?.mode === "off" &&
-      observed.disabledState?.surfaceHidden === true,
-    "The extension must return to an off state with its surface hidden"
+      observed.disabledState?.inPageUi === false &&
+      observed.disabledState?.pageUiAbsent === true,
+    "The extension must return to an off state without injecting a page UI"
   );
 
   return {
@@ -102,6 +106,8 @@ export function validateBrowserCompanionObservation(observed) {
     browserVersion: observed.browserVersion,
     defaultDisabled: true,
     extensionTransport: true,
+    sidePanelSurfaceClaim: true,
+    pageUiInjected: false,
     webMcpAbsent: true,
     semanticTierCharacters: [nearbyCharacters, accessibilityCharacters],
     visualCaptureClaim: true,

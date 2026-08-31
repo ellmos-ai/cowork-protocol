@@ -15,6 +15,8 @@ function acceptedObservation() {
       mode: "legacy-host-companion",
       extensionTransport: true,
       browserWideAttachment: true,
+      surfaceLocation: "browser-side-panel",
+      inPageUi: false,
       webMcpRequired: false
     },
     focus: {
@@ -59,6 +61,7 @@ function acceptedObservation() {
       valueBeforeOffer: "Draft",
       valueBeforeHumanClick: "Draft",
       visibleOfferCount: 1,
+      pageUiInjected: false,
       visibleOfferText: "Use Cowork Everywhere as the project title"
     },
     click: {
@@ -66,7 +69,12 @@ function acceptedObservation() {
       valueAfterHumanClick: "Cowork Everywhere",
       status: "Verified after your click"
     },
-    disabledState: { enabled: false, mode: "off", surfaceHidden: true }
+    disabledState: {
+      enabled: false,
+      mode: "off",
+      inPageUi: false,
+      pageUiAbsent: true
+    }
   };
 }
 
@@ -78,6 +86,8 @@ test("the browser companion validator accepts the complete no-WebMCP journey", (
       browserVersion: "Chrome/152.0.7977.64",
       defaultDisabled: true,
       extensionTransport: true,
+      sidePanelSurfaceClaim: true,
+      pageUiInjected: false,
       webMcpAbsent: true,
       semanticTierCharacters: [350, 1200],
       visualCaptureClaim: true,

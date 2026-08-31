@@ -1,12 +1,6 @@
 import { CoworkProtocolError } from "../../../packages/core/src/index.js";
 import { actionModeAllows } from "./session.js";
-
-const MODE_LABELS = {
-  cowork: "Cowork",
-  "agent-solo": "Agent solo",
-  "human-solo": "Human solo",
-  idle: "Idle"
-};
+import { buildReferenceSurfacePresentation } from "../../../packages/reference-ui/src/index.js";
 
 const CAPABILITY_LABELS = {
   native: "Native WebMCP",
@@ -62,16 +56,6 @@ export function prepareVisibleActionOffer(offer) {
   };
 }
 
-function humanPresentation(humanPresence) {
-  if (humanPresence === "afk-long") {
-    return { humanTone: "red", humanLabel: "Human away for longer" };
-  }
-  if (humanPresence === "afk-short") {
-    return { humanTone: "yellow", humanLabel: "Human briefly away" };
-  }
-  return { humanTone: "green", humanLabel: "Human present" };
-}
-
 function isCurrentOffer(offer, nowTimestamp, pageVersion) {
   if (!offer || typeof offer !== "object") return false;
   const expiresAt = Date.parse(offer.expiresAt);
@@ -117,13 +101,14 @@ export function buildPanelViewModel({
   now,
   pageVersion
 }) {
-  const human = humanPresentation(session.humanPresence);
+  const referenceSurface = buildReferenceSurfacePresentation(session);
   const contextCharacters = focusPacket?.metrics?.contextCharacters;
 
   return {
-    modeLabel: MODE_LABELS[session.effectiveMode],
-    ...human,
-    agentLabel: session.agentPresence === "paused" ? "Agent paused" : "Agent active",
+    modeLabel: referenceSurface.modeLabel,
+    humanTone: referenceSurface.humanTone,
+    humanLabel: referenceSurface.humanLabel,
+    agentLabel: referenceSurface.agentLabel,
     capabilityLabel: CAPABILITY_LABELS[capabilityLevel],
     focusLabel: focusPacket?.focus?.label ?? "Point to or select a form field",
     contextLabel:
