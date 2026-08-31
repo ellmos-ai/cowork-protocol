@@ -236,12 +236,17 @@ export function createLegacyHostCompanion({
       }
       const authorization = authorizeActionOffer({ offer, event, now });
       const result = await executeAuthorizedAction({ offer, authorization });
-      pendingOffers.delete(offerId);
-      return boundHostResult(
+      // Bound the result before consuming the offer: if the executor
+      // returned something boundHostResult() cannot use, the offer must
+      // stay pending so a repeated human click can still retry it instead
+      // of silently vanishing.
+      const boundedResult = boundHostResult(
         `legacy-action:${offer.capabilityId}`,
         result,
         "legacy-action-preview"
       );
+      pendingOffers.delete(offerId);
+      return boundedResult;
     }
   };
 

@@ -161,6 +161,53 @@ test("legacy companion offers visibly and mutates only after human-click confirm
   assert.equal(executed[0].authorization.authorizationSource, "human-click");
 });
 
+test("an unusable executor result keeps the legacy offer pending for a retry", async () => {
+  let attempt = 0;
+  const { companion, host } = createFixture({
+    executeAuthorizedAction: async ({ offer }) => {
+      attempt += 1;
+      // The first attempt simulates an executor that fails to produce a
+      // JSON-serializable result (boundHostResult() rejects `undefined`).
+      if (attempt === 1) return undefined;
+      return { verified: true, observedValue: offer.proposedArguments.value };
+    }
+  });
+  const focus = await companion.readFocus();
+  const offer = await companion.offerAction({
+    offerId: "legacy-offer-retry",
+    capabilityId: "legacy.offer_value",
+    targetId: focus.targetId,
+    pageVersion: focus.pageVersion,
+    proposedArguments: { value: "Cowork demo" },
+    summary: "Use Cowork demo as the project title",
+    effect: "write",
+    undoAvailable: true,
+    expiresAt: "2026-09-01T10:05:00.000Z"
+  });
+  const clickEvent = {
+    origin: "human-click",
+    offerId: offer.offerId,
+    targetId: offer.targetId,
+    pageVersion: offer.pageVersion,
+    arguments: offer.proposedArguments
+  };
+
+  await assert.rejects(
+    host.confirmAction({ offerId: offer.offerId, event: clickEvent, now: "2026-09-01T10:01:00.000Z" }),
+    (error) => error instanceof CoworkProtocolError && error.code === "INVALID_BRIDGE_RESULT"
+  );
+
+  // The offer must still be pending: a second human click on the exact
+  // same offer succeeds instead of hitting OFFER_UNAVAILABLE.
+  const result = await host.confirmAction({
+    offerId: offer.offerId,
+    event: clickEvent,
+    now: "2026-09-01T10:02:00.000Z"
+  });
+  assert.deepEqual(result, { verified: true, observedValue: "Cowork demo" });
+  assert.equal(attempt, 2);
+});
+
 test("ephemeral targets remain explain-only", async () => {
   const { companion, presented } = createFixture({
     getTargetSnapshot: async () => ({
