@@ -147,6 +147,25 @@ function assertAck(value, expected) {
   return cloneJson(value, "Companion acknowledgement");
 }
 
+function assertSurfaceAck(value, expected) {
+  if (
+    value?.protocolVersion !== PROTOCOL_VERSION ||
+    value?.linkVersion !== LINK_VERSION ||
+    value?.type !== "companion-surface-ack" ||
+    value.sessionId !== expected.sessionId ||
+    value.linkSessionId !== expected.linkSessionId ||
+    value.observedRevision !== expected.observedRevision ||
+    !Number.isInteger(value.acceptedRevision) ||
+    value.acceptedRevision < expected.observedRevision
+  ) {
+    throw new CompanionLinkError(
+      "COMPANION_REVISION_MISMATCH",
+      "Companion did not acknowledge the bounded surface event"
+    );
+  }
+  return cloneJson(value, "Companion surface acknowledgement");
+}
+
 export function createCompanionHello({
   sessionId,
   surfaceId,
@@ -310,6 +329,45 @@ export function createHttpCompanionLink({
         );
       }
       return cloneJson(batch, "Companion delta batch");
+    },
+
+    async reportSurface({
+      linkSessionId,
+      surfaceId,
+      visibility,
+      observedRevision
+    }) {
+      requiredText(linkSessionId, "linkSessionId");
+      const sessionId = joinedSessions.get(linkSessionId);
+      if (
+        !sessionId ||
+        !["hidden", "visible"].includes(visibility) ||
+        !Number.isInteger(observedRevision) ||
+        observedRevision < 0
+      ) {
+        throw new CompanionLinkError(
+          "INVALID_COMPANION_MESSAGE",
+          "Companion surface reports require a joined session, visibility and cursor"
+        );
+      }
+      const event = {
+        protocolVersion: PROTOCOL_VERSION,
+        linkVersion: LINK_VERSION,
+        type: "surface-event",
+        sessionId,
+        surfaceId: requiredText(surfaceId, "surfaceId"),
+        event: `page-${visibility}`,
+        observedRevision
+      };
+      const acknowledgement = await post(
+        `/sessions/${encodeURIComponent(linkSessionId)}/surface-events`,
+        { event }
+      );
+      return assertSurfaceAck(acknowledgement, {
+        sessionId,
+        linkSessionId,
+        observedRevision
+      });
     },
 
     async pushDeltas({ linkSessionId, batch }) {

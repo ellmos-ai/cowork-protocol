@@ -121,6 +121,86 @@ test("the loopback host continues the joined session as its single authority", a
   }
 });
 
+test("a joined page reports token-free visibility while the Companion remains authority", async () => {
+  const origin = "https://forms.example";
+  const modelRequests = [];
+  const host = createCompanionSessionHost({
+    allowedOrigins: [origin],
+    port: 0,
+    createLinkSessionId: () => "visibility-link",
+    sendModelTurn: async (request) => {
+      modelRequests.push(request);
+      return { message: "This must not run for a surface signal." };
+    }
+  });
+  const address = await host.listen();
+  try {
+    const authority = createCoworkSessionAuthority({
+      sessionId: "visibility-session",
+      initialState: {
+        humanPresence: "present",
+        agentPresence: "active",
+        effectiveMode: "cowork"
+      },
+      primarySurface: {
+        surfaceId: "formbuilder:embedded",
+        kind: "embedded"
+      }
+    });
+    const initial = authority.readSnapshot();
+    const link = createHttpCompanionLink({
+      endpoint: `http://${address.hostname}:${address.port}/cowork/v1`,
+      fetchImpl: (url, init) => fetch(url, {
+        ...init,
+        headers: { ...init.headers, origin }
+      })
+    });
+    const joined = await link.join({
+      hello: createCompanionHello({
+        sessionId: initial.sessionId,
+        surfaceId: "formbuilder:embedded",
+        revision: initial.revision,
+        origin
+      }),
+      snapshot: initial
+    });
+
+    const acknowledgement = await link.reportSurface({
+      linkSessionId: joined.linkSessionId,
+      surfaceId: "formbuilder:embedded",
+      visibility: "hidden",
+      observedRevision: joined.authorityRevision
+    });
+
+    assert.equal(acknowledgement.type, "companion-surface-ack");
+    assert.equal(acknowledgement.acceptedRevision, 3);
+    assert.equal(host.readSnapshot("visibility-link").state.surface.kind, "desktop");
+    assert.deepEqual(host.readSnapshot("visibility-link").state.applicationSurface, {
+      surfaceId: "formbuilder:embedded",
+      visibility: "hidden"
+    });
+    assert.deepEqual(
+      host.readDeltas("visibility-link", { afterRevision: joined.authorityRevision })
+        .events.map(({ kind, payload }) => ({ kind, event: payload.event })),
+      [{ kind: "surface-visibility", event: "page-hidden" }]
+    );
+    assert.equal(modelRequests.length, 0);
+
+    await assert.rejects(
+      link.reportSurface({
+        linkSessionId: joined.linkSessionId,
+        surfaceId: "spoofed:surface",
+        visibility: "visible",
+        observedRevision: acknowledgement.acceptedRevision
+      }),
+      (error) => error?.code === "COMPANION_REJECTED"
+    );
+    assert.equal(host.readSnapshot("visibility-link").revision, 3);
+  } finally {
+    await host.close();
+  }
+});
+
 test("the Companion host rejects wildcard origins and non-loopback binds", () => {
   assert.throws(
     () => createCompanionSessionHost({ allowedOrigins: ["*"] }),
@@ -376,7 +456,7 @@ test("the loopback host serves a movable reference surface for the shared sessio
         headers: { ...init.headers, origin }
       })
     });
-    await link.join({
+    const joined = await link.join({
       hello: createCompanionHello({
         sessionId: snapshot.sessionId,
         surfaceId: "formbuilder:embedded",
@@ -385,6 +465,12 @@ test("the loopback host serves a movable reference surface for the shared sessio
       }),
       snapshot
     });
+    await link.reportSurface({
+      linkSessionId: joined.linkSessionId,
+      surfaceId: "formbuilder:embedded",
+      visibility: "hidden",
+      observedRevision: joined.authorityRevision
+    });
 
     const state = await fetch(`${companionOrigin}/cowork/v1/ui/state`).then((response) =>
       response.json()
@@ -392,6 +478,7 @@ test("the loopback host serves a movable reference surface for the shared sessio
     assert.equal(state.sessions[0].sessionId, "surface-session");
     assert.equal(state.sessions[0].humanPresence, "present");
     assert.equal(state.sessions[0].modelAvailable, true);
+    assert.equal(state.sessions[0].applicationSurfaceVisibility, "hidden");
 
     const replyResponse = await fetch(
       `${companionOrigin}/cowork/v1/ui/sessions/surface-link/turns`,

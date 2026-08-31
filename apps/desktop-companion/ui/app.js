@@ -16,6 +16,13 @@ function render(state) {
   $("#session-heading").textContent = currentSession?.sessionId ?? "No page connected";
   $("#mode").textContent = currentSession?.effectiveMode ?? "Idle";
   $("#mode").classList.toggle("active", connected);
+  const pageVisibility = currentSession?.applicationSurfaceVisibility ?? "unknown";
+  $("#page-availability").textContent = pageVisibility === "visible"
+    ? "Page active"
+    : pageVisibility === "hidden"
+      ? "Page hidden"
+      : "Page unknown";
+  $("#page-availability").dataset.visibility = pageVisibility;
   $("#revision").textContent = connected
     ? `Revision ${currentSession.revision} · ${currentSession.surfaceKind} authority`
     : "The Companion stays ready on loopback.";

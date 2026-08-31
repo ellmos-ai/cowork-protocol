@@ -97,8 +97,59 @@ the surface handoff and model-seat claim as two contiguous deltas, persists the
 session, and becomes the only inference path. Its independently movable
 Edge/Chrome app window and Windows tray are presentation clients of that same
 process. The embedded UI collapses and disables its model input but remains an
-application/UI replica that can pull later deltas. Browser Local Network Access
-permission is still explicitly granted by the human.
+application/UI replica that can pull later deltas. While connected, page
+visibility crosses the link only as a bounded `page-hidden` or `page-visible`
+SurfaceEvent with the replica's last revision. The page reports its current
+state once immediately after join and then only on changes. It contains no page
+content and does not call the model. On return, the page pulls every ordered
+delta after its cursor before rendering again. Browser Local Network Access permission is
+still explicitly granted by the human.
+
+## Token-free page handoff and return
+
+This UML sequence view answers one question: how does the Companion notice a
+tab change and reconcile work performed while the page was hidden without a
+history replay or model turn?
+
+```mermaid
+sequenceDiagram
+  actor Human
+  participant Page as FormBuilder replica
+  participant Link as Loopback Companion Link
+  participant Authority as Companion Session Authority
+  participant Surface as Companion UI/tray
+  participant Gateway as Model Gateway
+
+  Human->>Page: changes tab
+  Page->>Link: SurfaceEvent(page-hidden, last revision)
+  Link->>Authority: validate origin, session, surface and cursor
+  Authority-->>Surface: revisioned surface-visibility delta
+  Note over Link,Gateway: no page content and no model call
+  Authority->>Authority: optional authorized background work
+  Human->>Page: returns to tab
+  Page->>Link: SurfaceEvent(page-visible, last revision)
+  Link->>Authority: validate and append current visibility
+  Page->>Link: pullDeltas(after last revision)
+  Link-->>Page: ordered hidden, background-work and visible deltas
+  Page->>Page: apply complete batch and render current revision
+```
+
+Text alternative: after Companion handoff, the page reports its initial
+visibility once; each later tab change sends only the joined surface ID, one of
+two visibility states and the page replica's integer cursor.
+The loopback host rejects another surface, another origin or a cursor ahead of
+the authority. The signal updates the causal journal and the Companion's page
+indicator but never enters the Model Gateway. When the page becomes visible,
+its serialized signal queue first records that transition and then pulls all
+deltas after its old cursor, including any authorized Companion work completed
+while hidden.
+
+Diagram type: UML sequence diagram. Source and renderer: the Mermaid block
+above. Scope: connected page visibility and delta reconciliation, not operating
+system window activation. Source IDs: `packages/companion-link/src/index.js`,
+`apps/desktop-companion/src/host.js`,
+`apps/formbuilder-showcase/src/app.js`, and
+`scripts/session-surface-browser-smoke.mjs`. Reconciled: 2026-08-31.
 
 The optional extension uses two execution worlds for Native-first behavior.
 A minimal main-world bridge can reach the page-owned

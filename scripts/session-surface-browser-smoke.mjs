@@ -150,11 +150,15 @@ try {
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("Showcase server has no port");
   const showcaseOrigin = `http://127.0.0.1:${address.port}`;
+  let modelRequestCount = 0;
   companionHost = createCompanionSessionHost({
     allowedOrigins: [showcaseOrigin],
     port: 0,
     createLinkSessionId: () => "browser-surface-link",
-    sendModelTurn: async () => ({ message: "Shared browser smoke reply" })
+    sendModelTurn: async () => {
+      modelRequestCount += 1;
+      return { message: "Shared browser smoke reply" };
+    }
   });
   const companionAddress = await companionHost.listen();
   const companionEndpoint =
@@ -292,6 +296,62 @@ try {
       `${error.message}; network=${JSON.stringify(networkEvidence.slice(-8))}`
     );
   }
+  let initiallyActiveSnapshot = null;
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    initiallyActiveSnapshot = companionHost.readSnapshot("browser-surface-link");
+    if (initiallyActiveSnapshot?.state?.applicationSurface?.visibility === "visible") break;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  if (initiallyActiveSnapshot?.state?.applicationSurface?.visibility !== "visible") {
+    throw new Error("Companion handoff did not report the page's initial visibility");
+  }
+  await evaluateValue(call, `(() => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden"
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+    return document.visibilityState;
+  })()`);
+  let hiddenSnapshot = null;
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    hiddenSnapshot = companionHost.readSnapshot("browser-surface-link");
+    if (hiddenSnapshot?.state?.applicationSurface?.visibility === "hidden") break;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  if (hiddenSnapshot?.state?.applicationSurface?.visibility !== "hidden") {
+    throw new Error("Connected page visibility did not reach the Companion authority");
+  }
+  if (modelRequestCount !== 0) {
+    throw new Error("A token-free surface event unexpectedly invoked the model");
+  }
+  const soloCommit = await companionHost.commitSession("browser-surface-link", {
+    kind: "companion-background-work",
+    nextState: {
+      ...hiddenSnapshot.state,
+      backgroundProof: { status: "continued-while-page-hidden" }
+    },
+    expectedRevision: hiddenSnapshot.revision,
+    sourceSurfaceId: hiddenSnapshot.state.surface.primarySurfaceId,
+    at: "2026-08-31T16:00:00.000Z"
+  });
+  await evaluateValue(call, `(() => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible"
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+    return document.visibilityState;
+  })()`);
+  const resumed = await waitForValue(
+    call,
+    `(() => ({ snapshot: window.coworkSession.readSnapshot() }))()`,
+    (value) =>
+      value?.snapshot?.revision > soloCommit.revision &&
+      value?.snapshot?.state?.applicationSurface?.visibility === "visible" &&
+      value?.snapshot?.state?.backgroundProof?.status ===
+        "continued-while-page-hidden"
+  );
   const companionSnapshot = companionHost.readSnapshot("browser-surface-link");
   const companionWindowTarget = await call("Target.createTarget", {
     url: `${companionEndpoint}/ui`,
@@ -320,6 +380,7 @@ try {
       title: document.querySelector("h1")?.textContent ?? null,
       sessionId: document.querySelector("#session-heading")?.textContent ?? null,
       mode: document.querySelector("#mode")?.textContent ?? null,
+      applicationSurface: document.querySelector("#page-availability")?.textContent ?? null,
       human: document.querySelector("#human-label")?.textContent ?? null,
       model: document.querySelector("#model-label")?.textContent ?? null,
       audioControlCount: ["#talk", "#stop-speech", "#speak"]
@@ -354,11 +415,12 @@ try {
     restored.buttonLabel !== "Detach" ||
     companion.collapsed !== true ||
     companion.conversationDisabled !== true ||
-    companionSnapshot?.revision !== companion.snapshot.revision ||
+    companionSnapshot?.revision !== resumed.snapshot.revision ||
     companionSnapshot?.state?.surface?.kind !== "desktop" ||
     visibleCompanion.providerId !== "cowork-reference-ui" ||
     visibleCompanion.title !== "Companion" ||
     visibleCompanion.mode !== "cowork" ||
+    visibleCompanion.applicationSurface !== "Page active" ||
     visibleCompanion.audioControlCount !== 3 ||
     companionConversation.turnCount !== 2
   ) {
@@ -370,6 +432,8 @@ try {
     sameSessionClaim: true,
     protocolUiSeparationClaim: true,
     noExtensionCompanionHandoffClaim: true,
+    tokenFreeSurfaceSignalClaim: true,
+    returnDeltaRecoveryClaim: true,
     independentCompanionWindowClaim: true,
     sharedModelGatewayClaim: true,
     companionAudioControlsClaim: true,
@@ -382,7 +446,7 @@ try {
       initial: initial.snapshot.revision,
       detached: detached.snapshot.revision,
       restored: restored.snapshot.revision,
-      companion: companion.snapshot.revision
+      companion: resumed.snapshot.revision
     },
     surfaceKinds: [
       initial.snapshot.state.surface.kind,

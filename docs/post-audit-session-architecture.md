@@ -144,6 +144,9 @@ SessionSnapshot
 SessionDelta
   eventId, revision, sourceSurfaceId, causeRefs, changed top-level fields
 
+SurfaceEvent
+  page-hidden or page-visible, joined surfaceId, last observed revision
+
 SurfaceLease
   one primary Cowork surface at an exact session revision
 
@@ -155,6 +158,15 @@ A surface handoff is compare-and-swap: a stale surface cannot silently replace
 the primary surface. Replayed or compacted delta ranges fail closed and require
 a fresh snapshot. Re-rendering unchanged state creates no event and no model
 turn.
+
+After Companion handoff, a page replica does not regain mutation authority in
+order to report its initial visibility or a later tab change. It sends one
+bounded SurfaceEvent to the loopback authority. The Companion validates the
+paired origin, joined session, original page surface and non-future cursor,
+then records only the visibility change.
+The event carries no HTML, screenshot, semantic context or conversation text
+and does not invoke the Model Gateway. A duplicate visibility value creates no
+additional revision.
 
 When the Companion is not installed, a cooperating page runtime may be the
 temporary authority even if it renders no UI. A detached browser window uses
@@ -228,7 +240,8 @@ connection permission.
 
 **Expected:** The Companion accepts the exact snapshot revision, becomes the
 primary surface and receives subsequent deltas. The Embed collapses to a
-connected relay indicator.
+connected relay indicator. Its later `page-hidden` and `page-visible` events
+update the Companion's page indicator without opening a model turn.
 
 **Proves:** no-extension website-to-Companion continuity.
 
@@ -241,7 +254,8 @@ connection stays available.
 
 **Expected:** The same Cowork model seat continues only within the lease. On
 return, the human receives a compact verified/failed/pending briefing rather
-than a history replay.
+than a history replay. The page replica first records `page-visible`, then
+pulls all ordered deltas after its last revision and renders the current state.
 
 **Proves:** shared context, explicit authority and token-bounded handback.
 
@@ -299,7 +313,7 @@ collaboration contract to the Cowork reference surface.
 | Headless integration contract and all three page policies | Implemented and unit-tested |
 | Versioned Session Authority, surface/model leases and Handoff Capsule | Implemented and unit-tested |
 | FormBuilder `protocol-and-ui` plus Document PiP | Implemented and Chrome-tested |
-| Loopback Companion Link and exact-revision handoff | Implemented and Chrome-tested |
+| Loopback Companion Link, exact-revision handoff and token-free visibility/return deltas | Implemented and Chrome-tested |
 | Extension Side Panel, native-first bridge and bounded no-WebMCP fallback | Both branches Chrome-tested |
 | Persistent Desktop/tray surface, Context Manager and serialized Model Gateway | Implemented; deterministic model journey Chrome-tested |
 | Bounded DOM/accessibility/visual fallback for non-cooperating pages | Implemented in the optional extension; one-shot crop Chrome-tested |

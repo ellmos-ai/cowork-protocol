@@ -328,6 +328,8 @@ export function createCompanionSessionHost({
           agentPresence: snapshot.state.agentPresence,
           effectiveMode: snapshot.state.effectiveMode,
           surfaceKind: snapshot.state.surface?.kind,
+          applicationSurfaceVisibility:
+            snapshot.state.applicationSurface?.visibility ?? "unknown",
           modelAvailable: value.gateway !== null,
           modelStatus: value.gateway?.readStatus() ?? null,
           context: value.contextManager.readContext()
@@ -452,6 +454,70 @@ export function createCompanionSessionHost({
     linkSession.snapshot = linkSession.authority.readSnapshot();
     await persistSessions();
     return result;
+  }
+
+  async function reportSurface(linkSessionId, event) {
+    const linkSession = sessions.get(linkSessionId);
+    if (!linkSession) {
+      throw new CompanionHostError(
+        "LINK_SESSION_NOT_FOUND",
+        "Companion link session is unavailable",
+        404
+      );
+    }
+    const snapshot = linkSession.authority.readSnapshot();
+    if (
+      event?.protocolVersion !== PROTOCOL_VERSION ||
+      event?.linkVersion !== LINK_VERSION ||
+      event?.type !== "surface-event" ||
+      event.sessionId !== snapshot.sessionId ||
+      event.surfaceId !== linkSession.hello.surfaceId ||
+      !["page-hidden", "page-visible"].includes(event.event) ||
+      !Number.isInteger(event.observedRevision) ||
+      event.observedRevision < 0 ||
+      event.observedRevision > snapshot.revision
+    ) {
+      throw new CompanionHostError(
+        "INVALID_SURFACE_EVENT",
+        "Companion surface event did not match the joined page and revision"
+      );
+    }
+    const visibility = event.event === "page-hidden" ? "hidden" : "visible";
+    const applicationSurface = {
+      surfaceId: event.surfaceId,
+      visibility
+    };
+    let result = {
+      committed: false,
+      revision: snapshot.revision,
+      state: snapshot.state
+    };
+    if (
+      snapshot.state.applicationSurface?.surfaceId !== applicationSurface.surfaceId ||
+      snapshot.state.applicationSurface?.visibility !== applicationSurface.visibility
+    ) {
+      result = linkSession.authority.commit({
+        kind: "surface-visibility",
+        nextState: { ...snapshot.state, applicationSurface },
+        sourceSurfaceId: event.surfaceId,
+        payload: {
+          event: event.event,
+          observedRevision: event.observedRevision
+        },
+        at: now()
+      });
+      linkSession.snapshot = linkSession.authority.readSnapshot();
+      await persistSessions();
+    }
+    return {
+      protocolVersion: PROTOCOL_VERSION,
+      linkVersion: LINK_VERSION,
+      type: "companion-surface-ack",
+      sessionId: snapshot.sessionId,
+      linkSessionId,
+      observedRevision: event.observedRevision,
+      acceptedRevision: result.revision
+    };
   }
 
   const server = createServer(async (request, response) => {
@@ -592,6 +658,26 @@ export function createCompanionSessionHost({
       const readMatch = url.pathname.match(
         /^\/cowork\/v1\/sessions\/([^/]+)\/deltas\/read$/
       );
+      const surfaceMatch = url.pathname.match(
+        /^\/cowork\/v1\/sessions\/([^/]+)\/surface-events$/
+      );
+      if (request.method === "POST" && surfaceMatch) {
+        const linkSessionId = decodeURIComponent(surfaceMatch[1]);
+        const linkSession = sessions.get(linkSessionId);
+        if (!linkSession || linkSession.origin !== origin) {
+          throw new CompanionHostError(
+            "LINK_SESSION_NOT_FOUND",
+            "Companion link session is unavailable",
+            404
+          );
+        }
+        const acknowledgement = await reportSurface(
+          linkSessionId,
+          (await readJson(request)).event
+        );
+        writeJson(response, 200, acknowledgement, origin);
+        return;
+      }
       if (request.method === "POST" && readMatch) {
         const linkSessionId = decodeURIComponent(readMatch[1]);
         const linkSession = sessions.get(linkSessionId);
@@ -689,6 +775,7 @@ export function createCompanionSessionHost({
       if (!authority) return null;
       return authority.readDeltas(options);
     },
+    reportSurface,
     submitModelTurn,
     readModelStatus(linkSessionId) {
       return sessions.get(linkSessionId)?.gateway?.readStatus() ?? null;

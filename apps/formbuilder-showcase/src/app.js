@@ -117,6 +117,7 @@ let conversationBusy = false;
 let detachedSurfaceWindow = null;
 let companionReplicaSnapshot = null;
 let companionConnection = null;
+let companionSurfaceQueue = Promise.resolve();
 let contextTurnCounter = 0;
 
 const contextManager = createCoworkContextManager({ sessionId: SESSION_ID });
@@ -128,6 +129,45 @@ function nextContextTurnId(role) {
 
 function readCurrentSessionSnapshot() {
   return companionReplicaSnapshot ?? sessionAuthority.readSnapshot();
+}
+
+async function pullAllCompanionDeltas() {
+  if (!companionConnection || companionReplicaSnapshot === null) {
+    return readCurrentSessionSnapshot();
+  }
+  let hasMore = true;
+  while (hasMore) {
+    const batch = await companionConnection.link.pullDeltas({
+      linkSessionId: companionConnection.linkSessionId,
+      afterRevision: companionReplicaSnapshot.revision
+    });
+    companionReplicaSnapshot = applySessionDeltaBatch({
+      snapshot: companionReplicaSnapshot,
+      batch
+    });
+    hasMore = batch.hasMore;
+  }
+  session = companionReplicaSnapshot.state;
+  render();
+  return readCurrentSessionSnapshot();
+}
+
+function reportCompanionSurfaceVisibility(visibility) {
+  companionSurfaceQueue = companionSurfaceQueue
+    .catch(() => undefined)
+    .then(async () => {
+      if (!companionConnection || companionReplicaSnapshot === null) {
+        return readCurrentSessionSnapshot();
+      }
+      await companionConnection.link.reportSurface({
+        linkSessionId: companionConnection.linkSessionId,
+        surfaceId: EMBEDDED_SURFACE_ID,
+        visibility,
+        observedRevision: companionReplicaSnapshot.revision
+      });
+      return pullAllCompanionDeltas();
+    });
+  return companionSurfaceQueue;
 }
 
 function authorityState(nextSession = session) {
@@ -248,20 +288,7 @@ Object.defineProperty(window, "coworkSession", {
         : null,
     readBriefing: () => currentSessionBriefing(),
     readContext: () => contextManager.readContext(),
-    syncFromCompanion: async () => {
-      if (!companionConnection) return readCurrentSessionSnapshot();
-      const batch = await companionConnection.link.pullDeltas({
-        linkSessionId: companionConnection.linkSessionId,
-        afterRevision: companionReplicaSnapshot.revision
-      });
-      companionReplicaSnapshot = applySessionDeltaBatch({
-        snapshot: companionReplicaSnapshot,
-        batch
-      });
-      session = companionReplicaSnapshot.state;
-      render();
-      return readCurrentSessionSnapshot();
-    },
+    syncFromCompanion: () => pullAllCompanionDeltas(),
     subscribe: (listener) => sessionAuthority.subscribe(listener)
   })
 });
@@ -297,9 +324,19 @@ async function openInCompanion() {
       linkSessionId: acknowledgement.linkSessionId
     };
     session = companionReplicaSnapshot.state;
+    let visibilityWarning = null;
+    try {
+      await reportCompanionSurfaceVisibility(document.visibilityState);
+    } catch (error) {
+      visibilityWarning =
+        `${error.code ?? "COMPANION_SYNC_ERROR"}: initial page visibility is unknown`;
+    }
     coworkPanel.classList.add("is-companion-connected");
     button.textContent = "Connected";
-    setStatus("Companion connected. This page is now a synchronized protocol replica.");
+    setStatus(
+      visibilityWarning ??
+        "Companion connected. This page is now a synchronized protocol replica."
+    );
     render();
     return companionConnection;
   } catch (error) {
@@ -1429,7 +1466,12 @@ $("#demo-form").addEventListener("submit", (event) => {
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (companionReplicaSnapshot !== null) return;
+  if (companionReplicaSnapshot !== null) {
+    void reportCompanionSurfaceVisibility(document.visibilityState).catch((error) => {
+      setStatus(`${error.code ?? "COMPANION_SYNC_ERROR"}: ${error.message}`);
+    });
+    return;
+  }
   sessionAuthority.record({
     kind: "surface-visibility",
     sourceSurfaceId: EMBEDDED_SURFACE_ID,

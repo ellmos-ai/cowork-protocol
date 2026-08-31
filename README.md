@@ -34,7 +34,8 @@ The repository currently contains:
   across surfaces;
 - a loopback-only Companion Link plus persistent Desktop Companion with an
   independently movable app window, audio controls and a Windows tray icon
-  whose green/yellow/red state mirrors human presence;
+  whose green/yellow/red state mirrors human presence, plus token-free page
+  visibility signals and exact delta recovery on tab return;
 - a responsive FormBuilder showcase with attention controls, exact-value action offers, enforced explain/suggest/delegated/paused rights, causal change receipts, one-click feedback, presence, scoped solo work, typed/audio conversation and spoken replies.
 
 The native browser path now has both contract and browser evidence. An isolated Chrome 152 run with WebMCP testing enabled discovered all nine tools through `document.modelContext.getTools()`. It invoked focus and one-shot context, created two visible offers through `cowork_offer_action`, verified that neither offer changed the field, then used trusted browser clicks to apply both exact values and record human feedback. Native change and feedback reads returned only the second event with `omittedCount: 1`. The same run sent bounded typed turns to the honestly labeled local demo helper, pulled the latest one through `cowork_read_turn`, returned a bounded reply through `cowork_reply_turn`, and proved that both the helper offer and WebMCP reply offer remained inert until trusted clicks. The reproducible smoke explicitly reports `browserClaim: true`, `conversationClaim: true`, `webMcpReplyClaim: true`, `sharedContextClaim: true`, `connectedModelClaim: false`, `agentClientClaim: false` and `hostTokenClaim: false`: it proves Chrome mediation and both local/WebMCP human loops, not a connected ChatGPT-agent journey. A separate Chrome 152 smoke proves the same-origin model-host plumbing with one 468-character turn, no browser credential, and a deterministic fixture whose offer remains inert until a trusted click. A provider-backed repetition then sent one 502-character turn through the same browser path to a local Ollama `qwen3:4b`; the model returned the exact visible `Grace Hopper` offer, the field stayed unchanged before the trusted click, and the report set `preferredModelClaim: true`, `connectedModelClaim: true`, `providerLocation: local`, and `externalModelClaim: false`. The current browser gate keeps all 23 controls reachable at true 200% browser zoom. A separate current-surface accessibility smoke finds 23/23 named browser AX controls, 23/23 unique visible Tab stops and zero horizontal overflow at an emulated 390×844 browser viewport. The rendered-contrast smoke audits 699 visible text items across ten interaction states with no unsupported range and a 4.5656:1 minimum. A connected Edge session separately accepted AFK handoff/return and Human Solo. Real microphone input, screen-reader practice in the intended client, deployment, a remote provider and a connected ChatGPT-agent invocation remain pending.
@@ -58,7 +59,9 @@ injects no page UI. The no-extension surface smoke then detaches the embedded
 UI into Document Picture-in-Picture, hands the exact session plus bounded
 context to the local Companion, opens a separate Companion app window and
 routes its reply through one serialized Model Gateway. The Embed disables its
-own model input after that handoff.
+own model input after that handoff. A hidden/visible tab cycle then proves that
+the Companion receives no page content and creates no model turn, while the
+returning page catches up from its last revision.
 
 Only the browser-based portion of the pre-existing FormBuilder belongs to the
 imported showcase scope; its old desktop, Python and packaging code remains
@@ -156,8 +159,9 @@ To repeat the optional provider-backed acceptance against an already available c
 `npm run smoke:surface` proves the no-install Embed → Document PiP → Embed →
 Desktop Companion journey in Chrome. The Companion accepts the exact revision,
 claims the only model seat, opens a separate app-window surface with audio
-controls, sends one turn through its shared Model Gateway and leaves the page
-as a synchronized application/UI replica.
+controls, observes token-free page visibility, sends one turn through its
+shared Model Gateway and leaves the page as a synchronized application/UI
+replica that pulls intervening deltas on return.
 
 `npm run smoke:accessibility` opens another isolated Chrome profile at an exact 390×844 CSS viewport. It requires exactly 23 non-ignored interactive browser accessibility nodes with non-empty names and unique DOM identities, then drives 23 real Tab events and requires every stop to remain visible with `:focus-visible`. Horizontal control/text clipping and more than one pixel of document overflow fail the gate. This is browser accessibility-tree and keyboard/layout evidence, not screen-reader practice.
 

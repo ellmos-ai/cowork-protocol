@@ -26,7 +26,7 @@ button, textarea { font: inherit; }
     radial-gradient(circle at 0% 72%, rgba(22,181,168,.1), transparent 19rem),
     var(--ivory);
 }
-.brand-row, .section-row, .presence, .presence-person, .button-row, .presence-actions { display: flex; align-items: center; }
+.brand-row, .section-row, .presence, .presence-person, .button-row, .presence-actions, .status-pills { display: flex; align-items: center; }
 .brand-row { gap: 12px; }
 .brand-row .connection { margin-left: auto; }
 .cowork-brand-mark { width: 54px; height: 54px; filter: drop-shadow(0 7px 9px rgba(36,28,21,.12)); }
@@ -35,8 +35,14 @@ button, textarea { font: inherit; }
 .eyebrow { margin: 0; color: #805916; font-size: 10px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
 h1 { margin: 2px 0 0; color: var(--muted); font-size: 15px; line-height: 1; }
 h2 { margin: 2px 0 0; font-size: 18px; }
-.connection, .mode { padding: 5px 10px; border-radius: 999px; color: var(--muted); background: #f2ede4; font-size: 11px; font-weight: 900; }
+.connection, .mode, .page-availability { padding: 5px 10px; border-radius: 999px; color: var(--muted); background: #f2ede4; font-size: 11px; font-weight: 900; }
 .connection.connected, .mode.active { color: #075e58; background: #dff8f3; }
+.status-pills { justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+.page-availability::before { display: inline-block; width: .8em; margin-right: 5px; content: ""; aspect-ratio: 1; border: 2px solid currentColor; border-radius: 50%; }
+.page-availability[data-visibility="visible"] { color: #075e58; background: #dff8f3; }
+.page-availability[data-visibility="visible"]::before { background: var(--teal-bright); }
+.page-availability[data-visibility="hidden"] { color: #76500b; background: #fff0cf; }
+.page-availability[data-visibility="hidden"]::before { background: var(--gold); }
 .protocol-rhythm { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 18px 0 13px; }
 .protocol-rhythm span { padding: 5px 2px; border: 1px solid var(--line); border-radius: 99px; text-align: center; color: var(--muted); background: rgba(255,255,255,.7); font-size: 9px; font-weight: 900; }
 .protocol-rhythm span:nth-child(1) { color: #275eaa; border-color: rgba(39,94,170,.3); }
