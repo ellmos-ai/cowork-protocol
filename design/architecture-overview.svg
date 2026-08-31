@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1050" viewBox="0 0 1800 1050" role="img" aria-labelledby="title description">
   <title id="title">Cowork Protocol architecture overview</title>
-  <desc id="description">A human collaborates through an interchangeable embedded, detached, extension, desktop, tray, or provider surface. One versioned Session Authority owns surface and model-seat leases. One Context Manager and serialized Model Gateway serve Cowork-owned surfaces, while the provider-neutral Protocol Core selects native Cowork, existing WebMCP, or a bounded no-WebMCP fallback. Human authorization gates changes and applications return verified receipts.</desc>
+  <desc id="description">A human collaborates through an interchangeable embedded, detached, extension, desktop, tray, or provider surface. One versioned Session Authority owns surface and model-seat leases. One Context Manager and serialized Model Gateway serve Cowork-owned surfaces, while the provider-neutral Protocol Core selects native Cowork, existing WebMCP, a bounded browser relay, or a profile-filtered Open Compute fallback. Human authorization gates changes and applications return verified receipts.</desc>
 
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
@@ -133,11 +133,13 @@
   <path d="M405 912 H500" stroke="#da3824" stroke-width="4" marker-end="url(#arrow-dark)"/>
   <rect x="500" y="866" width="470" height="92" rx="20" fill="#fffefb" stroke="#e95b47" stroke-width="3"/>
   <text x="530" y="906" class="lane-title">Browser relay + Side Panel</text>
-  <text x="530" y="936" class="lane-copy">350 → 1,200 → 400×400 one-shot · user gate</text>
+  <text x="530" y="931" class="lane-copy">350 → 1,200 → 400×400 relay lens</text>
+  <text x="530" y="953" class="lane-copy">Desktop: profiled Open Compute · red signal</text>
   <path d="M970 912 H1065" stroke="#da3824" stroke-width="4" marker-end="url(#arrow-dark)"/>
   <rect x="1065" y="866" width="600" height="92" rx="20" fill="#fffefb" stroke="#e95b47" stroke-width="3"/>
-  <text x="1095" y="906" class="lane-title">Arbitrary web page</text>
-  <text x="1095" y="936" class="lane-copy">visible offer → human click → observed verification</text>
+  <text x="1095" y="906" class="lane-title">Arbitrary web page or desktop GUI</text>
+  <text x="1095" y="931" class="lane-copy">semantic first · bounded visual escalation</text>
+  <text x="1095" y="953" class="lane-copy">visible offer → human click → observed verification</text>
 
   <text x="900" y="1012" text-anchor="middle" class="connector-label">Context stays bounded. Offers stay inert. Human authority stays visible.</text>
   <text x="900" y="1038" text-anchor="middle" class="connector-label">Source-backed component view · design/architecture-overview.svg · 2026-08-31</text>

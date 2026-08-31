@@ -18,7 +18,10 @@ This UML-like C4 component view answers one question: which component owns conte
 The overview above is the compact submission view: human intent can enter
 through any compatible surface, the Protocol Core keeps context and authority
 bounded, and the runtime selects the strongest connector the current page
-actually provides. The Mermaid views below remain the source-backed
+actually provides. Where no page connector exists, the extension relay stays
+bounded to the browser or the Desktop Companion may invoke Open Compute through
+a semantic-first token profile and an explicitly signaled visual fallback.
+The Mermaid views below remain the source-backed
 engineering detail and text alternatives.
 
 ```mermaid

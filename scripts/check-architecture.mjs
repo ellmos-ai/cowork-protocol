@@ -26,7 +26,9 @@ assert.match(svg, /ONE ACTIVE SEAT/);
 assert.match(svg, /PROTOCOL CORE · STRONGEST AVAILABLE CONNECTOR/);
 assert.match(svg, /Source-backed component view/);
 assert.match(svg, /Browser relay \+ Side Panel/);
-assert.match(svg, /350 → 1,200 → 400×400 one-shot · user gate/);
+assert.match(svg, /350 → 1,200 → 400×400 relay lens/);
+assert.match(svg, /Desktop: profiled Open Compute · red signal/);
+assert.match(svg, /semantic first · bounded visual escalation/);
 assert.match(svg, /visible offer → human click → observed verification/);
 
 assert.match(docs, /!\[Cowork Protocol architecture overview\]\(\.\.\/design\/architecture-overview\.svg\)/);
@@ -44,7 +46,12 @@ console.log(
   JSON.stringify(
     {
       architectureArtifactClaim: true,
-      supportedConnectorPaths: ["native-cowork", "existing-webmcp", "no-webmcp-relay"],
+      supportedConnectorPaths: [
+        "native-cowork",
+        "existing-webmcp",
+        "no-webmcp-relay",
+        "profiled-open-compute"
+      ],
       providerNeutralSurfaceClaim: true,
       accessibleSvg: true,
       documented: true,
