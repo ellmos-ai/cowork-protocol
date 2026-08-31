@@ -6,6 +6,9 @@ const EXTENSION_FILES = [
   "apps/browser-companion/content-loader.js",
   "apps/browser-companion/native-page-bridge.js",
   "apps/browser-companion/manifest.json",
+  "apps/browser-companion/icons/icon-16.png",
+  "apps/browser-companion/icons/icon-48.png",
+  "apps/browser-companion/icons/icon-128.png",
   "apps/browser-companion/service-worker.js",
   "apps/browser-companion/sidepanel.html",
   "apps/browser-companion/sidepanel.css",
@@ -25,6 +28,9 @@ const EXTENSION_FILES = [
 
 function outputPathFor(relativePath) {
   if (relativePath === "apps/browser-companion/manifest.json") return "manifest.json";
+  if (relativePath.startsWith("apps/browser-companion/icons/")) {
+    return `icons/${path.basename(relativePath)}`;
+  }
   if (relativePath === "apps/browser-companion/content-loader.js") return "content-loader.js";
   if (relativePath === "apps/browser-companion/native-page-bridge.js") {
     return "native-page-bridge.js";

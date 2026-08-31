@@ -64,6 +64,11 @@ test("the browser companion builds a self-contained MV3 extension", async () => 
       ),
       true
     );
+    for (const size of [16, 48, 128]) {
+      assert.equal(report.files.includes(`icons/icon-${size}.png`), true);
+      assert.equal(manifest.icons[String(size)], `icons/icon-${size}.png`);
+      assert.equal(manifest.action.default_icon[String(size)], `icons/icon-${size}.png`);
+    }
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

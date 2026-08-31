@@ -15,8 +15,18 @@
   "side_panel": {
     "default_path": "sidepanel.html"
   },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
-    "default_title": "Open Cowork Protocol"
+    "default_title": "Open Cowork Protocol",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
   },
   "commands": {
     "_execute_action": {
