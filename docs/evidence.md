@@ -27,7 +27,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | Exact session state can join a persistent local Companion | Session Authority, Context Manager, Model Gateway, Companion Link and desktop-host tests; Chrome 152 `npm run smoke:surface` | Two contiguous authority deltas claim Desktop surface and renewable model seat; initial/hidden/visible page signals contain no page content and invoke no model; work committed while hidden reaches the returning replica as ordered deltas |
 | Desktop Companion exposes the shared UI and Windows presence tray | Desktop cockpit/UI/host/launcher/tray tests; PowerShell parser; Chrome 152 `npm run smoke:surface` | The real 430×760 app window cycles collaborating, observing, paused and away actor states, has zero horizontal overflow, rejects model turns while paused, waits when away has no lease and animates Agent Solo only after a bounded lease; typed/audio controls and green/yellow/red tray mapping remain present, while audible speech and real microphone quality remain open |
 | The movable cockpit identifies its active model and preserves a chosen background | Desktop host/UI tests; Chrome 152 `npm run smoke:surface` | Host model ID is visible without endpoint/key data; five presets plus a custom color survive a Chrome reload in the same shared session |
-| Core jury journey is reproducible without credentials | `npm run proof`; `packages/evals/test/juror-proof.test.js` | Eight deterministic integration steps proven, including an exact-id conversation reply; output explicitly denies browser and host-token claims |
+| Core jury journey is reproducible without credentials | `npm run proof`; `packages/evals/test/juror-proof.test.js` | Nine deterministic integration steps proven, including an exact-id conversation reply and a collaborative-form-design canvas edit; output explicitly denies browser and host-token claims |
 | Independent code review closed the baseline release findings | Claude Code 2.1.251 with the Fable model reviewed the full tree and the bounded baseline follow-up diffs | Baseline verdict `Ready to publish code: Yes` with no Critical or Important findings; two later context-request attempts and one 240-second visibility/delta review attempt timed out without output, while the final cockpit review retry was refused by the account's monthly spend limit, so those increments are not claimed as Fable-reviewed |
 | Public-preview tree is reproducible | clean clone of local `release/public-preview` at `6dfc848277495903121b4f3fd414dd6a6f96d8e6` | `npm ci`, 161/161 tests, 12/12 character evals, 8/8 proof steps, no-WebMCP extension plus native WebMCP/model-host/accessibility/contrast Chrome 152 smokes, 19-file Pages and 10-file extension builds, 75 source plus 22 built-artifact syntax checks, 0 vulnerabilities, 0 secret findings and clean Git readback |
 | Post-audit protocol/surface split is release-gated | implementation commit `008942e27e556edca014006258335af67e462ee8`; complete local gate on 2026-08-31 | 205/205 tests, 12/12 character evals, 8/8 proof steps, adapter demo, 100 source syntax checks, 22-file Pages and 16-file extension builds, architecture/secret/audit gates, plus legacy extension, Native-first extension, model-host, native WebMCP, surface handoff, accessibility and contrast Chrome 152 smokes all passed |
@@ -99,7 +99,8 @@ Commits `395f229` (Builder core: `form-builder.mjs`, `fodt-export.mjs`,
 capabilities) and `1714983` (the Build/Fill/Export UI, `builder-cowork-ui.js`,
 and `scripts/formbuilder-builder-browser-smoke.mjs`) added FormBuilder Studio
 on `release/public-preview`. The complete local gate reported 301/301 Node
-tests, the 12-case character-budget eval, the eight-step juror proof,
+tests, the 12-case character-budget eval, the juror proof (extended from
+eight to nine steps by `collaborative-form-design`, below),
 `check:architecture` and `check:secrets` clean, a 28-file Pages build (up
 from 23: the allowlist in `scripts/build-pages.mjs` needed the 5 new source
 files added explicitly, or the deployed page would 404 on them) and an
@@ -131,6 +132,15 @@ later render re-queried a `<form>` that no longer contained it; fixed by
 appending the button unconditionally. `apps/formbuilder-showcase/INTEGRATION.md`
 documents the two-phase process (product first, Cowork integration second)
 and what a different app would need to replicate it.
+
+This batch also extended `packages/evals`'s deterministic juror proof with a
+ninth step, `collaborative-form-design`: it
+proposes a `form-add-field` offer against an empty canvas, confirms zero
+fields exist before the click, authorizes and applies the offer, and checks
+the resulting canvas holds exactly the offered field with a verified receipt
+- the same offer/click/receipt contract as the existing eight steps, carried
+by the three new capability ids instead of a new tool. `npm run proof` now
+reports 9/9 passed.
 
 ## Explicitly not yet evidenced
 

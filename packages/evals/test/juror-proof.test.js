@@ -7,10 +7,10 @@ test("the juror proof exercises human authorization, scoped solo work and the re
   const proof = runJurorProof();
   const steps = Object.fromEntries(proof.steps.map((step) => [step.id, step]));
 
-  assert.equal(proof.proofVersion, "cowork-juror-proof-v3");
+  assert.equal(proof.proofVersion, "cowork-juror-proof-v4");
   assert.equal(proof.browserClaim, false);
   assert.equal(proof.hostTokenClaim, false);
-  assert.deepEqual(proof.summary, { passed: 8, failed: 0 });
+  assert.deepEqual(proof.summary, { passed: 9, failed: 0 });
 
   assert.equal(steps.focus.evidence.targetId, "form-field:full-name");
   assert.equal(steps.focus.evidence.contextCharacters <= 350, true);
@@ -46,6 +46,15 @@ test("the juror proof exercises human authorization, scoped solo work and the re
   assert.equal(steps["agent-solo"].evidence.authorizationSource, "solo-lease");
   assert.equal(steps["agent-solo"].evidence.remainingCalls, 1);
   assert.equal(steps["agent-solo"].evidence.nextValue, "lukas@example.com");
+
+  assert.deepEqual(steps["collaborative-form-design"].evidence.capabilityIds, [
+    "form-add-field",
+    "form-update-field",
+    "form-move-field"
+  ]);
+  assert.equal(steps["collaborative-form-design"].evidence.fieldsBeforeClick, 0);
+  assert.equal(steps["collaborative-form-design"].evidence.fieldsAfterClick, 1);
+  assert.equal(steps["collaborative-form-design"].evidence.receiptStatus, "verified");
 
   assert.equal(steps.export.evidence.schema, "formularerstellen-response-v1");
   assert.equal(steps.export.evidence.answerCount, 4);

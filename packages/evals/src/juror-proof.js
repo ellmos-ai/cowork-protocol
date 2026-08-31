@@ -17,6 +17,8 @@ import {
 } from "../../conversation/src/index.js";
 import { createShowcaseSubmission } from "../../../apps/formbuilder-showcase/src/formbuilder-use-case.js";
 import { observeControlChange } from "../../../apps/formbuilder-showcase/src/interaction-log.js";
+import { createBuilderCoworkBridge } from "../../../apps/formbuilder-showcase/src/builder-cowork.js";
+import { createField } from "../../../apps/formbuilder-showcase/src/form-builder.mjs";
 
 function proofStep(id, pass, evidence) {
   return { id, pass, evidence };
@@ -181,6 +183,32 @@ export function runJurorProof() {
   });
   values.email = solo.nextValue;
 
+  // Collaborative form design: a structural canvas edit (not a value change)
+  // proposed, offered, left untouched until the human's click, then applied
+  // and independently verified - the same offer/click/receipt path as above,
+  // carried by three new capability ids instead of a new tool.
+  const builderBridge = createBuilderCoworkBridge({ sessionId: "juror-proof-builder" });
+  const builderFieldsBeforeOffer = [];
+  const builderFocus = builderBridge.focusFor({
+    pageVersion: 1,
+    fieldCount: builderFieldsBeforeOffer.length
+  });
+  const suggestedField = createField("text-short", { label: "Dietary requirements" });
+  const builderOffer = builderBridge.proposeOffer({
+    capabilityId: "form-add-field",
+    proposedArguments: { field: suggestedField },
+    summary: `Add a "${suggestedField.label}" field`,
+    pageVersion: 1,
+    now: "2026-08-30T10:00:40.000Z"
+  });
+  const builderFieldsBeforeClick = builderFieldsBeforeOffer.length;
+  const builderResult = builderBridge.authorizeAndApply({
+    offerId: builderOffer.offerId,
+    elements: builderFieldsBeforeOffer,
+    currentPageVersion: 1,
+    now: "2026-08-30T10:00:41.000Z"
+  });
+
   const formResult = createShowcaseSubmission(values);
   const steps = [
     proofStep(
@@ -263,6 +291,20 @@ export function runJurorProof() {
       }
     ),
     proofStep(
+      "collaborative-form-design",
+      builderFocus.capabilityIds.includes("form-add-field") &&
+        builderFieldsBeforeClick === 0 &&
+        builderResult.receipt.status === "verified" &&
+        builderResult.elements.length === 1 &&
+        builderResult.elements[0].id === suggestedField.id,
+      {
+        capabilityIds: builderFocus.capabilityIds,
+        fieldsBeforeClick: builderFieldsBeforeClick,
+        fieldsAfterClick: builderResult.elements.length,
+        receiptStatus: builderResult.receipt.status
+      }
+    ),
+    proofStep(
       "export",
       formResult.ok === true && formResult.response.schema === "formularerstellen-response-v1",
       {
@@ -273,7 +315,7 @@ export function runJurorProof() {
   ];
 
   return {
-    proofVersion: "cowork-juror-proof-v3",
+    proofVersion: "cowork-juror-proof-v4",
     browserClaim: false,
     hostTokenClaim: false,
     steps,
