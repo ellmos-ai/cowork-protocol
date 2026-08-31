@@ -236,6 +236,18 @@ async function trustedClick(call, elementExpression, label) {
   return point;
 }
 
+async function invokeExtensionActionShortcut(call) {
+  const input = {
+    modifiers: 10,
+    key: "Y",
+    code: "KeyY",
+    windowsVirtualKeyCode: 89,
+    nativeVirtualKeyCode: 89
+  };
+  await call("Input.dispatchKeyEvent", { type: "rawKeyDown", ...input });
+  await call("Input.dispatchKeyEvent", { type: "keyUp", ...input });
+}
+
 async function stopOwnedBrowser(child) {
   if (!child || child.exitCode !== null) return;
   const exited = new Promise((resolve) => child.once("exit", resolve));
@@ -323,6 +335,19 @@ try {
   await call("Runtime.disable");
   contexts.clear();
   await call("Runtime.enable");
+  await call("Page.bringToFront");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const relayAbsentBeforeAction = await evaluateValue(
+    call,
+    "globalThis.__coworkNativePageBridgeInstalled !== true"
+  );
+  const isolatedContextsBeforeAction = [...contexts.values()].filter(
+    (candidate) =>
+      candidate.auxData?.type === "isolated" &&
+      (candidate.origin?.startsWith("chrome-extension://") ||
+        candidate.name?.startsWith("chrome-extension://"))
+  ).length;
+  await invokeExtensionActionShortcut(call);
   const extensionContextId = await waitForExtensionContext(contexts);
   const extensionContext = contexts.get(extensionContextId);
   const extensionOrigin = extensionContext?.origin?.startsWith("chrome-extension://")
@@ -336,9 +361,13 @@ try {
       extensionContextId
     );
 
-  const defaultState = await extensionState("api.state()");
   const webMcpAvailable = await evaluateValue(call, "Boolean(document.modelContext)");
-  const enabledState = await extensionState("api.setEnabled(true)");
+  let enabledState = null;
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    enabledState = await extensionState("api.state()");
+    if (enabledState?.enabled === true) break;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
   await new Promise((resolve) => setTimeout(resolve, 100));
   const pointer = await trustedClick(
     call,
@@ -492,9 +521,17 @@ try {
     'document.querySelector("#cowork-browser-companion-root") === null'
   );
 
+  if (relayAbsentBeforeAction !== true || isolatedContextsBeforeAction !== 0) {
+    throw new Error(`On-demand precondition failed: ${JSON.stringify({
+      relayAbsentBeforeAction,
+      isolatedContextsBeforeAction
+    })}`);
+  }
+
   const report = validateBrowserCompanionObservation({
     browserVersion: version.Browser,
-    defaultState,
+    relayAbsentBeforeAction,
+    isolatedContextsBeforeAction,
     webMcpAvailable,
     enabledState,
     focus,

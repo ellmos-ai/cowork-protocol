@@ -152,7 +152,9 @@ system window activation. Source IDs: `packages/companion-link/src/index.js`,
 `scripts/session-surface-browser-smoke.mjs`. Reconciled: 2026-08-31.
 
 The optional extension uses two execution worlds for Native-first behavior.
-A minimal main-world bridge can reach the page-owned
+A trusted toolbar action or `_execute_action` shortcut grants temporary
+`activeTab` access; the manifest has no persistent host permission and no
+automatic content scripts. Only then can a minimal main-world bridge reach the page-owned
 `document.modelContext`; all visual and privileged extension work remains in
 the isolated extension world and Side Panel. If native Cowork tools exist, the
 extension invokes them directly and never starts its legacy fallback. If the

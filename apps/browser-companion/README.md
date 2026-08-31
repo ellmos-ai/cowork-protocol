@@ -45,10 +45,14 @@ npm run build:companion
 ```
 
 Open `chrome://extensions`, enable Developer mode, choose **Load unpacked** and
-select `dist-browser-companion`. The broad page match is required for this
-prototype to be available on arbitrary pages; the content script stays inert
-until the toolbar toggle is used. A store-ready follow-up should migrate this
-prototype to an `activeTab` plus on-demand injection flow.
+select `dist-browser-companion`. The extension requests no persistent host
+permission and declares no automatic content script. Clicking its toolbar
+action, or pressing `Ctrl+Shift+Y` (`Command+Shift+Y` on macOS), grants
+temporary `activeTab` access for the current page and injects the MAIN-world
+Native bridge plus isolated relay on demand. Navigating to another origin or
+closing the tab revokes that access. The `<all_urls>` entry under
+`web_accessible_resources` only allows an invoked relay to load packaged
+modules; it is not a host permission.
 
 ## Page-client transport
 
@@ -100,8 +104,9 @@ The opt-in run writes `browser-companion-offer-awaiting-click.png` and
 session that produces the acceptance report.
 
 The smoke loads the built extension into a fresh Chrome for Testing profile,
-explicitly disables WebMCP for the fixture page and proves: default-off and
-toggle-on/off behavior, 350/1,200-character semantic tiers, a real 160,000-pixel
+explicitly disables WebMCP for the fixture page and proves: no injected Cowork
+execution world before the trusted action shortcut, user-initiated `activeTab`
+attachment, toggle-on/off behavior, 350/1,200-character semantic tiers, a real 160,000-pixel
 PNG crop, one-shot isolated delivery, an inert value offer, a trusted browser
 click and verified mutation. It keeps model-client, external-model, host-token
 and full-page-delivery claims false.

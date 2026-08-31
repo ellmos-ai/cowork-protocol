@@ -117,6 +117,30 @@ async function setBadge(tabId, enabled) {
   await chrome.action.setBadgeBackgroundColor({ tabId, color: "#0f766e" });
 }
 
+async function attachPageRelay(tabId) {
+  if (!Number.isInteger(tabId)) throw new Error("PAGE_TAB_UNAVAILABLE");
+  const target = { tabId };
+  await chrome.scripting.executeScript({
+    target,
+    world: "MAIN",
+    files: ["native-page-bridge.js"]
+  });
+  await chrome.scripting.executeScript({
+    target,
+    world: "ISOLATED",
+    files: ["content-loader.js"]
+  });
+  const [{ result: ready }] = await chrome.scripting.executeScript({
+    target,
+    world: "ISOLATED",
+    func: async () => {
+      await globalThis.__coworkBrowserCompanionLoading;
+      return true;
+    }
+  });
+  if (ready !== true) throw new Error("PAGE_RELAY_UNAVAILABLE");
+}
+
 async function resolvePageTabId(sender) {
   const senderUrl = sender?.url ?? sender?.tab?.url ?? "";
   if (Number.isInteger(sender?.tab?.id) && !senderUrl.includes("-extension://")) {
@@ -159,6 +183,7 @@ chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) return;
   lastPageTabId = tab.id;
   try {
+    await attachPageRelay(tab.id);
     const state = await chrome.tabs.sendMessage(tab.id, {
       type: "cowork:set-enabled",
       enabled: true

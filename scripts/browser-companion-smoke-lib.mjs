@@ -9,8 +9,9 @@ export function validateBrowserCompanionObservation(observed) {
     "The browser companion smoke requires a real Chromium browser version"
   );
   requireCondition(
-    observed.defaultState?.enabled === false && observed.defaultState?.mode === "off",
-    "The browser companion must be disabled by default"
+    observed.relayAbsentBeforeAction === true &&
+      observed.isolatedContextsBeforeAction === 0,
+    "The page relay must be absent before the user invokes the extension action"
   );
   requireCondition(
     observed.webMcpAvailable === false,
@@ -105,6 +106,7 @@ export function validateBrowserCompanionObservation(observed) {
     browserCompanionClaim: true,
     browserVersion: observed.browserVersion,
     defaultDisabled: true,
+    userInitiatedActiveTabClaim: true,
     extensionTransport: true,
     sidePanelSurfaceClaim: true,
     pageUiInjected: false,

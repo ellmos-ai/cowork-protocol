@@ -137,6 +137,18 @@ async function waitForExtensionContext(contexts) {
   )}`);
 }
 
+async function invokeExtensionActionShortcut(call) {
+  const input = {
+    modifiers: 10,
+    key: "Y",
+    code: "KeyY",
+    windowsVirtualKeyCode: 89,
+    nativeVirtualKeyCode: 89
+  };
+  await call("Input.dispatchKeyEvent", { type: "rawKeyDown", ...input });
+  await call("Input.dispatchKeyEvent", { type: "keyUp", ...input });
+}
+
 async function stopBrowser(child) {
   if (!child || child.exitCode !== null) return;
   const killer = spawn("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], {
@@ -190,6 +202,18 @@ try {
     `document.querySelector("#system-status")?.textContent ?? ""`,
     (value) => value.includes("Nine Native WebMCP tools registered")
   );
+  const relayAbsentBeforeAction = await evaluate(
+    call,
+    `globalThis.__coworkNativePageBridgeInstalled !== true`
+  );
+  const isolatedContextsBeforeAction = [...contexts.values()].filter(
+    (candidate) =>
+      candidate.auxData?.type === "isolated" &&
+      (candidate.origin?.startsWith("chrome-extension://") ||
+        candidate.name?.startsWith("chrome-extension://"))
+  ).length;
+  await call("Page.bringToFront");
+  await invokeExtensionActionShortcut(call);
   const extensionContext = await waitForExtensionContext(contexts);
   const extensionContextId = extensionContext.id;
   await evaluate(
@@ -197,9 +221,10 @@ try {
     `document.querySelector("#full-name").dispatchEvent(new PointerEvent("pointerenter", { bubbles: true }))`,
     undefined
   );
-  const enabledState = await evaluate(
+  const enabledState = await waitForValue(
     call,
-    `globalThis.__coworkBrowserCompanionLoading.then((api) => api.setEnabled(true))`,
+    `globalThis.__coworkBrowserCompanionLoading.then((api) => api.state())`,
+    (value) => value?.enabled === true,
     extensionContextId
   );
   const focus = await evaluate(
@@ -216,7 +241,9 @@ try {
     enabledState.nativeToolCount < 9 ||
     enabledState.fallbackActive !== false ||
     focus.capabilityLevel !== "native" ||
-    pageUiInjected
+    pageUiInjected ||
+    relayAbsentBeforeAction !== true ||
+    isolatedContextsBeforeAction !== 0
   ) {
     throw new Error(`Native-first companion assertion failed: ${JSON.stringify({
       enabledState,
@@ -226,6 +253,7 @@ try {
   }
   console.log(JSON.stringify({
     nativeFirstCompanionClaim: true,
+    userInitiatedActiveTabClaim: true,
     browserVersion: version.Browser,
     mode: enabledState.mode,
     nativeToolCount: enabledState.nativeToolCount,

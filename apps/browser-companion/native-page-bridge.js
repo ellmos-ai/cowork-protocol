@@ -1,4 +1,6 @@
 (() => {
+  if (globalThis.__coworkNativePageBridgeInstalled) return;
+  globalThis.__coworkNativePageBridgeInstalled = true;
   const REQUEST_SOURCE = "cowork-extension-native-request";
   const RESPONSE_SOURCE = "cowork-extension-native-response";
   const PROTOCOL_VERSION = "0.1";

@@ -8,7 +8,8 @@ import {
 function acceptedObservation() {
   return {
     browserVersion: "Chrome/152.0.7977.64",
-    defaultState: { enabled: false, mode: "off" },
+    relayAbsentBeforeAction: true,
+    isolatedContextsBeforeAction: 0,
     webMcpAvailable: false,
     enabledState: {
       enabled: true,
@@ -85,6 +86,7 @@ test("the browser companion validator accepts the complete no-WebMCP journey", (
       browserCompanionClaim: true,
       browserVersion: "Chrome/152.0.7977.64",
       defaultDisabled: true,
+      userInitiatedActiveTabClaim: true,
       extensionTransport: true,
       sidePanelSurfaceClaim: true,
       pageUiInjected: false,
@@ -126,5 +128,14 @@ test("the validator refuses a WebMCP or model-client substitution", () => {
   assert.throws(
     () => validateBrowserCompanionObservation(webMcp),
     /without WebMCP/
+  );
+});
+
+test("the validator rejects a relay that existed before the user action", () => {
+  const persistent = acceptedObservation();
+  persistent.relayAbsentBeforeAction = false;
+  assert.throws(
+    () => validateBrowserCompanionObservation(persistent),
+    /absent before the user invokes/
   );
 });

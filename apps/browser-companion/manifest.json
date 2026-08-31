@@ -8,6 +8,8 @@
     "type": "module"
   },
   "permissions": [
+    "activeTab",
+    "scripting",
     "sidePanel"
   ],
   "side_panel": {
@@ -16,30 +18,14 @@
   "action": {
     "default_title": "Open Cowork Protocol"
   },
-  "host_permissions": [
-    "<all_urls>"
-  ],
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "native-page-bridge.js"
-      ],
-      "run_at": "document_start",
-      "world": "MAIN"
-    },
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "content-loader.js"
-      ],
-      "run_at": "document_idle"
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      }
     }
-  ],
+  },
   "web_accessible_resources": [
     {
       "resources": [

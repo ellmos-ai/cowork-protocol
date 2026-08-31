@@ -28,14 +28,16 @@ test("the browser companion builds a self-contained MV3 extension", async () => 
       await readFile(path.join(outputRoot, "manifest.json"), "utf8")
     );
     assert.equal(manifest.manifest_version, 3);
-    assert.deepEqual(manifest.host_permissions, ["<all_urls>"]);
-    assert.deepEqual(manifest.content_scripts[0].matches, ["<all_urls>"]);
+    assert.equal("host_permissions" in manifest, false);
+    assert.equal("content_scripts" in manifest, false);
     assert.equal(manifest.background.type, "module");
     assert.equal(manifest.action.default_title, "Open Cowork Protocol");
-    assert.deepEqual(manifest.permissions, ["sidePanel"]);
+    assert.deepEqual(manifest.permissions, ["activeTab", "scripting", "sidePanel"]);
     assert.equal(manifest.side_panel.default_path, "sidepanel.html");
-    assert.equal(manifest.content_scripts[0].world, "MAIN");
-    assert.deepEqual(manifest.content_scripts[0].js, ["native-page-bridge.js"]);
+    assert.equal(
+      manifest.commands._execute_action.suggested_key.default,
+      "Ctrl+Shift+Y"
+    );
     assert.equal(report.files.includes("native-page-bridge.js"), true);
     assert.equal(
       report.files.includes("modules/apps/browser-companion/src/native-page-client.js"),

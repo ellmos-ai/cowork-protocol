@@ -26,9 +26,10 @@ The repository currently contains:
 - a host-supplied WebMCP bridge catalog that emits bounded summaries, executes only read-only-hinted tools, normalizes small read results as JSON, converts oversized results into explicit 1,200-character previews and keeps every mutation offer-only;
 - an adaptive, host-supplied runtime that selects native Cowork first, then a usable generic WebMCP catalog, then the legacy host companion, and reports bounded fallback diagnostics rather than pretending to discover a browser by itself;
 - a legacy DOM/accessibility host companion with explain-only ephemeral targets, offer-only stable targets, one-step semantic expansion, an explicit 400×400 visual-region delivery callback, and a click-confirmed host action callback;
-- a toggleable Manifest V3 Side Panel that consumes native Cowork/WebMCP first
-  and activates its bounded DOM/accessibility/visual fallback only when native
-  tools are absent; its content relay remains headless in the page;
+- a user-invoked Manifest V3 Side Panel that receives temporary `activeTab`
+  access, injects its headless relay only on demand, consumes native
+  Cowork/WebMCP first and activates its bounded DOM/accessibility/visual
+  fallback only when native tools are absent;
 - a versioned Session Authority, shared Context Manager, renewable exclusive
   Model Seat and serialized Model Gateway for one Cowork-owned conversation
   across surfaces;
@@ -38,10 +39,32 @@ The repository currently contains:
   visibility signals and exact delta recovery on tab return;
 - a responsive FormBuilder showcase with attention controls, exact-value action offers, enforced explain/suggest/delegated/paused rights, causal change receipts, one-click feedback, presence, scoped solo work, typed/audio conversation and spoken replies.
 
-The native browser path now has both contract and browser evidence. An isolated Chrome 152 run with WebMCP testing enabled discovered all nine tools through `document.modelContext.getTools()`. It invoked focus and one-shot context, created two visible offers through `cowork_offer_action`, verified that neither offer changed the field, then used trusted browser clicks to apply both exact values and record human feedback. Native change and feedback reads returned only the second event with `omittedCount: 1`. The same run sent bounded typed turns to the honestly labeled local demo helper, pulled the latest one through `cowork_read_turn`, returned a bounded reply through `cowork_reply_turn`, and proved that both the helper offer and WebMCP reply offer remained inert until trusted clicks. The reproducible smoke explicitly reports `browserClaim: true`, `conversationClaim: true`, `webMcpReplyClaim: true`, `sharedContextClaim: true`, `connectedModelClaim: false`, `agentClientClaim: false` and `hostTokenClaim: false`: it proves Chrome mediation and both local/WebMCP human loops, not a connected ChatGPT-agent journey. A separate Chrome 152 smoke proves the same-origin model-host plumbing with one 468-character turn, no browser credential, and a deterministic fixture whose offer remains inert until a trusted click. A provider-backed repetition then sent one 502-character turn through the same browser path to a local Ollama `qwen3:4b`; the model returned the exact visible `Grace Hopper` offer, the field stayed unchanged before the trusted click, and the report set `preferredModelClaim: true`, `connectedModelClaim: true`, `providerLocation: local`, and `externalModelClaim: false`. The current browser gate keeps all 23 controls reachable at true 200% browser zoom. A separate current-surface accessibility smoke finds 23/23 named browser AX controls, 23/23 unique visible Tab stops and zero horizontal overflow at an emulated 390×844 browser viewport. The rendered-contrast smoke audits 699 visible text items across ten interaction states with no unsupported range and a 4.5656:1 minimum. A connected Edge session separately accepted AFK handoff/return and Human Solo. Real microphone input, screen-reader practice in the intended client, deployment, a remote provider and a connected ChatGPT-agent invocation remain pending.
+The native browser path has both contract and browser evidence. An isolated
+Chrome 152 run discovered all nine tools through
+`document.modelContext.getTools()`, exercised bounded focus/context and
+latest-only conversation, and proved that two action offers plus human
+feedback remained click-gated. Its explicit boundaries stay
+`agentClientClaim: false` and `hostTokenClaim: false`: this is browser WebMCP
+mediation, not a connected ChatGPT-agent journey.
+
+A separate Chrome 152 run proves the same-origin model-host plumbing with one
+468-character deterministic turn and no browser credential. An earlier
+provider-backed repetition sent one 502-character turn to local Ollama
+`qwen3:4b`, whose exact offer stayed inert until the trusted click;
+`providerLocation` is `local` and `externalModelClaim` remains false.
+
+The current UI keeps all 23 controls reachable at true 200% browser zoom and
+at a 390×844 CSS viewport: 23/23 AX controls are named, 23/23 Tab stops are
+visible, and horizontal overflow is zero. The rendered-contrast smoke audits
+834 visible text items across ten states with no unsupported or failing range
+and a 4.5656:1 minimum. Real microphone practice, a remote provider,
+screen-reader practice and a connected ChatGPT-agent invocation remain open.
 
 A separate Chrome for Testing 152 acceptance explicitly disabled WebMCP and
-loaded the built Browser Companion extension. Its extension-origin Side Panel
+loaded the built Browser Companion extension. Before the trusted action
+shortcut, the page contained neither Cowork bridge nor extension execution
+world. Temporary `activeTab` access then injected the headless relay on demand;
+its extension-origin Side Panel
 surface communicated with the headless page relay without inserting a Cowork
 root into the page DOM. It proved default-off and toggle-on/off behavior, exact
 350/1,200-character semantic tiers, a real one-shot 400×400 PNG pointer crop,
@@ -143,7 +166,7 @@ The suite uses Node's built-in test runner and has no external runtime dependenc
 
 `npm run proof` is a deterministic eight-step juror dry-run. It exercises the real focus, one-shot related-context request, latest-only conversation inbox and bounded reply, offer, human-click authorization, verified change and feedback, scoped AFK lease and FormBuilder export contracts in seconds. Its output explicitly sets `browserClaim: false` and `hostTokenClaim: false`; it is reproducible core evidence, not a substitute for the required live WebMCP browser demonstration.
 
-`npm run smoke:companion` builds the actual Manifest V3 extension and loads it into a fresh Chrome for Testing profile. The fixture explicitly disables WebMCP. The smoke requires default-off and toggle-on/off behavior, a stable pointer target, exact 350/1,200-character semantic tiers, a real 400×400 PNG pointer crop that is consumable once only inside the isolated extension host, an inert extension-origin Side Panel offer and a trusted browser click followed by verified mutation. It also requires `pageUiInjected: false`. Set `COWORK_COMPANION_BROWSER_PATH` when Chrome for Testing is outside the optional local tools cache. If the selected build does not load extensions headlessly, set `COWORK_COMPANION_HEADFUL=1` and `COWORK_COMPANION_VISIBLE=1`; the bounded pixel proof needs the temporary test window to remain on-screen. The report does not claim a connected model, host tokens or delivery of the full page.
+`npm run smoke:companion` builds the actual Manifest V3 extension and loads it into a fresh Chrome for Testing profile. The fixture explicitly disables WebMCP. The smoke proves that no Cowork page world exists before a trusted `_execute_action` shortcut grants temporary `activeTab` access and injects the relay. It then requires toggle-on/off behavior, a stable pointer target, exact 350/1,200-character semantic tiers, a real 400×400 PNG pointer crop that is consumable once only inside the isolated extension host, an inert extension-origin Side Panel offer and a trusted browser click followed by verified mutation. It also requires `pageUiInjected: false`. Set `COWORK_COMPANION_BROWSER_PATH` when Chrome for Testing is outside the optional local tools cache. If the selected build does not load extensions headlessly, set `COWORK_COMPANION_HEADFUL=1` and `COWORK_COMPANION_VISIBLE=1`; the bounded pixel proof needs the temporary test window to remain on-screen. The report does not claim a connected model, host tokens or delivery of the full page.
 
 `npm run smoke:companion-native` runs the complementary Native-first branch.
 With WebMCP enabled on FormBuilder, the extension must discover nine Cowork
