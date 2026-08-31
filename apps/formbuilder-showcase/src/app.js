@@ -114,6 +114,8 @@ let pendingChangeCause = null;
 let leaseExpiryTimer = null;
 let offerExpiryTimer = null;
 let conversationBusy = false;
+let modelWorkingField = null;
+let modelWorkingTimer = null;
 let detachedSurfaceWindow = null;
 let companionReplicaSnapshot = null;
 let companionConnection = null;
@@ -475,26 +477,53 @@ function selectedTextFor(control) {
   ) {
     return control.value.slice(control.selectionStart, control.selectionEnd);
   }
-  return session.attentionMode === "selection" ? control.value : "";
+  return "";
 }
 
-function focusKind() {
-  if (session.attentionMode === "pinned") return "pinned";
-  if (session.attentionMode === "selection") return "selection";
+function endModelWorking({ delay = 0 } = {}) {
+  if (modelWorkingTimer !== null) clearTimeout(modelWorkingTimer);
+  const clear = () => {
+    modelWorkingField?.classList.remove("is-model-working");
+    modelWorkingField = null;
+    modelWorkingTimer = null;
+  };
+  if (delay > 0) modelWorkingTimer = setTimeout(clear, delay);
+  else clear();
+}
+
+function beginModelWorking(field = focusedField) {
+  endModelWorking();
+  if (!field) return;
+  modelWorkingField = field;
+  modelWorkingField.classList.add("is-model-working");
+}
+
+function flashModelWorking(field = focusedField) {
+  beginModelWorking(field);
+  endModelWorking({ delay: 900 });
+}
+
+function focusKind(attentionMode = session.attentionMode) {
+  if (attentionMode === "pinned") return "pinned";
+  if (attentionMode === "selection") return "selection";
   return "pointer";
 }
 
-function buildFocus(field) {
-  if (!field || session.attentionMode === "off") return null;
+function buildFocus(field, attentionMode = session.attentionMode) {
+  if (!field || attentionMode === "off") return null;
   const control = currentControl(field);
+  const selectedText = ["pointer", "selection"].includes(attentionMode)
+    ? selectedTextFor(control)
+    : "";
+  if (attentionMode === "selection" && selectedText === "") return null;
   return buildFormBuilderFocus({
     sessionId: "formbuilder-showcase",
     pageVersion,
     fieldId: field.dataset.fieldId,
     label: field.dataset.label,
     controlKind: field.dataset.controlKind,
-    selectedText: selectedTextFor(control),
-    focusKind: focusKind()
+    selectedText,
+    focusKind: focusKind(attentionMode)
   });
 }
 
@@ -524,9 +553,24 @@ function requestRelatedContext({ reason }) {
 
 function setFocus(field) {
   if (session.attentionMode === "off") return;
+  const nextFocusPacket = buildFocus(field);
+  if (nextFocusPacket === null) {
+    focusedField = null;
+    focusPacket = null;
+    fields.forEach((candidate) => candidate.classList.remove("is-focused"));
+    render();
+    return;
+  }
+  const unchanged =
+    focusedField === field &&
+    JSON.stringify(focusPacket) === JSON.stringify(nextFocusPacket);
   focusedField = field;
   fields.forEach((candidate) => candidate.classList.toggle("is-focused", candidate === field));
-  focusPacket = buildFocus(field);
+  focusPacket = nextFocusPacket;
+  if (unchanged) {
+    render();
+    return;
+  }
   commitSession("focus-changed", session, {
     payload: {
       targetId: focusPacket.targetId,
@@ -704,9 +748,25 @@ function render() {
     now,
     pageVersion
   });
-  $("#mode-badge").textContent = view.modeLabel;
-  $("#human-label").textContent = view.humanLabel;
-  $("#agent-label").textContent = view.agentLabel;
+  const collaboration = view.collaboration;
+  $("#mode-badge").textContent = collaboration.modeLabel;
+  $("#embedded-mode-chip").textContent = collaboration.modeLabel;
+  $("#human-label").textContent = collaboration.humanLabel;
+  $("#agent-label").textContent = collaboration.modelLabel;
+  $("#embedded-relay-label").textContent = collaboration.modeLabel;
+  $("#embedded-relay-detail").textContent = collaboration.relayState === "live"
+    ? "Ideas and actions relay both ways"
+    : collaboration.relayState === "watching"
+      ? "Model reads and explains only"
+      : collaboration.relayState === "to-model"
+        ? "Scoped solo work flows to the model"
+        : collaboration.modeLabel === "Human working solo"
+          ? "Model is paused"
+          : "No collaboration turn is active";
+  $("#embedded-relay-core").setAttribute("aria-label", collaboration.modeLabel);
+  coworkPanel.dataset.humanState = collaboration.humanState;
+  coworkPanel.dataset.modelState = collaboration.modelState;
+  coworkPanel.dataset.relayState = collaboration.relayState;
   $("#focus-label").textContent = view.focusLabel;
   $("#context-label").textContent = view.contextLabel;
   $("#capability-badge").textContent = view.capabilityLabel;
@@ -735,14 +795,20 @@ function render() {
   $("#talk").disabled = companionConnected;
   $("#toggle-agent").textContent =
     session.agentPresence === "paused" ? "Resume agent" : "Pause agent";
+  $("#action-mode").value = session.actionMode;
 
   const humanSeat = $("#human-seat");
   humanSeat.classList.toggle("is-active", session.humanPresence === "present");
   humanSeat.classList.toggle("is-away", session.humanPresence !== "present");
   humanSeat.dataset.presenceTone = view.humanTone;
+  humanSeat.setAttribute("aria-pressed", String(collaboration.humanState === "present"));
   const modelSeat = $("#model-seat");
   modelSeat.classList.toggle("is-active", session.agentPresence !== "paused");
   modelSeat.classList.toggle("is-paused", session.agentPresence === "paused");
+  modelSeat.setAttribute(
+    "aria-pressed",
+    String(collaboration.modelState === "collaborating")
+  );
   renderOffers(view);
   renderReceipts();
 }
@@ -820,6 +886,7 @@ async function sendConversationTurn(transcriptInput) {
   }
 
   conversationBusy = true;
+  beginModelWorking();
   sendButton.disabled = true;
   sendButton.setAttribute("aria-busy", "true");
   $("#transcript").textContent = `You: ${transcript}\nHelper: Thinking with bounded context…`;
@@ -876,6 +943,7 @@ async function sendConversationTurn(transcriptInput) {
     setStatus(`${error.code ?? "CONVERSATION_ERROR"}: ${error.message}`);
   } finally {
     conversationBusy = false;
+    endModelWorking({ delay: 650 });
     sendButton.disabled = false;
     sendButton.setAttribute("aria-busy", "false");
   }
@@ -943,6 +1011,7 @@ function createVisibleOffer({ capabilityId, targetId, value, summary }) {
     expiresAt: new Date(now.getTime() + 60_000).toISOString()
   });
   offers = [...offers, offer];
+  if (!conversationBusy) flashModelWorking(focusedField);
   commitSession("offer-presented", session, {
     causeRefs: [`offer:${offer.offerId}`],
     payload: {
@@ -1063,8 +1132,9 @@ function executeOffer(event, offer) {
   }
 }
 
-function startAway(duration) {
-  if (session.agentPresence === "paused" || !actionModeAllows(session.actionMode, "solo")) {
+function startAway(duration, { authorizeDelegated = false } = {}) {
+  const actionMode = authorizeDelegated ? "delegated" : session.actionMode;
+  if (session.agentPresence === "paused" || !actionModeAllows(actionMode, "solo")) {
     setStatus("SESSION_PAUSED: switch Action rights to Delegated lease before going away.");
     return;
   }
@@ -1091,7 +1161,7 @@ function startAway(duration) {
   leaseCallsUsed = 0;
   commitSession(
     "human-away",
-    transitionShowcaseSession(session, {
+    transitionShowcaseSession({ ...session, actionMode }, {
       type: "HUMAN_AWAY",
       duration,
       lease,
@@ -1196,12 +1266,37 @@ function returnHuman() {
 function toggleAgent() {
   const transitionType =
     session.agentPresence === "paused" ? "AGENT_RESUMED" : "AGENT_PAUSED";
+  const actionMode = transitionType === "AGENT_RESUMED"
+    ? session.actionMode === "paused" ? "suggest" : session.actionMode
+    : "paused";
   commitSession(
     transitionType === "AGENT_RESUMED" ? "agent-resumed" : "agent-paused",
-    transitionShowcaseSession(session, { type: transitionType })
+    transitionShowcaseSession({ ...session, actionMode }, { type: transitionType })
   );
   setStatus(session.agentPresence === "paused" ? "Agent paused. Human Solo is active." : "Agent resumed.");
   render();
+}
+
+function cycleModelCockpit() {
+  if (session.agentPresence === "paused") {
+    toggleAgent();
+    return;
+  }
+  if (session.actionMode === "explain") {
+    toggleAgent();
+    return;
+  }
+  commitSession("model-observing", { ...session, actionMode: "explain" }, {
+    payload: { actionMode: "explain", source: "model-actor" }
+  });
+  setStatus("Model observing: focus and explanations remain available; action offers are off.");
+  render();
+}
+
+function cycleHumanCockpit() {
+  if (session.humanPresence === "present") startAway("short", { authorizeDelegated: true });
+  else if (session.humanPresence === "afk-short") startAway("long", { authorizeDelegated: true });
+  else returnHuman();
 }
 
 function collectFormValues() {
@@ -1352,14 +1447,14 @@ for (const field of fields) {
     if (session.attentionMode === "pointer") setFocus(field);
   });
   field.addEventListener("focusin", () => {
-    if (session.attentionMode === "selection") setFocus(field);
+    if (session.attentionMode === "pointer") setFocus(field);
   });
   field.addEventListener("click", () => {
-    if (session.attentionMode === "pinned") setFocus(field);
+    if (["pointer", "pinned"].includes(session.attentionMode)) setFocus(field);
   });
   const control = currentControl(field);
   control?.addEventListener("select", () => {
-    if (session.attentionMode === "selection") setFocus(field);
+    if (["pointer", "selection"].includes(session.attentionMode)) setFocus(field);
   });
   control?.addEventListener("input", () => {
     const previousValue = observedValues.get(field.dataset.fieldId) ?? "";
@@ -1398,12 +1493,17 @@ for (const field of fields) {
 $("#attention-mode").addEventListener("change", (event) => {
   const nextSession = { ...session, attentionMode: event.target.value };
   if (nextSession.attentionMode === "off") {
+    endModelWorking();
     focusPacket = null;
     focusedField = null;
     fields.forEach((field) => field.classList.remove("is-focused"));
     setStatus("Attention is off. No page context is sent.");
   } else if (focusedField) {
-    focusPacket = buildFocus(focusedField);
+    focusPacket = buildFocus(focusedField, nextSession.attentionMode);
+    if (focusPacket === null) {
+      focusedField = null;
+      fields.forEach((field) => field.classList.remove("is-focused"));
+    }
   }
   commitSession("attention-mode-changed", nextSession, {
     payload: { attentionMode: event.target.value }
@@ -1421,7 +1521,14 @@ $("#change-causality").addEventListener("change", (event) => {
 });
 
 $("#action-mode").addEventListener("change", (event) => {
-  commitSession("action-mode-changed", { ...session, actionMode: event.target.value }, {
+  const actionMode = event.target.value;
+  let nextSession = { ...session, actionMode };
+  if (actionMode === "paused" && session.agentPresence !== "paused") {
+    nextSession = transitionShowcaseSession(nextSession, { type: "AGENT_PAUSED" });
+  } else if (actionMode !== "paused" && session.agentPresence === "paused") {
+    nextSession = transitionShowcaseSession(nextSession, { type: "AGENT_RESUMED" });
+  }
+  commitSession("action-mode-changed", nextSession, {
     payload: { actionMode: event.target.value }
   });
   setStatus(`Action mode changed to ${event.target.selectedOptions[0].text}.`);
@@ -1456,6 +1563,8 @@ $("#away-short").addEventListener("click", () => startAway("short"));
 $("#away-long").addEventListener("click", () => startAway("long"));
 $("#return-human").addEventListener("click", returnHuman);
 $("#toggle-agent").addEventListener("click", toggleAgent);
+$("#human-seat").addEventListener("click", cycleHumanCockpit);
+$("#model-seat").addEventListener("click", cycleModelCockpit);
 $("#stop-speech").addEventListener("click", () => {
   recognitionSession?.stop();
   window.speechSynthesis?.cancel();

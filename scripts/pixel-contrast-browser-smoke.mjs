@@ -564,7 +564,14 @@ try {
   states.push(await auditRenderedState(
     call,
     "focused-field",
-    `document.querySelector('[data-field-id="full-name"]')?.classList.contains("is-focused") === true`
+    `(() => {
+      const field = document.querySelector('[data-field-id="full-name"]');
+      const selector = document.querySelector("#attention-mode");
+      return field?.classList.contains("is-focused") === true &&
+        getComputedStyle(field, "::before").content.includes("Model focus") &&
+        selector?.value === "pointer" &&
+        selector.selectedOptions[0]?.textContent.startsWith("Follow me");
+    })()`
   ));
 
   await dispatchTrustedClick(call, 'document.querySelector(".primary-action")', "Validate and export");
@@ -578,7 +585,12 @@ try {
   states.push(await auditRenderedState(
     call,
     "visible-offer",
-    `document.querySelectorAll(".offer-chip").length === 1`
+    `(() => {
+      const field = document.querySelector('[data-field-id="full-name"]');
+      return document.querySelectorAll(".offer-chip").length === 1 &&
+        field?.classList.contains("is-model-working") === true &&
+        getComputedStyle(field, "::before").content.includes("Model working");
+    })()`
   ));
 
   await dispatchTrustedClick(call, 'document.querySelector(".offer-chip")', "Visible action offer");
@@ -609,7 +621,7 @@ try {
   states.push(await auditRenderedState(
     call,
     "agent-solo",
-    `document.querySelector("#mode-badge")?.textContent.trim() === "Agent solo" && document.querySelector("#human-label")?.textContent.includes("away")`
+    `document.querySelector("#mode-badge")?.textContent.trim() === "Model working solo" && document.querySelector("#human-label")?.textContent.includes("away")`
   ));
 
   await dispatchTrustedClick(call, 'document.querySelector("#return-human")', "Human return");
@@ -617,7 +629,7 @@ try {
   states.push(await auditRenderedState(
     call,
     "human-solo",
-    `document.querySelector("#mode-badge")?.textContent.trim() === "Human solo" && document.querySelector("#agent-label")?.textContent.includes("paused")`
+    `document.querySelector("#mode-badge")?.textContent.trim() === "Human working solo" && document.querySelector("#agent-label")?.textContent.includes("paused")`
   ));
 
   await dispatchTrustedClick(call, 'document.querySelector("#talk")', "Push to talk");

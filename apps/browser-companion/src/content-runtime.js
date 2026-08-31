@@ -2,6 +2,10 @@ import { createLegacyHostCompanion } from "../../../packages/bridge/src/index.js
 import { CoworkProtocolError } from "../../../packages/core/src/index.js";
 import { describeDomTarget, normalizeCompanionRequest } from "./protocol.js";
 import { createNativePageClient } from "./native-page-client.js";
+import {
+  nextHumanPresence,
+  nextModelEngagement
+} from "./cockpit-presentation.js";
 
 const RESPONSE_SOURCE = "cowork-browser-companion";
 const TARGET_SELECTOR = [
@@ -65,6 +69,12 @@ export function installBrowserCompanion({ document, window, runtime }) {
   let pendingOfferContract = null;
   let runtimeMode = "off";
   let nativeDiscovery = null;
+  let humanPresence = "present";
+  let agentEngagement = "paused";
+  let soloLeaseValid = false;
+  let contextLevel = 0;
+  let focusLabel = "Point to a page control";
+  let focusDetail = "No page content requested yet";
   const stableElements = new Map();
   const nativePageClient = createNativePageClient({ window });
 
@@ -117,6 +127,9 @@ export function installBrowserCompanion({ document, window, runtime }) {
         }
         const target = describeDomTarget(element, document);
         if (target.stableId) stableElements.set(target.stableId, element);
+        focusLabel = target.label;
+        focusDetail = target.role;
+        contextLevel = 0;
         updateStatus(`${lens === "selection" ? "Selected" : "Pointing at"}: ${target.label}`);
         return { pageVersion, target };
       },
@@ -233,6 +246,81 @@ export function installBrowserCompanion({ document, window, runtime }) {
     return state();
   }
 
+  function recordFocus(result) {
+    focusLabel = result?.target?.label ?? result?.label ?? result?.targetId ?? "Focused control";
+    focusDetail = result?.capabilityLevel
+      ? `${result.capabilityLevel} · ${(result.capabilityIds ?? []).length} capabilities`
+      : result?.target?.role ?? "Bounded page focus";
+    contextLevel = 0;
+    updateStatus(`Focused: ${focusLabel}`);
+    return state();
+  }
+
+  async function readCurrentFocus() {
+    if (!enabled || !companion) {
+      throw new CoworkProtocolError("COMPANION_DISABLED", "Start Cowork before reading focus");
+    }
+    return recordFocus(await companion.agent.readFocus({ lens: "pointer" }));
+  }
+
+  async function requestCurrentContext() {
+    if (!enabled || !companion) {
+      throw new CoworkProtocolError("COMPANION_DISABLED", "Start Cowork before requesting context");
+    }
+    if (contextLevel >= 3) {
+      throw new CoworkProtocolError(
+        "CONTEXT_LIMIT_REACHED",
+        "The one-shot visual context level is already reached"
+      );
+    }
+    const result = await companion.agent.requestContext({
+      currentLevel: contextLevel,
+      requestedLevel: contextLevel + 1,
+      reason: "The human requested one more bounded context level from the Cockpit.",
+      pointer
+    });
+    const returnedLevel = Number.isInteger(result?.requestedLevel)
+      ? result.requestedLevel
+      : Number.isInteger(result?.currentLevel)
+        ? result.currentLevel
+        : contextLevel + 1;
+    contextLevel = Math.min(3, Math.max(contextLevel + 1, returnedLevel));
+    focusDetail = contextLevel === 3
+      ? "One visual lens granted"
+      : "Related page semantics granted";
+    updateStatus(`Context level ${contextLevel} granted`);
+    return state();
+  }
+
+  async function cycleModelEngagement() {
+    const next = nextModelEngagement(agentEngagement);
+    if (next === "paused") {
+      await setEnabled(false);
+      return state();
+    }
+    if (!enabled) await setEnabled(true);
+    agentEngagement = next;
+    updateStatus(
+      next === "observing"
+        ? "Observe-only · reads stay available, action offers are blocked"
+        : "Model collaborating"
+    );
+    return state();
+  }
+
+  function cycleHumanPresence() {
+    const next = nextHumanPresence(humanPresence);
+    if (next !== "present" && !soloLeaseValid) {
+      throw new CoworkProtocolError(
+        "SOLO_LEASE_REQUIRED",
+        "Connect the Session Companion and approve a solo lease before leaving"
+      );
+    }
+    humanPresence = next;
+    updateStatus(next === "present" ? "Human returned" : "Human presence updated");
+    return state();
+  }
+
   async function setEnabled(nextEnabled) {
     enabled = nextEnabled;
     currentElement = null;
@@ -242,7 +330,11 @@ export function installBrowserCompanion({ document, window, runtime }) {
     pendingOffer = null;
     pendingOfferContract = null;
     nativeDiscovery = null;
+    contextLevel = 0;
+    focusLabel = "Point to a page control";
+    focusDetail = "No page content requested yet";
     if (enabled) {
+      agentEngagement = "collaborating";
       try {
         nativeDiscovery = await nativePageClient.discover();
       } catch {
@@ -267,6 +359,7 @@ export function installBrowserCompanion({ document, window, runtime }) {
     } else {
       companion = null;
       runtimeMode = "off";
+      agentEngagement = "paused";
       updateStatus("Off");
     }
     return state();
@@ -277,6 +370,7 @@ export function installBrowserCompanion({ document, window, runtime }) {
       protocolVersion: "0.1",
       enabled,
       mode: runtimeMode,
+      executionMode: "structured",
       pageVersion,
       webMcpRequired: false,
       webMcpAvailable: nativeDiscovery?.webMcpAvailable === true,
@@ -288,6 +382,12 @@ export function installBrowserCompanion({ document, window, runtime }) {
       surfaceLocation: "browser-side-panel",
       inPageUi: false,
       statusText,
+      humanPresence,
+      agentEngagement,
+      soloLeaseValid,
+      contextLevel,
+      focusLabel,
+      focusDetail,
       pendingOffer,
       visualRegionStored: Boolean(lastVisualDelivery),
       visualDelivery: lastVisualDelivery,
@@ -344,6 +444,12 @@ export function installBrowserCompanion({ document, window, runtime }) {
       return;
     }
     try {
+      if (agentEngagement === "observing" && request.method === "offerAction") {
+        throw new CoworkProtocolError(
+          "SESSION_READ_ONLY",
+          "Observe-only mode blocks action offers"
+        );
+      }
       const result = await companion.agent[request.method](request.arguments);
       window.postMessage({
         source: RESPONSE_SOURCE,
@@ -378,6 +484,32 @@ export function installBrowserCompanion({ document, window, runtime }) {
     }
     if (message?.type === "cowork:get-state") {
       sendResponse(state());
+      return false;
+    }
+    if (message?.type === "cowork:read-focus") {
+      readCurrentFocus()
+        .then((result) => sendResponse({ ok: true, state: result }))
+        .catch((error) => sendResponse({ ok: false, error: codeOnly(error) }));
+      return true;
+    }
+    if (message?.type === "cowork:request-context") {
+      requestCurrentContext()
+        .then((result) => sendResponse({ ok: true, state: result }))
+        .catch((error) => sendResponse({ ok: false, error: codeOnly(error) }));
+      return true;
+    }
+    if (message?.type === "cowork:cycle-model-engagement") {
+      cycleModelEngagement()
+        .then((result) => sendResponse({ ok: true, state: result }))
+        .catch((error) => sendResponse({ ok: false, error: codeOnly(error) }));
+      return true;
+    }
+    if (message?.type === "cowork:cycle-human-presence") {
+      try {
+        sendResponse({ ok: true, state: cycleHumanPresence() });
+      } catch (error) {
+        sendResponse({ ok: false, error: codeOnly(error) });
+      }
       return false;
     }
     if (message?.type === "cowork:confirm-offer") {

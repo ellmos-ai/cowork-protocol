@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -138,6 +138,16 @@ async function trustedClick(call, selector) {
     button: "left",
     clickCount: 1
   });
+}
+
+async function captureFrame(call, directory, filename) {
+  await mkdir(directory, { recursive: true });
+  const capture = await call("Page.captureScreenshot", {
+    format: "png",
+    fromSurface: true,
+    captureBeyondViewport: false
+  });
+  await writeFile(path.join(directory, filename), Buffer.from(capture.data, "base64"));
 }
 
 try {
@@ -373,6 +383,17 @@ try {
   const companionWindowCall = cdpClient(companionWindowSocket);
   await companionWindowCall("Runtime.enable");
   await companionWindowCall("Page.enable");
+  await companionWindowCall("Emulation.setDeviceMetricsOverride", {
+    width: 430,
+    height: 760,
+    deviceScaleFactor: 1,
+    mobile: false
+  });
+  const companionReportDirectory = path.join(
+    process.cwd(),
+    "_reports",
+    "desktop-companion-cockpit-v1"
+  );
   const visibleCompanion = await waitForValue(
     companionWindowCall,
     `(() => ({
@@ -383,11 +404,163 @@ try {
       applicationSurface: document.querySelector("#page-availability")?.textContent ?? null,
       human: document.querySelector("#human-label")?.textContent ?? null,
       model: document.querySelector("#model-label")?.textContent ?? null,
+      modelIdentity: document.querySelector("#model-identity")?.textContent ?? null,
+      humanState: document.querySelector(".companion-cockpit")?.dataset.humanState ?? null,
+      modelState: document.querySelector(".companion-cockpit")?.dataset.modelState ?? null,
+      relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null,
+      cockpitVisible: Boolean(document.querySelector("#human-control") && document.querySelector("#model-control") && document.querySelector("#relay-core")),
+      horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       audioControlCount: ["#talk", "#stop-speech", "#speak"]
         .filter((selector) => document.querySelector(selector)).length,
       modelInputEnabled: !document.querySelector("#conversation-input")?.disabled
     }))()`,
     (value) => value?.sessionId === initial.snapshot.sessionId && value.modelInputEnabled === true
+  );
+  await captureFrame(
+    companionWindowCall,
+    companionReportDirectory,
+    "companion-01-cowork.png"
+  );
+
+  await trustedClick(companionWindowCall, "#appearance-toggle");
+  await trustedClick(companionWindowCall, '[data-cockpit-color="#eaf2ff"]');
+  const chosenBackground = await waitForValue(
+    companionWindowCall,
+    `(() => ({
+      color: getComputedStyle(document.documentElement).getPropertyValue("--cockpit-background").trim(),
+      stored: localStorage.getItem("cowork.companion.cockpit-background.v1")
+    }))()`,
+    (value) => value?.color === "#eaf2ff" && value?.stored === "#eaf2ff"
+  );
+  await captureFrame(
+    companionWindowCall,
+    companionReportDirectory,
+    "companion-01b-sky-background.png"
+  );
+  await companionWindowCall("Page.reload", { ignoreCache: true });
+  const restoredBackground = await waitForValue(
+    companionWindowCall,
+    `(() => ({
+      color: getComputedStyle(document.documentElement).getPropertyValue("--cockpit-background").trim(),
+      stored: localStorage.getItem("cowork.companion.cockpit-background.v1"),
+      sessionId: document.querySelector("#session-heading")?.textContent ?? null
+    }))()`,
+    (value) => value?.color === "#eaf2ff" &&
+      value?.stored === "#eaf2ff" &&
+      value?.sessionId === initial.snapshot.sessionId
+  );
+
+  await trustedClick(companionWindowCall, "#model-control");
+  const observingCompanion = await waitForValue(
+    companionWindowCall,
+    `(() => ({
+      modelState: document.querySelector(".companion-cockpit")?.dataset.modelState ?? null,
+      relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null,
+      label: document.querySelector("#model-label")?.textContent ?? null
+    }))()`,
+    (value) => value?.modelState === "observing" && value?.relayState === "watching"
+  );
+  await captureFrame(
+    companionWindowCall,
+    companionReportDirectory,
+    "companion-02-observing.png"
+  );
+
+  await trustedClick(companionWindowCall, "#model-control");
+  const pausedCompanion = await waitForValue(
+    companionWindowCall,
+    `(() => ({
+      modelState: document.querySelector(".companion-cockpit")?.dataset.modelState ?? null,
+      relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null,
+      inputDisabled: document.querySelector("#conversation-input")?.disabled ?? null
+    }))()`,
+    (value) => value?.modelState === "paused" && value?.inputDisabled === true
+  );
+  await captureFrame(
+    companionWindowCall,
+    companionReportDirectory,
+    "companion-03-paused.png"
+  );
+
+  await trustedClick(companionWindowCall, "#model-control");
+  await waitForValue(
+    companionWindowCall,
+    `document.querySelector(".companion-cockpit")?.dataset.modelState ?? null`,
+    (value) => value === "collaborating"
+  );
+  await trustedClick(companionWindowCall, "#human-control");
+  const awayWithoutLease = await waitForValue(
+    companionWindowCall,
+    `(() => ({
+      humanState: document.querySelector(".companion-cockpit")?.dataset.humanState ?? null,
+      relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null,
+      detail: document.querySelector("#relay-detail")?.textContent ?? null
+    }))()`,
+    (value) => value?.humanState === "afk-short" && value?.relayState === "dormant"
+  );
+  await captureFrame(
+    companionWindowCall,
+    companionReportDirectory,
+    "companion-04-away-without-lease.png"
+  );
+  await trustedClick(companionWindowCall, "#human-control");
+  await waitForValue(
+    companionWindowCall,
+    `document.querySelector(".companion-cockpit")?.dataset.humanState ?? null`,
+    (value) => value === "afk-long"
+  );
+  await trustedClick(companionWindowCall, "#human-control");
+  await waitForValue(
+    companionWindowCall,
+    `(() => ({
+      humanState: document.querySelector(".companion-cockpit")?.dataset.humanState ?? null,
+      relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null
+    }))()`,
+    (value) => value?.humanState === "present" && value?.relayState === "live"
+  );
+  const beforeDelegation = companionHost.readSnapshot("browser-surface-link");
+  const delegatedAt = new Date();
+  await companionHost.commitSession("browser-surface-link", {
+    kind: "smoke-solo-lease-authorized",
+    nextState: {
+      ...beforeDelegation.state,
+      lease: {
+        leaseId: "surface-smoke-solo-lease",
+        goal: "Continue the bounded form task",
+        expiresAt: new Date(delegatedAt.getTime() + 5 * 60 * 1000).toISOString()
+      }
+    },
+    expectedRevision: beforeDelegation.revision,
+    sourceSurfaceId: beforeDelegation.state.surface.primarySurfaceId,
+    at: delegatedAt.toISOString()
+  });
+  await trustedClick(companionWindowCall, "#human-control");
+  const delegatedSolo = await waitForValue(
+    companionWindowCall,
+    `(() => ({
+      humanState: document.querySelector(".companion-cockpit")?.dataset.humanState ?? null,
+      modelState: document.querySelector(".companion-cockpit")?.dataset.modelState ?? null,
+      relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null,
+      label: document.querySelector("#relay-label")?.textContent ?? null
+    }))()`,
+    (value) => value?.humanState === "afk-short" && value?.relayState === "to-model"
+  );
+  await captureFrame(
+    companionWindowCall,
+    companionReportDirectory,
+    "companion-05-delegated-solo.png"
+  );
+  await trustedClick(companionWindowCall, "#human-control");
+  await waitForValue(
+    companionWindowCall,
+    `document.querySelector(".companion-cockpit")?.dataset.humanState ?? null`,
+    (value) => value === "afk-long"
+  );
+  await trustedClick(companionWindowCall, "#human-control");
+  await waitForValue(
+    companionWindowCall,
+    `document.querySelector(".companion-cockpit")?.dataset.humanState ?? null`,
+    (value) => value === "present"
   );
   await evaluateValue(companionWindowCall, `(() => {
     document.querySelector("#conversation-input").value = "Continue in the Companion.";
@@ -419,9 +592,22 @@ try {
     companionSnapshot?.state?.surface?.kind !== "desktop" ||
     visibleCompanion.providerId !== "cowork-reference-ui" ||
     visibleCompanion.title !== "Companion" ||
-    visibleCompanion.mode !== "cowork" ||
+    visibleCompanion.mode !== "Working together" ||
     visibleCompanion.applicationSurface !== "Page active" ||
+    visibleCompanion.humanState !== "present" ||
+    visibleCompanion.modelState !== "collaborating" ||
+    visibleCompanion.modelIdentity !== "preferred-model" ||
+    visibleCompanion.relayState !== "live" ||
+    visibleCompanion.cockpitVisible !== true ||
+    visibleCompanion.horizontalOverflow > 0 ||
+    observingCompanion.label !== "Model observing" ||
+    pausedCompanion.relayState !== "dormant" ||
+    awayWithoutLease.detail !== "No solo lease; model waits" ||
+    delegatedSolo.modelState !== "collaborating" ||
+    delegatedSolo.label !== "Model working solo" ||
     visibleCompanion.audioControlCount !== 3 ||
+    chosenBackground.color !== "#eaf2ff" ||
+    restoredBackground.color !== "#eaf2ff" ||
     companionConversation.turnCount !== 2
   ) {
     throw new Error("Detached surface did not preserve one versioned Cowork session");
@@ -435,13 +621,20 @@ try {
     tokenFreeSurfaceSignalClaim: true,
     returnDeltaRecoveryClaim: true,
     independentCompanionWindowClaim: true,
+    companionActorCockpitClaim: true,
+    independentActorStateClaim: true,
+    leaseTruthfulnessClaim: true,
+    delegatedSoloVisualClaim: true,
     sharedModelGatewayClaim: true,
     companionAudioControlsClaim: true,
+    visibleModelIdentityClaim: true,
+    persistentCockpitBackgroundClaim: true,
     browserVersion: version.Browser,
     localNetworkPermission,
     headful,
     sessionId: initial.snapshot.sessionId,
     integrationMode: initial.integration.presentation.mode,
+    companionReportDirectory,
     revisions: {
       initial: initial.snapshot.revision,
       detached: detached.snapshot.revision,

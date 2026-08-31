@@ -90,6 +90,16 @@ test("the panel view model exposes mode, token budget and at most three action c
       humanTone: "green",
       humanLabel: "Human present",
       agentLabel: "Agent active",
+      collaboration: {
+        humanState: "present",
+        humanLabel: "You are here",
+        humanBadge: "●",
+        modelState: "collaborating",
+        modelLabel: "Model collaborating",
+        modelBadge: "✓",
+        modeLabel: "Working together",
+        relayState: "live"
+      },
       capabilityLabel: "WebMCP unavailable",
       focusLabel: "Point to or select a form field",
       contextLabel: "No context sent",

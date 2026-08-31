@@ -8,6 +8,7 @@ import {
   createCoworkContextManager,
   restoreCoworkContextManager
 } from "../../../packages/context-manager/src/index.js";
+import { resolvePresenceMode } from "../../../packages/core/src/index.js";
 import { createCoworkModelGateway } from "../../../packages/model-gateway/src/index.js";
 import { restoreCoworkSessionAuthority } from "../../../packages/session-authority/src/index.js";
 
@@ -17,6 +18,9 @@ const MAX_BODY_BYTES = 64 * 1024;
 const UI_ROOT = fileURLToPath(new URL("../ui/", import.meta.url));
 const REFERENCE_UI_MARK = fileURLToPath(
   new URL("../../../packages/reference-ui/assets/cowork-dialogue-mark.svg", import.meta.url)
+);
+const REFERENCE_UI_MODULE = fileURLToPath(
+  new URL("../../../packages/reference-ui/src/index.js", import.meta.url)
 );
 
 export class CompanionHostError extends Error {
@@ -30,6 +34,36 @@ export class CompanionHostError extends Error {
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function readAgentEngagement(state) {
+  if (["collaborating", "observing", "paused"].includes(state.agentEngagement)) {
+    return state.agentEngagement;
+  }
+  return state.agentPresence === "paused" ? "paused" : "collaborating";
+}
+
+function hasCurrentSoloLease(state, at) {
+  const currentMilliseconds = Date.parse(at);
+  const expiryMilliseconds = Date.parse(state.lease?.expiresAt);
+  return (
+    state.lease !== null &&
+    typeof state.lease === "object" &&
+    Number.isFinite(currentMilliseconds) &&
+    Number.isFinite(expiryMilliseconds) &&
+    currentMilliseconds < expiryMilliseconds
+  );
+}
+
+function resolveCompanionMode({ state, humanPresence, agentPresence, agentEngagement, at }) {
+  const effectiveMode = resolvePresenceMode({
+    humanPresence,
+    agentPresence,
+    leaseValid: hasCurrentSoloLease(state, at)
+  });
+  return agentEngagement === "observing" && humanPresence !== "present"
+    ? "idle"
+    : effectiveMode;
 }
 
 function assertLoopbackHostname(hostname) {
@@ -326,11 +360,15 @@ export function createCompanionSessionHost({
           revision: snapshot.revision,
           humanPresence: snapshot.state.humanPresence,
           agentPresence: snapshot.state.agentPresence,
+          agentEngagement: value.gateway === null
+            ? "paused"
+            : readAgentEngagement(snapshot.state),
           effectiveMode: snapshot.state.effectiveMode,
           surfaceKind: snapshot.state.surface?.kind,
           applicationSurfaceVisibility:
             snapshot.state.applicationSurface?.visibility ?? "unknown",
           modelAvailable: value.gateway !== null,
+          modelIdentity: value.gateway === null ? null : modelProviderId,
           modelStatus: value.gateway?.readStatus() ?? null,
           context: value.contextManager.readContext()
         };
@@ -374,6 +412,13 @@ export function createCompanionSessionHost({
       );
     }
     const currentSnapshot = linkSession.authority.readSnapshot();
+    if (currentSnapshot.state.agentPresence === "paused") {
+      throw new CompanionHostError(
+        "MODEL_PAUSED",
+        "The Companion model is paused",
+        409
+      );
+    }
     const currentSeat = currentSnapshot.state.modelSeat;
     const currentMilliseconds = Date.parse(now());
     const seatExpiryMilliseconds = Date.parse(currentSeat?.expiresAt);
@@ -435,21 +480,77 @@ export function createCompanionSessionHost({
       );
     }
     const snapshot = linkSession.authority.readSnapshot();
+    const agentEngagement = readAgentEngagement(snapshot.state);
+    const changedAt = now();
     const nextState = {
       ...snapshot.state,
       humanPresence,
-      effectiveMode:
-        humanPresence === "present"
-          ? "cowork"
-          : snapshot.state.agentPresence === "active"
-            ? "agent-solo"
-            : "idle"
+      agentEngagement,
+      effectiveMode: resolveCompanionMode({
+        state: snapshot.state,
+        humanPresence,
+        agentPresence: snapshot.state.agentPresence,
+        agentEngagement,
+        at: changedAt
+      })
     };
     const result = linkSession.authority.commit({
       kind: humanPresence === "present" ? "human-returned" : "human-away",
       nextState,
       sourceSurfaceId: snapshot.state.surface.primarySurfaceId,
-      at: now()
+      at: changedAt
+    });
+    linkSession.snapshot = linkSession.authority.readSnapshot();
+    await persistSessions();
+    return result;
+  }
+
+  async function updateModelEngagement(linkSessionId, agentEngagement) {
+    const linkSession = sessions.get(linkSessionId);
+    if (!linkSession) {
+      throw new CompanionHostError(
+        "LINK_SESSION_NOT_FOUND",
+        "Companion link session is unavailable",
+        404
+      );
+    }
+    if (!linkSession.gateway) {
+      throw new CompanionHostError(
+        "MODEL_GATEWAY_UNAVAILABLE",
+        "No preferred model is configured for this Companion",
+        503
+      );
+    }
+    if (!["collaborating", "observing", "paused"].includes(agentEngagement)) {
+      throw new CompanionHostError(
+        "INVALID_AGENT_ENGAGEMENT",
+        "Companion model engagement value is invalid"
+      );
+    }
+    const snapshot = linkSession.authority.readSnapshot();
+    const agentPresence = agentEngagement === "paused" ? "paused" : "active";
+    const changedAt = now();
+    const nextState = {
+      ...snapshot.state,
+      agentPresence,
+      agentEngagement,
+      effectiveMode: resolveCompanionMode({
+        state: snapshot.state,
+        humanPresence: snapshot.state.humanPresence,
+        agentPresence,
+        agentEngagement,
+        at: changedAt
+      })
+    };
+    const result = linkSession.authority.commit({
+      kind: agentEngagement === "paused"
+        ? "agent-paused"
+        : agentEngagement === "observing"
+          ? "agent-observing"
+          : "agent-resumed",
+      nextState,
+      sourceSurfaceId: snapshot.state.surface.primarySurfaceId,
+      at: changedAt
     });
     linkSession.snapshot = linkSession.authority.readSnapshot();
     await persistSessions();
@@ -530,6 +631,7 @@ export function createCompanionSessionHost({
       ["/cowork/v1/ui/", ["index.html", "text/html; charset=utf-8"]],
       ["/cowork/v1/ui/styles.css", ["styles.css", "text/css; charset=utf-8"]],
       ["/cowork/v1/ui/app.js", ["app.js", "text/javascript; charset=utf-8"]],
+      ["/cowork/v1/ui/reference-ui.js", [REFERENCE_UI_MODULE, "text/javascript; charset=utf-8"]],
       ["/cowork/v1/ui/cowork-dialogue-mark.svg", [REFERENCE_UI_MARK, "image/svg+xml"]]
     ]);
     if (request.method === "GET" && uiAssets.has(requestUrl.pathname)) {
@@ -549,7 +651,10 @@ export function createCompanionSessionHost({
     const uiPresenceMatch = requestUrl.pathname.match(
       /^\/cowork\/v1\/ui\/sessions\/([^/]+)\/presence$/
     );
-    if (request.method === "POST" && (uiTurnMatch || uiPresenceMatch)) {
+    const uiEngagementMatch = requestUrl.pathname.match(
+      /^\/cowork\/v1\/ui\/sessions\/([^/]+)\/engagement$/
+    );
+    if (request.method === "POST" && (uiTurnMatch || uiPresenceMatch || uiEngagementMatch)) {
       if (request.headers.origin !== localUiOrigin) {
         writeJson(response, 403, { code: "COMPANION_UI_ORIGIN_REQUIRED" });
         return;
@@ -559,10 +664,16 @@ export function createCompanionSessionHost({
         if (uiTurnMatch) {
           const reply = await submitModelTurn(decodeURIComponent(uiTurnMatch[1]), body);
           writeJson(response, 200, { reply });
-        } else {
+        } else if (uiPresenceMatch) {
           const result = await updatePresence(
             decodeURIComponent(uiPresenceMatch[1]),
             body.humanPresence
+          );
+          writeJson(response, 200, { revision: result.revision });
+        } else {
+          const result = await updateModelEngagement(
+            decodeURIComponent(uiEngagementMatch[1]),
+            body.agentEngagement
           );
           writeJson(response, 200, { revision: result.revision });
         }
@@ -777,6 +888,7 @@ export function createCompanionSessionHost({
     },
     reportSurface,
     submitModelTurn,
+    updateModelEngagement,
     readModelStatus(linkSessionId) {
       return sessions.get(linkSessionId)?.gateway?.readStatus() ?? null;
     },

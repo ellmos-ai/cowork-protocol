@@ -30,13 +30,15 @@
     {
       "resources": [
         "modules/apps/browser-companion/src/content-runtime.js",
+        "modules/apps/browser-companion/src/cockpit-presentation.js",
         "modules/apps/browser-companion/src/native-page-client.js",
         "modules/apps/browser-companion/src/protocol.js",
         "modules/packages/bridge/src/bounded-result.js",
         "modules/packages/bridge/src/companion.js",
         "modules/packages/bridge/src/index.js",
         "modules/packages/bridge/src/legacy.js",
-        "modules/packages/core/src/index.js"
+        "modules/packages/core/src/index.js",
+        "modules/packages/reference-ui/src/index.js"
       ],
       "matches": [
         "<all_urls>"

@@ -248,6 +248,20 @@ async function invokeExtensionActionShortcut(call) {
   await call("Input.dispatchKeyEvent", { type: "keyUp", ...input });
 }
 
+async function activateExtensionWithRetry(call, contexts) {
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await call("Page.bringToFront");
+    await invokeExtensionActionShortcut(call);
+    try {
+      return await waitForExtensionContext(contexts, 15);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 async function stopOwnedBrowser(child) {
   if (!child || child.exitCode !== null) return;
   const exited = new Promise((resolve) => child.once("exit", resolve));
@@ -347,8 +361,7 @@ try {
       (candidate.origin?.startsWith("chrome-extension://") ||
         candidate.name?.startsWith("chrome-extension://"))
   ).length;
-  await invokeExtensionActionShortcut(call);
-  const extensionContextId = await waitForExtensionContext(contexts);
+  const extensionContextId = await activateExtensionWithRetry(call, contexts);
   const extensionContext = contexts.get(extensionContextId);
   const extensionOrigin = extensionContext?.origin?.startsWith("chrome-extension://")
     ? extensionContext.origin
@@ -365,7 +378,11 @@ try {
   let enabledState = null;
   for (let attempt = 0; attempt < 80; attempt += 1) {
     enabledState = await extensionState("api.state()");
-    if (enabledState?.enabled === true) break;
+    if (
+      enabledState?.enabled === true &&
+      enabledState?.mode === "legacy-host-companion" &&
+      enabledState?.fallbackActive === true
+    ) break;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   await new Promise((resolve) => setTimeout(resolve, 100));
@@ -443,6 +460,12 @@ try {
   const sidePanelCall = cdpClient(sidePanelSocket);
   await sidePanelCall("Runtime.enable");
   await sidePanelCall("Page.enable");
+  await sidePanelCall("Emulation.setDeviceMetricsOverride", {
+    width: 390,
+    height: 844,
+    deviceScaleFactor: 1,
+    mobile: false
+  });
   await sidePanelCall("Page.bringToFront");
   const sidePanelState = () =>
     evaluateValue(

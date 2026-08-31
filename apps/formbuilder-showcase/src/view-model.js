@@ -1,6 +1,9 @@
 import { CoworkProtocolError } from "../../../packages/core/src/index.js";
 import { actionModeAllows } from "./session.js";
-import { buildReferenceSurfacePresentation } from "../../../packages/reference-ui/src/index.js";
+import {
+  buildCollaborationPresentation,
+  buildReferenceSurfacePresentation
+} from "../../../packages/reference-ui/src/index.js";
 
 const CAPABILITY_LABELS = {
   native: "Native WebMCP",
@@ -102,6 +105,16 @@ export function buildPanelViewModel({
   pageVersion
 }) {
   const referenceSurface = buildReferenceSurfacePresentation(session);
+  const collaboration = buildCollaborationPresentation({
+    humanPresence: session.humanPresence,
+    agentEngagement:
+      session.agentPresence === "paused" || session.actionMode === "paused"
+        ? "paused"
+        : session.actionMode === "explain"
+          ? "observing"
+          : "collaborating",
+    effectiveMode: session.effectiveMode
+  });
   const contextCharacters = focusPacket?.metrics?.contextCharacters;
 
   return {
@@ -109,6 +122,7 @@ export function buildPanelViewModel({
     humanTone: referenceSurface.humanTone,
     humanLabel: referenceSurface.humanLabel,
     agentLabel: referenceSurface.agentLabel,
+    collaboration,
     capabilityLabel: CAPABILITY_LABELS[capabilityLevel],
     focusLabel: focusPacket?.focus?.label ?? "Point to or select a form field",
     contextLabel:

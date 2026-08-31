@@ -176,6 +176,20 @@ async function sidePanelOperation(message, sender) {
     });
     return result;
   }
+  const pageOperations = new Map([
+    ["cowork:sidepanel:read-focus", "cowork:read-focus"],
+    ["cowork:sidepanel:request-context", "cowork:request-context"],
+    ["cowork:sidepanel:cycle-model", "cowork:cycle-model-engagement"],
+    ["cowork:sidepanel:cycle-human", "cowork:cycle-human-presence"]
+  ]);
+  const pageType = pageOperations.get(message.type);
+  if (pageType) {
+    const result = await chrome.tabs.sendMessage(tabId, { type: pageType });
+    if (result?.ok !== true) {
+      throw new Error(result?.error?.code ?? "COCKPIT_OPERATION_FAILED");
+    }
+    return { state: result.state };
+  }
   throw new Error("UNSUPPORTED_SIDE_PANEL_OPERATION");
 }
 
@@ -203,7 +217,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const sidePanelTypes = new Set([
     "cowork:sidepanel:get-state",
     "cowork:sidepanel:toggle",
-    "cowork:sidepanel:confirm-offer"
+    "cowork:sidepanel:confirm-offer",
+    "cowork:sidepanel:read-focus",
+    "cowork:sidepanel:request-context",
+    "cowork:sidepanel:cycle-model",
+    "cowork:sidepanel:cycle-human"
   ]);
   let operation;
   if (message?.type === "cowork:capture-visible-tab") {

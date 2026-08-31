@@ -215,6 +215,25 @@ Capability descriptions are transmitted once per digest. Returning surfaces
 request events after their last acknowledged revision instead of replaying the
 session or conversation.
 
+## Visible attention and connector truth
+
+The default `Follow me` attention combines pointer movement, click, keyboard
+focus and bounded text selection. `Click focus` pins only the last clicked
+field, `Text marker only` requires an actual marked passage, and `Off` removes
+the focus packet. A blue, text-labeled model spotlight shows the current shared
+focus; a coral, text-labeled shimmer marks a target while the model is working.
+Reduced-motion presentation keeps the labels and fixed outlines without pulse.
+
+A second model pointer is reserved for a genuinely active Computer Use/Open
+Compute executor. Connector route and execution mode remain separate state:
+the `executionMode: computer-use` signal must carry a persistent `Computer use`
+label plus a higher-token-use notice so the human can distinguish visual
+control from native WebMCP. The ordinary no-WebMCP relay remains
+`executionMode: structured` and does not earn this indicator: until an executor
+actually controls a pointer, the product must not simulate one. The shipped
+Cockpit already renders this explicit state but its current native and bridge
+executors truthfully report only `structured`.
+
 ## Acceptance use cases
 
 ### USECASE_SESSION_001 — detach without installation

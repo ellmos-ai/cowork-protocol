@@ -17,6 +17,7 @@
     "proof": "node packages/evals/src/juror-proof-cli.js",
     "smoke:accessibility": "node scripts/accessibility-browser-smoke.mjs",
     "smoke:companion": "node scripts/browser-companion-smoke.mjs",
+    "smoke:companion-cockpit": "node scripts/browser-companion-cockpit-smoke.mjs",
     "smoke:companion-native": "node scripts/browser-companion-native-smoke.mjs",
     "smoke:contrast": "node scripts/pixel-contrast-browser-smoke.mjs",
     "smoke:model-host": "node scripts/model-host-browser-smoke.mjs",

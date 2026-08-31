@@ -478,6 +478,7 @@ test("the loopback host serves a movable reference surface for the shared sessio
     assert.equal(state.sessions[0].sessionId, "surface-session");
     assert.equal(state.sessions[0].humanPresence, "present");
     assert.equal(state.sessions[0].modelAvailable, true);
+    assert.equal(state.sessions[0].modelIdentity, "preferred-model");
     assert.equal(state.sessions[0].applicationSurfaceVisibility, "hidden");
 
     const replyResponse = await fetch(
@@ -498,6 +499,139 @@ test("the loopback host serves a movable reference surface for the shared sessio
     assert.deepEqual(await replyResponse.json(), {
       reply: { message: "Shared Companion reply" }
     });
+  } finally {
+    await host.close();
+  }
+});
+
+test("the movable cockpit commits model engagement and fails closed while paused", async () => {
+  const origin = "https://forms.example";
+  const now = "2026-08-31T12:00:00.000Z";
+  let modelRequests = 0;
+  const host = createCompanionSessionHost({
+    allowedOrigins: [origin],
+    port: 0,
+    createLinkSessionId: () => "cockpit-link",
+    now: () => now,
+    sendModelTurn: async () => {
+      modelRequests += 1;
+      return { message: "Observed context reply" };
+    }
+  });
+  const address = await host.listen();
+  const companionOrigin = `http://${address.hostname}:${address.port}`;
+  try {
+    const authority = createCoworkSessionAuthority({
+      sessionId: "cockpit-session",
+      initialState: {
+        humanPresence: "present",
+        agentPresence: "active",
+        effectiveMode: "cowork",
+        lease: null
+      },
+      primarySurface: { surfaceId: "formbuilder:embedded", kind: "embedded" }
+    });
+    const snapshot = authority.readSnapshot();
+    const link = createHttpCompanionLink({
+      endpoint: `${companionOrigin}/cowork/v1`,
+      fetchImpl: (url, init) => fetch(url, {
+        ...init,
+        headers: { ...init.headers, origin }
+      })
+    });
+    await link.join({
+      hello: createCompanionHello({
+        sessionId: snapshot.sessionId,
+        surfaceId: "formbuilder:embedded",
+        revision: snapshot.revision,
+        origin
+      }),
+      snapshot
+    });
+
+    const postUi = (path, body) => fetch(`${companionOrigin}${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: companionOrigin },
+      body: JSON.stringify(body)
+    });
+
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "observing" }
+    )).status, 200);
+    let state = (await fetch(`${companionOrigin}/cowork/v1/ui/state`).then(
+      (response) => response.json()
+    )).sessions[0];
+    assert.equal(state.agentEngagement, "observing");
+    assert.equal(state.agentPresence, "active");
+    assert.equal(state.effectiveMode, "cowork");
+
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "paused" }
+    )).status, 200);
+    state = (await fetch(`${companionOrigin}/cowork/v1/ui/state`).then(
+      (response) => response.json()
+    )).sessions[0];
+    assert.equal(state.agentPresence, "paused");
+    assert.equal(state.effectiveMode, "human-solo");
+
+    const pausedTurn = await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/turns",
+      { turnId: "paused-turn", input: { transcript: "Do not run." } }
+    );
+    assert.equal(pausedTurn.status, 409);
+    assert.deepEqual(await pausedTurn.json(), { code: "MODEL_PAUSED" });
+    assert.equal(modelRequests, 0);
+
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "collaborating" }
+    )).status, 200);
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/presence",
+      { humanPresence: "afk-short" }
+    )).status, 200);
+    state = (await fetch(`${companionOrigin}/cowork/v1/ui/state`).then(
+      (response) => response.json()
+    )).sessions[0];
+    assert.equal(
+      state.effectiveMode,
+      "idle",
+      "away presence without a delegated work lease must not look like agent solo"
+    );
+
+    const beforeLease = host.readSnapshot("cockpit-link");
+    await host.commitSession("cockpit-link", {
+      kind: "solo-lease-authorized",
+      nextState: {
+        ...beforeLease.state,
+        lease: {
+          leaseId: "cockpit-solo-lease",
+          goal: "Continue the bounded form task",
+          expiresAt: "2026-08-31T12:05:00.000Z"
+        }
+      },
+      expectedRevision: beforeLease.revision,
+      sourceSurfaceId: beforeLease.state.surface.primarySurfaceId,
+      at: now
+    });
+    await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/presence",
+      { humanPresence: "present" }
+    );
+    await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/presence",
+      { humanPresence: "afk-short" }
+    );
+    state = (await fetch(`${companionOrigin}/cowork/v1/ui/state`).then(
+      (response) => response.json()
+    )).sessions[0];
+    assert.equal(
+      state.effectiveMode,
+      "agent-solo",
+      "the same away gesture may animate toward the model after a bounded lease exists"
+    );
   } finally {
     await host.close();
   }

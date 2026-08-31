@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -200,6 +201,15 @@ test("native WebMCP browser evidence rejects an unbounded or reusable context ex
   );
 });
 
+test("the browser smoke waits for page-owned WebMCP registration before using tools", async () => {
+  const smoke = await readFile(
+    new URL("../webmcp-browser-smoke.mjs", import.meta.url),
+    "utf8"
+  );
+  assert.match(smoke, /waitForPageValue/);
+  assert.match(smoke, /modelContextAvailable[\s\S]*getTools[\s\S]*Native WebMCP/);
+});
+
 test("conversation browser evidence requires a bounded turn and a trusted click before change", () => {
   const summary = validateConversationObservation({
     transportLabel: "Local demo helper",
@@ -318,10 +328,10 @@ function validZoomObservation() {
     viewportPhysicalWidth: 1424,
     viewportPhysicalHeight: 1048,
     documentHorizontalOverflow: 0,
-    interactiveControlCount: 23,
-    reachableControlCount: 23,
-    focusVisibleControlCount: 23,
-    tabSequence: Array.from({ length: 23 }, (_, index) => `control-${index + 1}`),
+    interactiveControlCount: 25,
+    reachableControlCount: 25,
+    focusVisibleControlCount: 25,
+    tabSequence: Array.from({ length: 25 }, (_, index) => `control-${index + 1}`),
     unreachableControls: [],
     horizontallyClippedControls: [],
     textClippedControls: []
@@ -335,9 +345,9 @@ test("200-percent browser zoom evidence requires reflow and every control to rem
     browserZoomFactor: 2,
     viewportCssWidth: 712,
     viewportPhysicalWidth: 1424,
-    interactiveControls: 23,
-    reachableControls: 23,
-    focusVisibleControls: 23,
+    interactiveControls: 25,
+    reachableControls: 25,
+    focusVisibleControls: 25,
     horizontalOverflow: 0
   });
 });
@@ -370,13 +380,13 @@ function validAccessibilityObservation() {
     viewportCssWidth: 390,
     viewportCssHeight: 844,
     documentHorizontalOverflow: 0,
-    interactiveControlCount: 23,
-    reachableControlCount: 23,
-    focusVisibleControlCount: 23,
-    tabSequence: Array.from({ length: 23 }, (_, index) => `control-${index + 1}`),
+    interactiveControlCount: 25,
+    reachableControlCount: 25,
+    focusVisibleControlCount: 25,
+    tabSequence: Array.from({ length: 25 }, (_, index) => `control-${index + 1}`),
     horizontallyClippedControls: [],
     textClippedControls: [],
-    axInteractiveNodes: Array.from({ length: 23 }, (_, index) => ({
+    axInteractiveNodes: Array.from({ length: 25 }, (_, index) => ({
       backendDOMNodeId: index + 1,
       role: index === 0 ? "link" : "button",
       name: `Control ${index + 1}`
@@ -390,10 +400,10 @@ test("current accessibility evidence requires named AX controls and a complete 3
     {
       accessibilityClaim: true,
       viewportCssWidth: 390,
-      interactiveControls: 23,
-      namedAxControls: 23,
-      tabStops: 23,
-      focusVisibleControls: 23,
+      interactiveControls: 25,
+      namedAxControls: 25,
+      tabStops: 25,
+      focusVisibleControls: 25,
       horizontalOverflow: 0
     }
   );

@@ -7,41 +7,183 @@
     <link rel="stylesheet" href="sidepanel.css">
   </head>
   <body data-cowork-brand="dialogue-relay">
-    <main class="cowork-instrument">
-      <header>
+    <main
+      class="cowork-cockpit"
+      data-cowork-surface="cockpit"
+      data-human-state="present"
+      data-model-state="paused"
+      data-relay-state="dormant"
+      data-route="off"
+      data-execution-mode="structured"
+    >
+      <header class="cockpit-header">
         <img class="cowork-brand-mark" src="modules/packages/reference-ui/assets/cowork-dialogue-mark.svg" alt="">
-        <div>
+        <div class="brand-copy">
           <p class="cowork-wordmark">Cowork <span>Protocol</span></p>
-          <h1>Side Panel</h1>
+          <h1>Dialogue Relay Cockpit</h1>
         </div>
+        <span id="connection-lamp" class="connection-lamp" aria-label="Not attached"></span>
       </header>
 
-      <div class="protocol-rhythm" aria-label="Cowork interaction rhythm">
-        <span>Point</span><span>Offer</span><span>Click</span><span>Verify</span>
-      </div>
+      <nav id="route-rail" class="route-rail" aria-label="Active connector route">
+        <span class="route-node" data-route="native"><i aria-hidden="true">✦</i>Native</span>
+        <span class="route-node" data-route="webmcp"><i aria-hidden="true">◇</i>WebMCP</span>
+        <span class="route-node" data-route="bridge"><i aria-hidden="true">↝</i>Bridge</span>
+      </nav>
 
-      <section class="presence" aria-label="Collaboration presence">
-        <div id="human-seat" class="seat is-active"><span class="seat-icon human-seat" aria-hidden="true"></span><span><small>You</small><strong id="human-label">Human present</strong></span></div>
-        <div id="model-seat" class="seat is-paused"><span class="seat-icon model-seat" aria-hidden="true">✦</span><span><small>Model</small><strong id="model-label">Agent paused</strong></span></div>
+      <section
+        id="computer-use-indicator"
+        class="computer-use-indicator"
+        role="status"
+        aria-live="polite"
+        aria-hidden="true"
+      >
+        <span class="model-pointer" aria-hidden="true">
+          <svg viewBox="0 0 56 64" focusable="false">
+            <path d="M8 5v43l11-11 8 20 10-5-9-19h17L8 5Z"/>
+            <circle cx="43" cy="13" r="7"/>
+            <path d="m43 2 2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6Z"/>
+          </svg>
+        </span>
+        <span class="computer-use-copy">
+          <small>Model pointer active</small>
+          <strong>Computer use</strong>
+          <span>Visual control · Higher token use</span>
+        </span>
       </section>
 
-      <section class="status-card" aria-labelledby="status-title">
-        <div class="section-row">
-          <h2 id="status-title"><span aria-hidden="true">◎</span> Connection</h2>
-          <span id="mode" class="mode">Off</span>
+      <section class="collaboration-deck" aria-labelledby="collaboration-title">
+        <div class="instrument-heading">
+          <div>
+            <p class="eyebrow">Live collaboration</p>
+            <h2 id="collaboration-title">Who works now?</h2>
+          </div>
+          <span id="mode" class="mode-chip">Human solo</span>
         </div>
-        <p id="status" role="status">Choose Start to attach the bounded relay.</p>
-        <p class="detail">Native when available. Bridged when necessary.</p>
-        <button id="toggle" class="secondary" type="button">Start</button>
+
+        <div class="actor-stage">
+          <button
+            id="human-control"
+            class="actor-control actor-human"
+            type="button"
+            aria-label="Change your presence"
+            aria-pressed="true"
+            aria-describedby="human-label"
+          >
+            <span class="actor-medallion">
+              <span class="actor-aura" aria-hidden="true"></span>
+              <span class="seat-icon human-seat" aria-hidden="true">
+                <svg class="human-figure" viewBox="0 0 96 96" focusable="false">
+                  <circle cx="48" cy="48" r="42" class="medallion-field"/>
+                  <circle cx="48" cy="35" r="17" class="human-head"/>
+                  <path d="M23 79c2-17 12-26 25-26s23 9 25 26" class="human-body"/>
+                  <path d="M35 30c3-13 24-17 31 0-7-5-20-6-31 0Z" class="human-hair"/>
+                </svg>
+              </span>
+              <span class="state-badge human-badge" aria-hidden="true"></span>
+            </span>
+            <span class="actor-copy"><small>You</small><strong id="human-label">You are here</strong></span>
+          </button>
+
+          <div id="relay-core" class="relay-core" role="status" aria-live="polite" aria-label="Human working solo">
+            <svg viewBox="0 0 132 92" aria-hidden="true" focusable="false">
+              <path class="relay-orbit relay-orbit-top" d="M18 47C29 9 101 9 114 47"/>
+              <path class="relay-orbit relay-orbit-bottom" d="M18 47c13 38 85 38 96 0"/>
+              <circle class="relay-end relay-end-human" cx="18" cy="47" r="7"/>
+              <circle class="relay-end relay-end-model" cx="114" cy="47" r="7"/>
+              <path class="relay-spark" d="m66 28 6 13 13 6-13 6-6 13-6-13-13-6 13-6Z"/>
+              <circle class="relay-pulse" cx="18" cy="47" r="4"/>
+            </svg>
+            <strong id="relay-label">Human solo</strong>
+            <span id="relay-detail">Model is paused</span>
+          </div>
+
+          <button
+            id="model-control"
+            class="actor-control actor-model"
+            type="button"
+            aria-label="Change model engagement"
+            aria-pressed="false"
+            aria-describedby="model-label"
+          >
+            <span class="actor-medallion">
+              <span class="actor-aura" aria-hidden="true"></span>
+              <span class="seat-icon model-seat" aria-hidden="true">
+                <svg class="model-figure" viewBox="0 0 96 96" focusable="false">
+                  <circle cx="48" cy="48" r="42" class="medallion-field"/>
+                  <path class="model-antenna" d="M48 19v-7m-4 0h8"/>
+                  <rect class="model-shell" x="25" y="20" width="46" height="49" rx="11"/>
+                  <rect class="model-screen" x="31" y="28" width="34" height="27" rx="7"/>
+                  <circle class="model-eye model-eye-left" cx="41" cy="40" r="3"/>
+                  <circle class="model-eye model-eye-right" cx="55" cy="40" r="3"/>
+                  <path class="model-mouth" d="M41 47c4 4 10 4 14 0"/>
+                  <path class="model-arm model-arm-left" d="M25 39c-9 2-10 10-6 17"/>
+                  <path class="model-arm model-arm-right" d="M71 39c9 2 10 10 6 17"/>
+                  <path class="model-leg" d="M38 69v9m20-9v9M32 80h12m8 0h12"/>
+                </svg>
+              </span>
+              <span class="state-badge model-badge" aria-hidden="true"></span>
+            </span>
+            <span class="actor-copy"><small>Model</small><strong id="model-label">Model paused</strong></span>
+          </button>
+        </div>
+
+        <p id="status" class="status-strip" role="status">Use the model figure to start Cowork.</p>
+      </section>
+
+      <section id="focus-instrument" class="focus-instrument" aria-labelledby="focus-title">
+        <button id="focus-action" class="focus-lens" type="button" aria-label="Read the focused page control">
+          <svg viewBox="0 0 72 72" aria-hidden="true" focusable="false">
+            <circle cx="32" cy="32" r="22"/>
+            <path d="m48 48 15 15M32 19v7m0 12v7M19 32h7m12 0h7"/>
+            <path class="lens-spark" d="m32 26 3 6 6 3-6 3-3 6-3-6-6-3 6-3Z"/>
+          </svg>
+        </button>
+        <div class="focus-copy">
+          <p class="eyebrow">Attention lens</p>
+          <h2 id="focus-title">Current focus</h2>
+          <strong id="focus-label">Point to a page control</strong>
+          <span id="focus-detail">No page content requested yet</span>
+        </div>
+        <button id="context-gauge" class="context-gauge" type="button" aria-label="Request one more bounded context level" data-level="0">
+          <span class="gauge-step is-active" aria-hidden="true">●</span>
+          <span class="gauge-step" aria-hidden="true">◎</span>
+          <span class="gauge-step" aria-hidden="true">▣</span>
+          <small id="context-label">Focus only</small>
+        </button>
       </section>
 
       <section id="offer-card" class="offer-card" aria-labelledby="offer-title" hidden>
-        <p class="eyebrow">Offer · your decision</p>
-        <h2 id="offer-title"><span aria-hidden="true">◇</span> Proposed action</h2>
-        <button id="offer-action" class="primary" type="button"></button>
+        <div class="offer-symbol" aria-hidden="true">✦</div>
+        <div>
+          <p class="eyebrow">Offer · your decision</p>
+          <h2 id="offer-title">Proposed action</h2>
+          <button id="offer-action" class="offer-key" type="button"></button>
+        </div>
       </section>
 
-      <footer>350 → 1,200 → one bounded visual request</footer>
+      <nav class="command-dock" aria-label="Cowork commands">
+        <button id="voice-action" class="dock-key is-restricted" type="button" aria-label="Speak to the shared model; Companion required" aria-disabled="true">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="15" y="5" width="10" height="19" rx="5"/><path d="M10 19c0 8 4 12 10 12s10-4 10-12M20 31v5m-7 0h14"/></svg>
+          <span>Speak</span>
+        </button>
+        <button id="handoff-action" class="dock-key is-restricted" type="button" aria-label="Hand off while away; Companion lease required" aria-disabled="true">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="13" cy="14" r="5"/><circle cx="27" cy="14" r="5"/><path d="M5 31c1-7 4-10 8-10m22 10c-1-7-4-10-8-10M13 28h14m-4-4 4 4-4 4"/></svg>
+          <span>Handoff</span>
+        </button>
+        <button id="context-action" class="dock-key" type="button" aria-label="Expand bounded context once">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="18" cy="18" r="10"/><path d="m25 25 9 9M18 12v12m-6-6h12"/></svg>
+          <span>Context</span>
+        </button>
+        <button id="toggle" class="dock-key model-power" type="button" aria-label="Start model collaboration" aria-pressed="false">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 5v14m-9-9a14 14 0 1 0 18 0"/></svg>
+          <span>Start</span>
+        </button>
+      </nav>
+
+      <div class="protocol-rhythm" aria-label="Cowork interaction rhythm">
+        <span>Point</span><i aria-hidden="true"></i><span>Offer</span><i aria-hidden="true"></i><span>Click</span><i aria-hidden="true"></i><span>Verify</span>
+      </div>
     </main>
     <script src="sidepanel.js" type="module"></script>
   </body>

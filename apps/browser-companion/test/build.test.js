@@ -48,7 +48,19 @@ test("the browser companion builds a self-contained MV3 extension", async () => 
     assert.equal(report.files.includes("sidepanel.js"), true);
     assert.equal(
       report.files.includes(
+        "modules/apps/browser-companion/src/cockpit-presentation.js"
+      ),
+      true
+    );
+    assert.equal(
+      report.files.includes(
         "modules/packages/reference-ui/assets/cowork-dialogue-mark.svg"
+      ),
+      true
+    );
+    assert.equal(
+      manifest.web_accessible_resources[0].resources.includes(
+        "modules/packages/reference-ui/src/index.js"
       ),
       true
     );

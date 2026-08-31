@@ -116,8 +116,8 @@ async function waitForValue(call, expression, predicate, contextId) {
   throw new Error(`Timed out waiting for value: ${JSON.stringify(value)}`);
 }
 
-async function waitForExtensionContext(contexts) {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+async function waitForExtensionContext(contexts, attempts = 100) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
     const context = [...contexts.values()].find(
       (candidate) =>
         candidate.auxData?.type === "isolated" &&
@@ -147,6 +147,20 @@ async function invokeExtensionActionShortcut(call) {
   };
   await call("Input.dispatchKeyEvent", { type: "rawKeyDown", ...input });
   await call("Input.dispatchKeyEvent", { type: "keyUp", ...input });
+}
+
+async function activateExtensionWithRetry(call, contexts) {
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await call("Page.bringToFront");
+    await invokeExtensionActionShortcut(call);
+    try {
+      return await waitForExtensionContext(contexts, 15);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
 async function stopBrowser(child) {
@@ -213,8 +227,7 @@ try {
         candidate.name?.startsWith("chrome-extension://"))
   ).length;
   await call("Page.bringToFront");
-  await invokeExtensionActionShortcut(call);
-  const extensionContext = await waitForExtensionContext(contexts);
+  const extensionContext = await activateExtensionWithRetry(call, contexts);
   const extensionContextId = extensionContext.id;
   await evaluate(
     call,
@@ -224,7 +237,11 @@ try {
   const enabledState = await waitForValue(
     call,
     `globalThis.__coworkBrowserCompanionLoading.then((api) => api.state())`,
-    (value) => value?.enabled === true,
+    (value) =>
+      value?.enabled === true &&
+      value?.mode === "native-cowork" &&
+      value?.nativeToolCount >= 9 &&
+      value?.fallbackActive === false,
     extensionContextId
   );
   const focus = await evaluate(

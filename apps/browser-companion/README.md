@@ -38,6 +38,27 @@ an actual trusted click on the extension surface reaches the existing Cowork
 authorization contract, and the result is reported only after the observed
 value matches.
 
+## Dialogue Relay cockpit
+
+The Side Panel is a bright collaboration instrument rather than a generic chat
+sidebar. The human silhouette and friendly computer are the primary state
+controls. Clicking the model cycles `collaborating -> observing -> paused`;
+observing keeps read/explain access but blocks action offers. The relay emblem
+is animated in Cowork, directional during a valid solo lease and dormant when
+no joint turn is active. Human presence can change only when the Session
+Authority has granted the required solo lease.
+
+Connector route and execution mode are separate. Native Cowork, native WebMCP
+and the bounded bridge use structured actions and show no synthetic model
+pointer. Only a real executor reporting `executionMode: computer-use` reveals
+the distinct model-pointer instrument with the persistent `Computer use` and
+`Higher token use` labels.
+
+Color is never the only status signal. Visible labels, character pose, aura
+shape, state badge and relay motion change together, and reduced-motion mode
+removes all animation. The same semantic presentation module drives the
+FormBuilder Embed, where the actor controls cycle through the same states.
+
 ## Build and load
 
 ```powershell
@@ -78,6 +99,7 @@ one-shot crop from the isolated extension context.
 ```powershell
 $env:COWORK_COMPANION_BROWSER_PATH='C:\path\to\chrome-for-testing\chrome.exe'
 npm run smoke:companion
+npm run smoke:companion-cockpit
 npm run smoke:companion-native
 ```
 
@@ -116,3 +138,9 @@ The Native-first smoke enables WebMCP on FormBuilder and proves
 `fallbackActive: false` and `pageUiInjected: false`. The extension uses a
 small main-world bridge solely to reach the browser's page-owned WebMCP API;
 its visual and privileged code remain in the isolated extension worlds.
+
+The dedicated cockpit smoke renders the production Side Panel at 390×844,
+executes its focus/context controls and captures four truthful actor/relay
+states. With `COWORK_COMPANION_EVIDENCE_DIR` set, it writes the PNG frames plus
+`browser-companion-cockpit-report.json`. The validator also rejects any current
+structured path that falsely reveals the Computer Use pointer.

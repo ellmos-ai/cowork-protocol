@@ -14,7 +14,7 @@ function requireCondition(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const CURRENT_INTERACTIVE_CONTROL_COUNT = 23;
+const CURRENT_INTERACTIVE_CONTROL_COUNT = 25;
 
 function isNonNegativeInteger(value) {
   return Number.isInteger(value) && value >= 0;

@@ -11,6 +11,7 @@ const EXTENSION_FILES = [
   "apps/browser-companion/sidepanel.css",
   "apps/browser-companion/sidepanel.js",
   "apps/browser-companion/src/content-runtime.js",
+  "apps/browser-companion/src/cockpit-presentation.js",
   "apps/browser-companion/src/native-page-client.js",
   "apps/browser-companion/src/protocol.js",
   "packages/bridge/src/bounded-result.js",

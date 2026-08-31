@@ -30,6 +30,11 @@ The repository currently contains:
   access, injects its headless relay only on demand, consumes native
   Cowork/WebMCP first and activates its bounded DOM/accessibility/visual
   fallback only when native tools are absent;
+- a shared Dialogue Relay cockpit whose clickable human and model figures show
+  present/away and collaborating/observing/paused state through text, pose,
+  symbol, aura and relay direction in the Side Panel, FormBuilder and movable
+  Desktop Companion, plus a separate labeled model pointer reserved for a
+  genuinely active higher-token Computer Use executor;
 - a versioned Session Authority, shared Context Manager, renewable exclusive
   Model Seat and serialized Model Gateway for one Cowork-owned conversation
   across surfaces;
@@ -37,7 +42,12 @@ The repository currently contains:
   independently movable app window, audio controls and a Windows tray icon
   whose green/yellow/red state mirrors human presence, plus token-free page
   visibility signals and exact delta recovery on tab return;
-- a responsive FormBuilder showcase with attention controls, exact-value action offers, enforced explain/suggest/delegated/paused rights, causal change receipts, one-click feedback, presence, scoped solo work, typed/audio conversation and spoken replies.
+- a responsive FormBuilder showcase with adaptive Follow-me attention (pointer,
+  click, keyboard focus and text selection), click-only, text-marker-only and
+  off modes, a labeled blue model-focus spotlight, a labeled coral working
+  shimmer, exact-value action offers, enforced explain/suggest/delegated/paused
+  rights, causal change receipts, one-click feedback, presence, scoped solo
+  work, typed/audio conversation and spoken replies.
 
 The native browser path has both contract and browser evidence. An isolated
 Chrome 152 run discovered all nine tools through
@@ -53,10 +63,10 @@ provider-backed repetition sent one 502-character turn to local Ollama
 `qwen3:4b`, whose exact offer stayed inert until the trusted click;
 `providerLocation` is `local` and `externalModelClaim` remains false.
 
-The current UI keeps all 23 controls reachable at true 200% browser zoom and
-at a 390×844 CSS viewport: 23/23 AX controls are named, 23/23 Tab stops are
+The current UI keeps all 25 controls reachable at true 200% browser zoom and
+at a 390×844 CSS viewport: 25/25 AX controls are named, 25/25 Tab stops are
 visible, and horizontal overflow is zero. The rendered-contrast smoke audits
-834 visible text items across ten states with no unsupported or failing range
+902 visible text items across ten states with no unsupported or failing range
 and a 4.5656:1 minimum. Real microphone practice, a remote provider,
 screen-reader practice and a connected ChatGPT-agent invocation remain open.
 
@@ -149,6 +159,7 @@ npm run eval
 npm run proof
 npm run build:companion
 npm run smoke:companion
+npm run smoke:companion-cockpit
 npm run smoke:companion-native
 npm run smoke:model-host
 npm run smoke:webmcp
@@ -168,6 +179,15 @@ The suite uses Node's built-in test runner and has no external runtime dependenc
 
 `npm run smoke:companion` builds the actual Manifest V3 extension and loads it into a fresh Chrome for Testing profile. The fixture explicitly disables WebMCP. The smoke proves that no Cowork page world exists before a trusted `_execute_action` shortcut grants temporary `activeTab` access and injects the relay. It then requires toggle-on/off behavior, a stable pointer target, exact 350/1,200-character semantic tiers, a real 400×400 PNG pointer crop that is consumable once only inside the isolated extension host, an inert extension-origin Side Panel offer and a trusted browser click followed by verified mutation. It also requires `pageUiInjected: false`. Set `COWORK_COMPANION_BROWSER_PATH` when Chrome for Testing is outside the optional local tools cache. If the selected build does not load extensions headlessly, set `COWORK_COMPANION_HEADFUL=1` and `COWORK_COMPANION_VISIBLE=1`; the bounded pixel proof needs the temporary test window to remain on-screen. The report does not claim a connected model, host tokens or delivery of the full page.
 
+`npm run smoke:companion-cockpit` renders the shipped Side Panel code at an
+exact 390×844 CSS viewport with a bounded runtime fixture. It captures and
+validates Cowork, observe-only, paused and leased Agent-Solo states, requires
+zero horizontal overflow, named controls and the complete nine-control
+keyboard order, and executes the real focus and context instruments. Set
+`COWORK_COMPANION_EVIDENCE_DIR` to retain the four PNG frames and JSON report.
+The accepted Native/WebMCP/Bridge states all remain `executionMode: structured`
+and the smoke fails if they falsely display the Computer Use pointer.
+
 `npm run smoke:companion-native` runs the complementary Native-first branch.
 With WebMCP enabled on FormBuilder, the extension must discover nine Cowork
 tools in the page's main execution world, return a native focus packet, keep
@@ -186,7 +206,7 @@ controls, observes token-free page visibility, sends one turn through its
 shared Model Gateway and leaves the page as a synchronized application/UI
 replica that pulls intervening deltas on return.
 
-`npm run smoke:accessibility` opens another isolated Chrome profile at an exact 390×844 CSS viewport. It requires exactly 23 non-ignored interactive browser accessibility nodes with non-empty names and unique DOM identities, then drives 23 real Tab events and requires every stop to remain visible with `:focus-visible`. Horizontal control/text clipping and more than one pixel of document overflow fail the gate. This is browser accessibility-tree and keyboard/layout evidence, not screen-reader practice.
+`npm run smoke:accessibility` opens another isolated Chrome profile at an exact 390×844 CSS viewport. It requires exactly 25 non-ignored interactive browser accessibility nodes with non-empty names and unique DOM identities, then drives 25 real Tab events and requires every stop to remain visible with `:focus-visible`. It also clicks the embedded model through observing, paused and collaborating and the human through brief-away, long-away and present. Horizontal control/text clipping and more than one pixel of document overflow fail the gate. This is browser accessibility-tree and keyboard/layout evidence, not screen-reader practice.
 
 `npm run smoke:contrast` uses a separate temporary Chrome profile and audits the actual rendered foreground against Chrome-resolved background ranges. It requires exactly ten collaboration states, at least 30 visible text items in every state, zero unresolved backgrounds and an unrounded 4.5:1 minimum for every audited range. The deterministic Listening state substitutes only the recognition boundary; it does not claim microphone capture or audible output.
 

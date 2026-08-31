@@ -108,6 +108,20 @@ async function evaluateValue(call, expression) {
   return evaluation.result.value;
 }
 
+async function waitForPageValue(call, expression, predicate, attempts = 100) {
+  let lastValue;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      lastValue = await evaluateValue(call, expression);
+      if (predicate(lastValue)) return lastValue;
+    } catch {
+      // Navigation and page-owned WebMCP registration may still be settling.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Timed out waiting for the showcase page: ${JSON.stringify(lastValue)}`);
+}
+
 function toolExecutionExpression(toolName, input) {
   return `(async () => {
     const modelContext = document.modelContext;
@@ -167,6 +181,25 @@ async function dispatchTrustedClick(call, elementExpression, label) {
     buttons: 0,
     clickCount: 1
   });
+}
+
+async function stopOwnedBrowser(child) {
+  if (!child || child.exitCode !== null) return;
+  const exited = new Promise((resolve) => child.once("exit", resolve));
+  if (process.platform === "win32" && child.pid) {
+    const killer = spawn(
+      "taskkill.exe",
+      ["/PID", String(child.pid), "/T", "/F"],
+      { windowsHide: true, stdio: "ignore" }
+    );
+    await new Promise((resolve) => killer.once("exit", resolve));
+  } else {
+    child.kill("SIGTERM");
+  }
+  await Promise.race([
+    exited,
+    new Promise((resolve) => setTimeout(resolve, 5_000))
+  ]);
 }
 
 async function dispatchTrustedTab(call) {
@@ -230,7 +263,20 @@ try {
   await call("Runtime.enable");
   await call("Page.bringToFront");
   await call("Emulation.setFocusEmulationEnabled", { enabled: true });
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  await waitForPageValue(
+    call,
+    `(() => ({
+      readyState: document.readyState,
+      modelContextAvailable: Boolean(document.modelContext),
+      getTools: typeof document.modelContext?.getTools,
+      badge: document.querySelector("#capability-badge")?.textContent.trim()
+    }))()`,
+    (value) =>
+      value?.readyState === "complete" &&
+      value.modelContextAvailable === true &&
+      value.getTools === "function" &&
+      value.badge === "Native WebMCP"
+  );
 
   const zoomObserved = await evaluateValue(call, `(async () => {
     await document.fonts?.ready;
@@ -607,7 +653,7 @@ try {
   }, null, 2));
   socket.close();
 } finally {
-  browser?.kill();
+  await stopOwnedBrowser(browser);
   if (server?.listening) {
     await new Promise((resolve) => server.close(resolve));
   }

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -114,6 +114,31 @@ async function dispatchTrustedTab(call) {
   await call("Input.dispatchKeyEvent", { type: "keyUp", ...key });
 }
 
+async function dispatchTrustedClick(call, selector) {
+  const point = await evaluateValue(call, `(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    if (!element) return null;
+    element.scrollIntoView({ block: "center", inline: "center" });
+    const rect = element.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  })()`);
+  if (!point) throw new Error(`Cockpit control not found: ${selector}`);
+  await call("Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    x: point.x,
+    y: point.y,
+    button: "left",
+    clickCount: 1
+  });
+  await call("Input.dispatchMouseEvent", {
+    type: "mouseReleased",
+    x: point.x,
+    y: point.y,
+    button: "left",
+    clickCount: 1
+  });
+}
+
 try {
   const chromePath = await resolveChromePath();
   server = createStaticServer({ root: process.cwd() });
@@ -154,6 +179,7 @@ try {
   const socket = await connect(target.webSocketDebuggerUrl);
   const call = cdpClient(socket);
   await call("Runtime.enable");
+  await call("Page.enable");
   await call("Accessibility.enable");
   await call("Page.bringToFront");
   await call("Emulation.setFocusEmulationEnabled", { enabled: true });
@@ -278,8 +304,50 @@ try {
       observation.axInteractiveNodes.filter((node) => node.role === role).length
     ])
   );
+  const evidenceDirectory = process.env.COWORK_ACCESSIBILITY_EVIDENCE_DIR
+    ? path.resolve(process.env.COWORK_ACCESSIBILITY_EVIDENCE_DIR)
+    : null;
+  if (evidenceDirectory) {
+    await mkdir(evidenceDirectory, { recursive: true });
+    await evaluateValue(call, "window.scrollTo(0, 0)");
+    const screenshot = await call("Page.captureScreenshot", {
+      format: "png",
+      captureBeyondViewport: true,
+      fromSurface: true
+    });
+    await writeFile(
+      path.join(evidenceDirectory, "formbuilder-embedded-cockpit-390px.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+  }
+  const actorControlStates = [];
+  for (const expectedModelState of ["observing", "paused", "collaborating"]) {
+    await dispatchTrustedClick(call, "#model-seat");
+    const state = await evaluateValue(
+      call,
+      "document.querySelector('.cowork-panel')?.dataset.modelState"
+    );
+    if (state !== expectedModelState) {
+      throw new Error(`Model actor control stopped at ${state ?? "missing"}`);
+    }
+    actorControlStates.push(`model:${state}`);
+  }
+  await dispatchTrustedClick(call, "#full-name");
+  for (const expectedHumanState of ["afk-short", "afk-long", "present"]) {
+    await dispatchTrustedClick(call, "#human-seat");
+    const state = await evaluateValue(
+      call,
+      "document.querySelector('.cowork-panel')?.dataset.humanState"
+    );
+    if (state !== expectedHumanState) {
+      throw new Error(`Human actor control stopped at ${state ?? "missing"}`);
+    }
+    actorControlStates.push(`human:${state}`);
+  }
   console.log(JSON.stringify({
     ...summary,
+    actorControlCycleClaim: true,
+    actorControlStates,
     browserVersion: version.Browser,
     roleCounts,
     tabSequence: observation.tabSequence
