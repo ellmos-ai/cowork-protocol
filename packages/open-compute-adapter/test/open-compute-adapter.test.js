@@ -156,6 +156,35 @@ test("the system pointer belongs to only one active Cowork session", async () =>
   assert.equal(client.calls.filter(({ name }) => name === "signal_show").length, 1);
 });
 
+test("two sessions racing activate() during discovery cannot both claim the seat", async () => {
+  let releaseDiscovery;
+  const discoveryGate = new Promise((resolve) => { releaseDiscovery = resolve; });
+  const client = createFakeClient({
+    results: { signal_show: { visible: true, mode: "control" } }
+  });
+  const realStart = client.start;
+  client.start = async () => {
+    await discoveryGate;
+    return realStart();
+  };
+  const adapter = createOpenComputeAdapter({ client, profile });
+
+  const first = adapter.activate({ sessionId: "session-1", humanGesture: true })
+    .then((value) => value, (error) => error);
+  const second = adapter.activate({ sessionId: "session-2", humanGesture: true })
+    .then((value) => value, (error) => error);
+  releaseDiscovery();
+  const results = await Promise.all([first, second]);
+
+  const winners = results.filter((result) => result && typeof result === "object" &&
+    result.activeSessionId);
+  const rejections = results.filter((result) => result instanceof OpenComputeAdapterError);
+  assert.equal(winners.length, 1, `expected exactly one winner, got ${JSON.stringify(results)}`);
+  assert.equal(rejections.length, 1, `expected exactly one rejection, got ${JSON.stringify(results)}`);
+  assert.equal(rejections[0].code, "COMPUTER_USE_SEAT_TAKEN");
+  assert.equal(client.calls.filter(({ name }) => name === "signal_show").length, 1);
+});
+
 test("only the exact human-authorized Cowork offer can reach the Open Compute do tool", async () => {
   const client = createFakeClient({
     results: {
@@ -195,6 +224,24 @@ test("only the exact human-authorized Cowork offer can reach the Open Compute do
       error.code === "ACTION_AUTHORIZATION_MISMATCH"
   );
   assert.equal(client.calls.filter(({ name }) => name === "do").length, 1);
+});
+
+test("a confirm-mode pending result from Open Compute is never mistaken for a completed action", async () => {
+  const client = createFakeClient({
+    results: {
+      signal_show: { visible: true, mode: "control" },
+      do: { status: "needs_confirmation", message: "Waiting for a trusted human click" }
+    }
+  });
+  const adapter = createOpenComputeAdapter({ client, profile });
+  await adapter.activate({ sessionId: "session-1", humanGesture: true });
+  const { offer, authorization } = computerActionContract();
+
+  await assert.rejects(
+    adapter.executeAuthorizedAction({ sessionId: "session-1", offer, authorization }),
+    (error) => error instanceof OpenComputeAdapterError &&
+      error.code === "OPEN_COMPUTE_CONFIRMATION_PENDING"
+  );
 });
 
 test("abort feedback hides the expensive execution path and is retained for the model", async () => {
@@ -280,7 +327,7 @@ test("Cowork consumes only the profiled semantic observation and never the raw t
 });
 
 test("visual context escalates only through the profile lens, never raw capture", async () => {
-  const lens = { type: "image", data: "filtered-png", mimeType: "image/png" };
+  const lens = { type: "image", data: "filtered-png", mimeType: "image/png", width: 400, height: 400 };
   const client = createFakeClient({
     results: {
       signal_show: { visible: true, mode: "control" },
@@ -303,4 +350,52 @@ test("visual context escalates only through the profile lens, never raw capture"
     }
   });
   assert.equal(client.calls.some(({ name }) => name === "capture"), false);
+});
+
+test("the visual lens image is rejected when it exceeds the profile's declared 400x400 bound", async () => {
+  const client = createFakeClient({
+    results: {
+      signal_show: { visible: true, mode: "control" },
+      capture_filtered: {
+        type: "image",
+        data: "raw-fullscreen-png",
+        mimeType: "image/png",
+        width: 1920,
+        height: 1080
+      }
+    }
+  });
+  const adapter = createOpenComputeAdapter({ client, profile });
+  await adapter.activate({ sessionId: "session-1", humanGesture: true });
+
+  await assert.rejects(
+    adapter.requestVisualLens({
+      sessionId: "session-1",
+      focus: { kind: "fixed-focus", x: 0.25, y: 0.75, selectedText: "" },
+      reason: "Semantics did not identify the canvas control"
+    }),
+    (error) => error instanceof OpenComputeAdapterError &&
+      error.code === "OPEN_COMPUTE_FILTER_BYPASSED"
+  );
+});
+
+test("the visual lens image is rejected when Open Compute omits its declared dimensions", async () => {
+  const client = createFakeClient({
+    results: {
+      signal_show: { visible: true, mode: "control" },
+      capture_filtered: { type: "image", data: "filtered-png", mimeType: "image/png" }
+    }
+  });
+  const adapter = createOpenComputeAdapter({ client, profile });
+  await adapter.activate({ sessionId: "session-1", humanGesture: true });
+
+  await assert.rejects(
+    adapter.requestVisualLens({
+      sessionId: "session-1",
+      focus: { kind: "fixed-focus", x: 0.25, y: 0.75, selectedText: "" },
+      reason: "Semantics did not identify the canvas control"
+    }),
+    (error) => error instanceof OpenComputeAdapterError &&
+      error.code === "OPEN_COMPUTE_FILTER_BYPASSED"
+  );
 });

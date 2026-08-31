@@ -41,6 +41,14 @@ function validateProfile(raw) {
   return Object.freeze(profile);
 }
 
+function isPendingConfirmationResult(result) {
+  if (!result || typeof result !== "object") return false;
+  return result.status === "needs_confirmation" ||
+    result.type === "needs_confirmation" ||
+    result.needs_confirmation === true ||
+    result.needsConfirmation === true;
+}
+
 function requireSessionId(sessionId) {
   if (typeof sessionId !== "string" || !SESSION_ID.test(sessionId)) {
     throw new OpenComputeAdapterError(
@@ -184,19 +192,29 @@ export function createOpenComputeAdapter({
         );
       }
       if (activeSessionId === sessionId && indicatorVisible) return status();
-      await discover();
-      const shown = await call("signal_show", {
-        mode: "control",
-        agent: agentLabel.trim(),
-        scope: "screen"
-      });
-      if (shown?.visible !== true || shown?.mode !== "control") {
-        throw new OpenComputeAdapterError(
-          "OPEN_COMPUTE_SIGNAL_UNVERIFIED",
-          "Open Compute did not confirm its visible control indicator"
-        );
-      }
+      // Reserve the seat synchronously, before the first await below: two
+      // activate() calls for different sessions both pass the checks above
+      // in the same microtask, so the seat must be claimed here rather than
+      // after discover()/signal_show() resolve, or the later call would
+      // silently overwrite the earlier one's activeSessionId.
       activeSessionId = sessionId;
+      try {
+        await discover();
+        const shown = await call("signal_show", {
+          mode: "control",
+          agent: agentLabel.trim(),
+          scope: "screen"
+        });
+        if (shown?.visible !== true || shown?.mode !== "control") {
+          throw new OpenComputeAdapterError(
+            "OPEN_COMPUTE_SIGNAL_UNVERIFIED",
+            "Open Compute did not confirm its visible control indicator"
+          );
+        }
+      } catch (error) {
+        if (!indicatorVisible) activeSessionId = null;
+        throw error;
+      }
       indicatorVisible = true;
       lastAbortMessage = null;
       lastAbortSessionId = null;
@@ -266,10 +284,22 @@ export function createOpenComputeAdapter({
         );
       }
       const image = await call("capture_filtered", { profile, focus });
-      if (image?.type !== "image" || typeof image.data !== "string" || image.data === "") {
+      const lensWidth = profile.visualLens?.width;
+      const lensHeight = profile.visualLens?.height;
+      if (
+        image?.type !== "image" ||
+        typeof image.data !== "string" ||
+        image.data === "" ||
+        !Number.isInteger(image.width) ||
+        !Number.isInteger(image.height) ||
+        !Number.isInteger(lensWidth) ||
+        !Number.isInteger(lensHeight) ||
+        image.width > lensWidth ||
+        image.height > lensHeight
+      ) {
         throw new OpenComputeAdapterError(
           "OPEN_COMPUTE_FILTER_BYPASSED",
-          "Open Compute did not return one filtered visual lens"
+          "Open Compute did not return one filtered visual lens within the profiled bound"
         );
       }
       return image;
@@ -302,11 +332,23 @@ export function createOpenComputeAdapter({
           "Computer action no longer matches its human-authorized Cowork offer"
         );
       }
-      return call("do", {
+      const result = await call("do", {
         action: cloneJson(action, "Computer action"),
+        // Cowork always requests its own least-restrictive per-call ceiling
+        // here; the open-compute server clamps the effective mode to the
+        // more restrictive of this value and its own OC_SAFETY_MODE, so a
+        // server running in "confirm" mode still gates the action instead
+        // of executing it.
         mode: "allow_all",
         profile
       });
+      if (isPendingConfirmationResult(result)) {
+        throw new OpenComputeAdapterError(
+          "OPEN_COMPUTE_CONFIRMATION_PENDING",
+          "Open Compute requires a human confirmation before this action runs"
+        );
+      }
+      return result;
     },
 
     async close() {
