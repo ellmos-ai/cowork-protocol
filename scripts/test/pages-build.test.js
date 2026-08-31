@@ -37,6 +37,10 @@ test("the Pages artifact contains only the web showcase and its runtime modules"
     assert.equal(files.includes("packages/core/src/index.js"), true);
     assert.equal(files.includes("packages/formbuilder-connector/src/index.js"), true);
     assert.equal(files.includes("packages/native-webmcp/src/index.js"), true);
+    assert.equal(
+      files.includes("packages/reference-ui/assets/cowork-dialogue-mark.svg"),
+      true
+    );
     assert.equal(files.some((file) => file.includes("/test/")), false);
     assert.equal(files.some((file) => file.startsWith("docs/")), false);
     assert.equal(files.some((file) => /devpost|release-checklist|demo-script/i.test(file)), false);

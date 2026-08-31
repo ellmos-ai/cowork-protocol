@@ -351,6 +351,13 @@ test("the loopback host serves a movable reference surface for the shared sessio
     assert.match(html, /Cowork Protocol/);
     assert.match(html, /cowork-reference-ui/);
     assert.match(surface.headers.get("content-security-policy"), /default-src 'self'/);
+    assert.match(surface.headers.get("content-security-policy"), /img-src 'self'/);
+    const mark = await fetch(
+      `${companionOrigin}/cowork/v1/ui/cowork-dialogue-mark.svg`
+    );
+    assert.equal(mark.status, 200);
+    assert.equal(mark.headers.get("content-type"), "image/svg+xml");
+    assert.match(await mark.text(), /Dialogue &amp; Relay Orbit Mark/);
 
     const authority = createCoworkSessionAuthority({
       sessionId: "surface-session",

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Cowork Protocol — Dialogue &amp; Relay Orbit Mark (Color)</title>
+  <desc>Standalone brand symbol featuring the coral human dialogue orbit, turquoise agent response orbit, and central champagne-gold synergy spark.</desc>
+  <defs>
+    <linearGradient id="grad-coral-mark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff9182"/>
+      <stop offset="55%" stop-color="#ff604a"/>
+      <stop offset="100%" stop-color="#db3824"/>
+    </linearGradient>
+    <linearGradient id="grad-teal-mark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34e3d3"/>
+      <stop offset="50%" stop-color="#16b5a8"/>
+      <stop offset="100%" stop-color="#0a7a72"/>
+    </linearGradient>
+    <linearGradient id="grad-gold-mark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff4d4"/>
+      <stop offset="50%" stop-color="#e5be6b"/>
+      <stop offset="100%" stop-color="#b07d1e"/>
+    </linearGradient>
+    <filter id="shadow-mark" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#241c15" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+  <g transform="translate(256, 256) scale(2.2)" filter="url(#shadow-mark)">
+    <circle cx="0" cy="0" r="82" fill="none" stroke="#e8dfd1" stroke-width="2" stroke-dasharray="4 6"/>
+    <path d="M -60 -50 C -30 -80 50 -80 70 -50 C 85 -25 65 5 30 10" fill="none" stroke="url(#grad-coral-mark)" stroke-width="22" stroke-linecap="round"/>
+    <circle cx="-60" cy="-50" r="16" fill="url(#grad-coral-mark)" stroke="#fffef9" stroke-width="4"/>
+    <path d="M 60 50 C 30 80 -50 80 -70 50 C -85 25 -65 -5 -30 -10" fill="none" stroke="url(#grad-teal-mark)" stroke-width="22" stroke-linecap="round"/>
+    <circle cx="60" cy="50" r="16" fill="url(#grad-teal-mark)" stroke="#fffef9" stroke-width="4"/>
+    <path d="M 0 -24 Q 0 0 24 0 Q 0 0 0 24 Q 0 0 -24 0 Q 0 0 0 -24 Z" fill="url(#grad-gold-mark)"/>
+    <circle cx="0" cy="0" r="6" fill="#fffef9"/>
+  </g>
+</svg>

@@ -3,17 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#121a2b">
-  <title>Cowork Protocol — FormBuilder Showcase</title>
+  <meta name="theme-color" content="#5948c8">
+  <title>FormBuilder Studio — Cowork Protocol Showcase</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
+<body data-product-brand="formbuilder-studio">
   <a class="skip-link" href="#demo-form">Skip to the form</a>
   <header class="site-header">
-    <div>
-      <p class="eyebrow">WebMCP collaboration protocol</p>
-      <h1>Cowork, without shipping the whole screen.</h1>
-      <p class="lede">A FormBuilder field becomes a small, actionable contract between you and an agent.</p>
+    <div class="formbuilder-brand" aria-label="FormBuilder Studio">
+      <span class="formbuilder-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+      <div>
+        <p class="product-kicker">FormBuilder Studio</p>
+        <h1>Build the form.<br><span>Share the controls.</span></h1>
+        <p class="lede">A focused form workspace with a Cowork instrument attached — two products, one shared task.</p>
+      </div>
     </div>
     <div class="header-badges" aria-label="Prototype status">
       <span class="badge badge-accent">Local prototype</span>
@@ -25,7 +28,7 @@
     <section class="form-surface" aria-labelledby="form-title">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">FormBuilder showcase</p>
+          <p class="formbuilder-eyebrow">Form canvas · Step 01</p>
           <h2 id="form-title">Event registration</h2>
         </div>
         <span class="page-version">Page v<span id="page-version">1</span></span>
@@ -75,34 +78,41 @@
       </section>
     </section>
 
-    <aside class="cowork-panel" aria-labelledby="panel-title">
+    <aside class="cowork-panel" aria-labelledby="panel-title" data-cowork-brand="dialogue-relay" data-cowork-surface="embedded">
       <div class="panel-topline">
-        <div>
-          <p class="eyebrow">Cowork panel</p>
-          <h2 id="panel-title">Shared control</h2>
+        <div class="cowork-lockup">
+          <img class="cowork-brand-mark" src="../../packages/reference-ui/assets/cowork-dialogue-mark.svg" alt="">
+          <div>
+            <p class="cowork-wordmark">Cowork <span>Protocol</span></p>
+            <h2 id="panel-title">Shared control</h2>
+          </div>
         </div>
         <div class="surface-actions" aria-label="Cowork surface">
           <span class="metric"><span id="surface-label">Embedded</span> · S<span id="session-revision">0</span></span>
           <span class="mode-badge" id="mode-badge">Cowork</span>
-          <button class="text-button" id="detach-cowork" type="button" aria-pressed="false">Detach</button>
-          <button class="text-button" id="open-companion" type="button">Open Companion</button>
+          <button class="surface-button" id="detach-cowork" type="button" aria-label="Detach Cowork panel" aria-pressed="false"><span aria-hidden="true">↗</span><span>Pop out</span></button>
+          <button class="surface-button" id="open-companion" type="button" aria-label="Open Cowork Companion"><span aria-hidden="true">◇</span><span>Companion</span></button>
         </div>
       </div>
 
+      <div class="protocol-rhythm" aria-label="Cowork interaction rhythm">
+        <span><i aria-hidden="true"></i>Point</span><span><i aria-hidden="true"></i>Offer</span><span><i aria-hidden="true"></i>Click</span><span><i aria-hidden="true"></i>Verify</span>
+      </div>
+
       <section class="presence-strip" aria-label="Presence">
-        <div class="presence-person">
-          <span class="presence-dot tone-green" id="human-dot" aria-hidden="true"></span>
-          <span id="human-label">Human present</span>
+        <div class="presence-person human-presence is-active" id="human-seat">
+          <span class="seat-icon human-seat" aria-hidden="true"></span>
+          <span><small>You</small><strong id="human-label">Human present</strong></span>
         </div>
-        <div class="presence-person">
-          <span class="agent-mark" aria-hidden="true">A</span>
-          <span id="agent-label">Agent active</span>
+        <div class="presence-person model-presence is-active" id="model-seat">
+          <span class="seat-icon model-seat" aria-hidden="true">✦</span>
+          <span><small>Model</small><strong id="agent-label">Agent active</strong></span>
         </div>
       </section>
 
       <section class="panel-section focus-readout" aria-labelledby="focus-heading">
         <div class="section-row">
-          <h3 id="focus-heading">Attention lens</h3>
+          <h3 id="focus-heading"><span class="section-icon" aria-hidden="true">◎</span>Attention lens</h3>
           <span class="metric" id="context-label">No context sent</span>
         </div>
         <p class="focus-target" id="focus-label">Point to or select a form field</p>
@@ -126,7 +136,7 @@
 
       <section class="panel-section" aria-labelledby="action-heading">
         <div class="section-row">
-          <h3 id="action-heading">Action rights</h3>
+          <h3 id="action-heading"><span class="section-icon" aria-hidden="true">◇</span>Action rights</h3>
           <label class="compact-select">
             <span class="visually-hidden">Action mode</span>
             <select id="action-mode">
@@ -145,7 +155,7 @@
 
       <section class="panel-section" aria-labelledby="presence-heading">
         <div class="section-row">
-          <h3 id="presence-heading">Handoff</h3>
+          <h3 id="presence-heading"><span class="section-icon" aria-hidden="true">↗</span>Handoff</h3>
           <button class="text-button" id="toggle-agent" type="button">Pause agent</button>
         </div>
         <label>
@@ -162,7 +172,7 @@
 
       <section class="panel-section" aria-labelledby="audio-heading">
         <div class="section-row">
-          <h3 id="audio-heading">Conversation</h3>
+          <h3 id="audio-heading"><span class="section-icon" aria-hidden="true">◉</span>Conversation</h3>
           <span class="badge" id="model-transport-badge">Local demo helper</span>
         </div>
         <form id="conversation-form" class="conversation-form">
@@ -183,7 +193,7 @@
 
       <section class="receipt-panel" aria-labelledby="receipt-heading">
         <div class="section-row">
-          <h3 id="receipt-heading">Verified receipts</h3>
+          <h3 id="receipt-heading"><span class="section-icon" aria-hidden="true">✓</span>Verified receipts</h3>
           <span class="metric" id="receipt-count">0</span>
         </div>
         <ol id="receipt-list" class="receipt-list" aria-live="polite"></ol>

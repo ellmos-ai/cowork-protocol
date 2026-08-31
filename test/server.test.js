@@ -19,7 +19,7 @@ test("the local server delivers the showcase and browser modules from one origin
   const core = await fetch(`${base}/packages/core/src/index.js`);
 
   assert.equal(page.status, 200);
-  assert.match(await page.text(), /Cowork Protocol — FormBuilder Showcase/);
+  assert.match(await page.text(), /FormBuilder Studio — Cowork Protocol Showcase/);
   assert.equal(page.headers.get("content-type"), "text/html; charset=utf-8");
   assert.equal(core.status, 200);
   assert.equal(core.headers.get("content-type"), "text/javascript; charset=utf-8");

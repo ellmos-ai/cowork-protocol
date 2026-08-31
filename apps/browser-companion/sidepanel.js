@@ -22,6 +22,10 @@ function render(state) {
   });
   $("#human-label").textContent = presentation.humanLabel;
   $("#model-label").textContent = presentation.agentLabel;
+  $("#human-seat").classList.toggle("is-active", true);
+  $("#human-seat").classList.toggle("is-away", false);
+  $("#model-seat").classList.toggle("is-active", enabled);
+  $("#model-seat").classList.toggle("is-paused", !enabled);
   $("#mode").textContent = enabled ? presentation.modeLabel : "Off";
   $("#mode").classList.toggle("active", enabled);
   $("#status").textContent = state?.statusText ?? "Page relay unavailable";

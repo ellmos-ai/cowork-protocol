@@ -699,8 +699,13 @@ function render() {
   $("#toggle-agent").textContent =
     session.agentPresence === "paused" ? "Resume agent" : "Pause agent";
 
-  const dot = $("#human-dot");
-  dot.className = `presence-dot tone-${view.humanTone}`;
+  const humanSeat = $("#human-seat");
+  humanSeat.classList.toggle("is-active", session.humanPresence === "present");
+  humanSeat.classList.toggle("is-away", session.humanPresence !== "present");
+  humanSeat.dataset.presenceTone = view.humanTone;
+  const modelSeat = $("#model-seat");
+  modelSeat.classList.toggle("is-active", session.agentPresence !== "paused");
+  modelSeat.classList.toggle("is-paused", session.agentPresence === "paused");
   renderOffers(view);
   renderReceipts();
 }

@@ -23,6 +23,7 @@ const PUBLIC_FILES = [
   "packages/model-transport/src/browser.js",
   "packages/native-webmcp/src/index.js",
   "packages/reference-ui/src/index.js",
+  "packages/reference-ui/assets/cowork-dialogue-mark.svg",
   "packages/session-authority/src/index.js"
 ];
 

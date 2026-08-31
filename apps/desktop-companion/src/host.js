@@ -15,6 +15,9 @@ const PROTOCOL_VERSION = "0.1";
 const LINK_VERSION = "0.1";
 const MAX_BODY_BYTES = 64 * 1024;
 const UI_ROOT = fileURLToPath(new URL("../ui/", import.meta.url));
+const REFERENCE_UI_MARK = fileURLToPath(
+  new URL("../../../packages/reference-ui/assets/cowork-dialogue-mark.svg", import.meta.url)
+);
 
 export class CompanionHostError extends Error {
   constructor(code, message, status = 400) {
@@ -84,7 +87,7 @@ function writeStatic(response, status, body, contentType) {
       "script-src 'self'",
       "style-src 'self'",
       "connect-src 'self'",
-      "img-src 'none'",
+      "img-src 'self'",
       "object-src 'none'",
       "base-uri 'none'",
       "frame-ancestors 'none'"
@@ -460,11 +463,13 @@ export function createCompanionSessionHost({
       ["/cowork/v1/ui", ["index.html", "text/html; charset=utf-8"]],
       ["/cowork/v1/ui/", ["index.html", "text/html; charset=utf-8"]],
       ["/cowork/v1/ui/styles.css", ["styles.css", "text/css; charset=utf-8"]],
-      ["/cowork/v1/ui/app.js", ["app.js", "text/javascript; charset=utf-8"]]
+      ["/cowork/v1/ui/app.js", ["app.js", "text/javascript; charset=utf-8"]],
+      ["/cowork/v1/ui/cowork-dialogue-mark.svg", [REFERENCE_UI_MARK, "image/svg+xml"]]
     ]);
     if (request.method === "GET" && uiAssets.has(requestUrl.pathname)) {
       const [filename, contentType] = uiAssets.get(requestUrl.pathname);
-      writeStatic(response, 200, await readFile(path.join(UI_ROOT, filename), "utf8"), contentType);
+      const assetPath = path.isAbsolute(filename) ? filename : path.join(UI_ROOT, filename);
+      writeStatic(response, 200, await readFile(assetPath, "utf8"), contentType);
       return;
     }
     if (request.method === "GET" && requestUrl.pathname === "/cowork/v1/ui/state") {

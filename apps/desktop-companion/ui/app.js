@@ -28,6 +28,16 @@ function render(state) {
   $("#model-label").textContent = currentSession?.agentPresence === "paused"
     ? "Agent paused"
     : "Agent active";
+  $("#human-seat").classList.toggle("is-active", human === "present");
+  $("#human-seat").classList.toggle("is-away", human !== "present");
+  $("#model-seat").classList.toggle(
+    "is-active",
+    currentSession?.agentPresence !== "paused"
+  );
+  $("#model-seat").classList.toggle(
+    "is-paused",
+    currentSession?.agentPresence === "paused"
+  );
   const turns = currentSession?.context?.recentTurns ?? [];
   $("#context-budget").textContent = `${turns.length} recent turn${turns.length === 1 ? "" : "s"}`;
   $("#turns").replaceChildren(...turns.map((turn) => {

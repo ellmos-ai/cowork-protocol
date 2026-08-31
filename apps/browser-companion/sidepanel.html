@@ -6,34 +6,38 @@
     <title>Cowork Protocol</title>
     <link rel="stylesheet" href="sidepanel.css">
   </head>
-  <body>
-    <main>
+  <body data-cowork-brand="dialogue-relay">
+    <main class="cowork-instrument">
       <header>
-        <div class="mark" aria-hidden="true">C</div>
+        <img class="cowork-brand-mark" src="modules/packages/reference-ui/assets/cowork-dialogue-mark.svg" alt="">
         <div>
-          <p class="eyebrow">Cowork Protocol</p>
-          <h1>Shared control</h1>
+          <p class="cowork-wordmark">Cowork <span>Protocol</span></p>
+          <h1>Side Panel</h1>
         </div>
       </header>
 
+      <div class="protocol-rhythm" aria-label="Cowork interaction rhythm">
+        <span>Point</span><span>Offer</span><span>Click</span><span>Verify</span>
+      </div>
+
       <section class="presence" aria-label="Collaboration presence">
-        <div><span class="human-icon" aria-hidden="true">●</span><span id="human-label">Human present</span></div>
-        <div><span class="model-icon" aria-hidden="true">A</span><span id="model-label">Agent paused</span></div>
+        <div id="human-seat" class="seat is-active"><span class="seat-icon human-seat" aria-hidden="true"></span><span><small>You</small><strong id="human-label">Human present</strong></span></div>
+        <div id="model-seat" class="seat is-paused"><span class="seat-icon model-seat" aria-hidden="true">✦</span><span><small>Model</small><strong id="model-label">Agent paused</strong></span></div>
       </section>
 
       <section class="status-card" aria-labelledby="status-title">
         <div class="section-row">
-          <h2 id="status-title">Connection</h2>
+          <h2 id="status-title"><span aria-hidden="true">◎</span> Connection</h2>
           <span id="mode" class="mode">Off</span>
         </div>
         <p id="status" role="status">Choose Start to attach the bounded relay.</p>
-        <p class="detail">Protocol first · fallback only when needed</p>
+        <p class="detail">Native when available. Bridged when necessary.</p>
         <button id="toggle" class="secondary" type="button">Start</button>
       </section>
 
       <section id="offer-card" class="offer-card" aria-labelledby="offer-title" hidden>
         <p class="eyebrow">Offer · your decision</p>
-        <h2 id="offer-title">Proposed action</h2>
+        <h2 id="offer-title"><span aria-hidden="true">◇</span> Proposed action</h2>
         <button id="offer-action" class="primary" type="button"></button>
       </section>
 

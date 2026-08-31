@@ -18,7 +18,8 @@ const EXTENSION_FILES = [
   "packages/bridge/src/index.js",
   "packages/bridge/src/legacy.js",
   "packages/core/src/index.js",
-  "packages/reference-ui/src/index.js"
+  "packages/reference-ui/src/index.js",
+  "packages/reference-ui/assets/cowork-dialogue-mark.svg"
 ];
 
 function outputPathFor(relativePath) {
