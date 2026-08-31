@@ -255,6 +255,92 @@
     </aside>
   </main>
 
+  <section class="builder-studio form-surface" aria-labelledby="builder-title">
+    <div class="section-heading">
+      <div>
+        <p class="formbuilder-eyebrow">FormBuilder Studio · Design your own form</p>
+        <h2 id="builder-title">Build it, fill it in, export it</h2>
+      </div>
+      <span class="page-version">Canvas v<span id="builder-page-version">1</span></span>
+    </div>
+    <p class="form-intro">This part of the app is a complete product on its own: design a form from the palette below, fill it in and export it — no agent, no WebMCP and no browser extension required. The "Model suggestions" panel is the only part of this section that talks to Cowork Protocol; every suggestion still needs your real click.</p>
+
+    <div class="builder-tabs" role="tablist" aria-label="Builder mode">
+      <button type="button" role="tab" id="builder-tab-build" aria-controls="builder-panel-build" aria-selected="true" class="builder-tab">Build</button>
+      <button type="button" role="tab" id="builder-tab-fill" aria-controls="builder-panel-fill" aria-selected="false" class="builder-tab">Fill</button>
+      <button type="button" role="tab" id="builder-tab-export" aria-controls="builder-panel-export" aria-selected="false" class="builder-tab">Export</button>
+    </div>
+
+    <div id="builder-panel-build" role="tabpanel" aria-labelledby="builder-tab-build" class="builder-panel">
+      <label class="builder-title-field">
+        <span>Form title</span>
+        <input id="builder-form-title" value="Untitled form" maxlength="120">
+      </label>
+
+      <div class="builder-palette">
+        <label>
+          <span>Field type</span>
+          <select id="builder-field-type" aria-label="Field type to add"></select>
+        </label>
+        <button type="button" class="primary-small" id="builder-add-field">Add field</button>
+      </div>
+
+      <ol id="builder-field-list" class="builder-field-list" aria-label="Form fields"></ol>
+      <p class="empty-state" id="builder-empty-state">No fields yet. Choose a type above and add your first field.</p>
+
+      <section class="builder-load" aria-labelledby="builder-load-heading">
+        <h3 id="builder-load-heading">Load an existing form</h3>
+        <label class="builder-load-paste-field">
+          <span>Paste a formularerstellen-form-v1 JSON document</span>
+          <textarea id="builder-load-paste" rows="3"></textarea>
+        </label>
+        <div class="button-row">
+          <button type="button" class="quiet-button" id="builder-load-paste-button">Load pasted JSON</button>
+          <button type="button" class="quiet-button" id="builder-load-file-button">Load from file…</button>
+        </div>
+        <input id="builder-load-file-input" type="file" accept="application/json" class="builder-file-input">
+      </section>
+
+      <section class="panel-section builder-suggestions" aria-labelledby="builder-suggestions-heading">
+        <div class="section-row">
+          <h3 id="builder-suggestions-heading"><span class="section-icon" aria-hidden="true">◇</span>Model suggestions</h3>
+        </div>
+        <div class="button-row">
+          <button type="button" class="quiet-button" id="builder-suggest-add">Model suggests a field</button>
+          <button type="button" class="quiet-button" id="builder-suggest-rename" hidden>Model suggests a rename</button>
+          <button type="button" class="quiet-button" id="builder-suggest-move" hidden>Model suggests reordering</button>
+        </div>
+        <div id="builder-offer-list" class="offer-list" aria-live="polite">
+          <p class="empty-state">Model proposals will appear here as clickable offers.</p>
+        </div>
+        <ol id="builder-receipt-list" class="receipt-list" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <div id="builder-panel-fill" role="tabpanel" aria-labelledby="builder-tab-fill" class="builder-panel" hidden>
+      <h3 id="builder-fill-title">Untitled form</h3>
+      <form id="builder-fill-form" novalidate>
+        <p class="empty-state">Nothing to fill in yet. Add a field in the Build tab first.</p>
+        <button class="primary-action" type="submit">Validate and prepare export</button>
+      </form>
+      <section id="builder-form-result" class="form-result" aria-labelledby="builder-form-result-title" hidden>
+        <h3 id="builder-form-result-title">Your response</h3>
+        <pre id="builder-response-json"></pre>
+      </section>
+    </div>
+
+    <div id="builder-panel-export" role="tabpanel" aria-labelledby="builder-tab-export" class="builder-panel" hidden>
+      <div class="button-row">
+        <button type="button" class="quiet-button" id="builder-export-schema">Download form (.json)</button>
+        <button type="button" class="quiet-button" id="builder-export-response" disabled>Download your response (.json)</button>
+        <button type="button" class="quiet-button" id="builder-export-fodt">Download printable document (.fodt)</button>
+      </div>
+      <p class="microcopy">The form export is the real <code>formularerstellen-form-v1</code> schema, openable by the desktop FormConstructor app. The printable document is a dependency-free Flat ODF (<code>.fodt</code>) file that opens in LibreOffice.</p>
+    </div>
+
+    <p class="system-status" id="builder-status" role="status">Design a form to get started.</p>
+  </section>
+
   <script type="module" src="./src/app.js?v=dialogue-relay-v2"></script>
 </body>
 </html>

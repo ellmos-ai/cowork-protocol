@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  CURRENT_INTERACTIVE_CONTROL_COUNT,
   validateAccessibilityObservation,
   validateBrowserHostBridgeObservation,
   validateConversationObservation,
@@ -328,10 +329,10 @@ function validZoomObservation() {
     viewportPhysicalWidth: 1424,
     viewportPhysicalHeight: 1048,
     documentHorizontalOverflow: 0,
-    interactiveControlCount: 25,
-    reachableControlCount: 25,
-    focusVisibleControlCount: 25,
-    tabSequence: Array.from({ length: 25 }, (_, index) => `control-${index + 1}`),
+    interactiveControlCount: CURRENT_INTERACTIVE_CONTROL_COUNT,
+    reachableControlCount: CURRENT_INTERACTIVE_CONTROL_COUNT,
+    focusVisibleControlCount: CURRENT_INTERACTIVE_CONTROL_COUNT,
+    tabSequence: Array.from({ length: CURRENT_INTERACTIVE_CONTROL_COUNT }, (_, index) => `control-${index + 1}`),
     unreachableControls: [],
     horizontallyClippedControls: [],
     textClippedControls: []
@@ -345,9 +346,9 @@ test("200-percent browser zoom evidence requires reflow and every control to rem
     browserZoomFactor: 2,
     viewportCssWidth: 712,
     viewportPhysicalWidth: 1424,
-    interactiveControls: 25,
-    reachableControls: 25,
-    focusVisibleControls: 25,
+    interactiveControls: CURRENT_INTERACTIVE_CONTROL_COUNT,
+    reachableControls: CURRENT_INTERACTIVE_CONTROL_COUNT,
+    focusVisibleControls: CURRENT_INTERACTIVE_CONTROL_COUNT,
     horizontalOverflow: 0
   });
 });
@@ -381,13 +382,13 @@ function validAccessibilityObservation() {
     viewportCssHeight: 844,
     documentHorizontalOverflow: 0,
     overflowingTextElements: [],
-    interactiveControlCount: 25,
-    reachableControlCount: 25,
-    focusVisibleControlCount: 25,
-    tabSequence: Array.from({ length: 25 }, (_, index) => `control-${index + 1}`),
+    interactiveControlCount: CURRENT_INTERACTIVE_CONTROL_COUNT,
+    reachableControlCount: CURRENT_INTERACTIVE_CONTROL_COUNT,
+    focusVisibleControlCount: CURRENT_INTERACTIVE_CONTROL_COUNT,
+    tabSequence: Array.from({ length: CURRENT_INTERACTIVE_CONTROL_COUNT }, (_, index) => `control-${index + 1}`),
     horizontallyClippedControls: [],
     textClippedControls: [],
-    axInteractiveNodes: Array.from({ length: 25 }, (_, index) => ({
+    axInteractiveNodes: Array.from({ length: CURRENT_INTERACTIVE_CONTROL_COUNT }, (_, index) => ({
       backendDOMNodeId: index + 1,
       role: index === 0 ? "link" : "button",
       name: `Control ${index + 1}`
@@ -401,10 +402,10 @@ test("current accessibility evidence requires named AX controls and a complete 3
     {
       accessibilityClaim: true,
       viewportCssWidth: 390,
-      interactiveControls: 25,
-      namedAxControls: 25,
-      tabStops: 25,
-      focusVisibleControls: 25,
+      interactiveControls: CURRENT_INTERACTIVE_CONTROL_COUNT,
+      namedAxControls: CURRENT_INTERACTIVE_CONTROL_COUNT,
+      tabStops: CURRENT_INTERACTIVE_CONTROL_COUNT,
+      focusVisibleControls: CURRENT_INTERACTIVE_CONTROL_COUNT,
       horizontalOverflow: 0
     }
   );

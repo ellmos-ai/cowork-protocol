@@ -14,7 +14,11 @@ function requireCondition(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const CURRENT_INTERACTIVE_CONTROL_COUNT = 25;
+// FormBuilder Studio's Build/Fill/Export section added 10 controls on top of
+// the previous 25 (see apps/formbuilder-showcase/INTEGRATION.md and
+// docs/evidence.md); exported so scripts/test/webmcp-browser-smoke.test.js
+// does not hold its own copy of this number.
+export const CURRENT_INTERACTIVE_CONTROL_COUNT = 35;
 
 function isNonNegativeInteger(value) {
   return Number.isInteger(value) && value >= 0;

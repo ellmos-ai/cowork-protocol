@@ -40,6 +40,8 @@ import {
   createShowcaseSubmission,
   SHOWCASE_SCHEMA
 } from "./formbuilder-use-case.js";
+import { initBuilderStudio } from "./builder-view.js";
+import { initBuilderCoworkUi } from "./builder-cowork-ui.js";
 import {
   actionModeAllows,
   buildLeaseExpiryEffect,
@@ -1607,3 +1609,9 @@ window.addEventListener("beforeunload", () => {
 configureSpeech();
 render();
 configureWebMcp();
+
+// FormBuilder Studio (Build/Fill/Export) is a separate, cowork-free product
+// surface (see builder-view.js); this is its only integration point with the
+// Cowork Protocol machinery above. See ../INTEGRATION.md.
+const builderController = initBuilderStudio(document);
+initBuilderCoworkUi({ root: document, controller: builderController });

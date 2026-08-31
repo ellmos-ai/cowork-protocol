@@ -527,6 +527,48 @@ textarea { resize: vertical; }
 .audio-button { background: var(--cowork-gold); }
 .mode-badge { color: #8d271a; border-color: rgba(255,96,74,.24); background: #fff0ed; }
 
+/* FormBuilder Studio: the Build/Fill/Export product surface. It reuses the
+   .form-surface treatment (border, shadow, violet stripe, grid background)
+   and the existing button/offer/receipt component classes above. */
+.builder-studio { width: min(1440px, calc(100% - 3rem)); min-height: auto; margin: 0 auto 3rem; }
+.builder-tabs { display: flex; gap: .35rem; margin: 1.2rem 0 1.1rem; border-bottom: 1px solid var(--line); }
+.builder-tab { padding: .65rem 1.05rem; border: 0; border-bottom: 3px solid transparent; color: var(--muted); background: transparent; font-weight: 800; }
+.builder-tab[aria-selected="true"] { color: var(--formbuilder-violet-deep); border-bottom-color: var(--formbuilder-violet); }
+.builder-title-field { display: grid; gap: .4rem; max-width: 26rem; margin-bottom: 1.1rem; font-size: .84rem; font-weight: 700; }
+
+.builder-palette { display: flex; align-items: end; flex-wrap: wrap; gap: .75rem; margin-bottom: 1.1rem; }
+.builder-palette label { display: grid; gap: .4rem; font-size: .84rem; font-weight: 700; }
+.builder-palette select { min-width: 13rem; }
+
+.builder-field-list { display: grid; gap: .6rem; margin: 0 0 .8rem; padding: 0; list-style: none; }
+.builder-field-row { display: grid; gap: .6rem; padding: .85rem; border: 1px solid rgba(89,72,200,.18); border-radius: .9rem; background: #fffefa; }
+.builder-field-row-head { display: flex; justify-content: space-between; }
+.builder-field-kind { color: var(--formbuilder-violet-deep); font-size: .68rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.builder-field-row label { display: grid; gap: .35rem; font-size: .82rem; font-weight: 700; }
+.builder-field-controls { display: flex; flex-wrap: wrap; gap: .4rem; }
+.builder-field-controls button {
+  min-height: 2.25rem;
+  padding: .4rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: .6rem;
+  color: var(--ink);
+  background: rgba(255,255,255,.85);
+  font-weight: 800;
+}
+.builder-field-controls button:disabled { cursor: default; opacity: .4; }
+.builder-field-controls button:not(:disabled):hover { border-color: var(--formbuilder-violet); background: var(--formbuilder-lilac); }
+
+.builder-load { margin: .6rem 0 1.3rem; padding: .85rem; border: 1px solid var(--line); border-radius: .9rem; background: rgba(255,255,255,.6); }
+.builder-load h3 { color: var(--formbuilder-violet-deep); }
+.builder-load-paste-field { display: grid; gap: .4rem; margin: .8rem 0; font-size: .82rem; font-weight: 700; }
+.builder-load-paste-field textarea { font-family: ui-monospace, monospace; font-size: .78rem; }
+.builder-file-input { display: none; }
+
+.builder-checkbox-group { display: grid; gap: .4rem; }
+.builder-fill-field { margin-bottom: 1.1rem; }
+.builder-fill-field.has-error { padding: .6rem; border-radius: .8rem; background: rgba(183,45,72,.06); outline: 1px solid var(--red); }
+.builder-fill-field hr { border: 0; border-top: 1px dashed var(--line); }
+
 @media (max-width: 980px) {
   .site-header { align-items: start; flex-direction: column; }
   .header-badges { justify-content: flex-start; }
@@ -551,6 +593,10 @@ textarea { resize: vertical; }
   .surface-actions { justify-content: flex-start; max-width: none; }
   .offer-chip { grid-template-columns: 1fr; }
   .offer-chip::after { content: "Tap to authorize"; }
+  .builder-studio { padding: 1rem; }
+  .builder-tabs { flex-wrap: wrap; }
+  .builder-palette { flex-direction: column; align-items: stretch; }
+  .builder-palette select { min-width: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

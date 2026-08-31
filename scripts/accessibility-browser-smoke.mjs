@@ -264,7 +264,8 @@ try {
   })()`);
 
   const { nodes } = await call("Accessibility.getFullAXTree");
-  const interactiveRoles = new Set(["button", "checkbox", "combobox", "link", "textbox"]);
+  // "tab" was added for FormBuilder Studio's Build/Fill/Export role="tab" buttons.
+  const interactiveRoles = new Set(["button", "checkbox", "combobox", "link", "tab", "textbox"]);
   observation.axInteractiveNodes = nodes
     .filter(
       (node) =>

@@ -16,6 +16,7 @@
     "eval": "node packages/evals/src/cli.js",
     "proof": "node packages/evals/src/juror-proof-cli.js",
     "smoke:accessibility": "node scripts/accessibility-browser-smoke.mjs",
+    "smoke:builder": "node scripts/formbuilder-builder-browser-smoke.mjs",
     "smoke:companion": "node scripts/browser-companion-smoke.mjs",
     "smoke:companion-cockpit": "node scripts/browser-companion-cockpit-smoke.mjs",
     "smoke:companion-native": "node scripts/browser-companion-native-smoke.mjs",
