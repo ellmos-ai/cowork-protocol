@@ -26,7 +26,7 @@ Imported web source:
 
 | New path | Original path | Baseline SHA-256 | License | Challenge modification |
 |---|---|---|---|---|
-| `apps/formbuilder-showcase/src/form-engine.mjs` | `web_companion/form-engine.mjs` | `62AB6E056686BBB47068692DDF0C7435AD1D97481AE86B848770D07171B00F5A` | MIT | provenance header, naming and formatting normalization; parser/validation/response behavior retained |
+| `apps/formbuilder-showcase/src/form-engine.mjs` | `web_companion/form-engine.mjs` | `62AB6E056686BBB47068692DDF0C7435AD1D97481AE86B848770D07171B00F5A` | MIT | provenance header, naming and formatting normalization; parser/validation/response behavior retained. Post-baseline modification: translated the 7 internal `Error()` message strings to English; the German type-name matching literals (`Textfeld`, `Datum`, `Checkbox`, `Bild`, `Trennlinie`, `Beschreibung`, `Rahmen`, `Überschrift`/`Ueberschrift`, and the `Texteingabefeld-*` legacy keys) were left unchanged because they match literal type names produced by the real upstream FormBuilder schema format, not display text |
 
 The original copyright notice and file-specific provenance are retained in `apps/formbuilder-showcase/FORMBUILDER-NOTICE.md`.
 

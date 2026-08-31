@@ -52,30 +52,30 @@ function ensureUniqueFieldIds(elements) {
   for (const element of elements) {
     const id = element?.id;
     if (!id) continue;
-    if (seenIds.has(id)) throw new Error(`Doppelte Feld-ID: ${id}`);
+    if (seenIds.has(id)) throw new Error(`Duplicate field ID: ${id}`);
     seenIds.add(id);
   }
 }
 
 export function parseSchema(json) {
   if (!json || typeof json !== 'object') {
-    throw new Error('Ungültiges Schema: kein Objekt');
+    throw new Error('Invalid schema: not an object');
   }
 
   if (json.schema === SCHEMA_NAME) {
     const version = json.schema_version;
     if (typeof version !== 'number' || version < 1) {
-      throw new Error(`Ungültige Schema-Version: ${version}`);
+      throw new Error(`Invalid schema version: ${version}`);
     }
     const form = json.form;
     if (!form || typeof form !== 'object') {
-      throw new Error('Fehlendes oder ungültiges "form"-Objekt');
+      throw new Error('Missing or invalid "form" object');
     }
     if (!form.title || typeof form.title !== 'string') {
-      throw new Error('Fehlender Formulartitel (form.title)');
+      throw new Error('Missing form title (form.title)');
     }
     if (!Array.isArray(form.elements)) {
-      throw new Error('Fehlende Elementliste (form.elements)');
+      throw new Error('Missing element list (form.elements)');
     }
     ensureUniqueFieldIds(form.elements);
     return { title: form.title, elements: form.elements };
@@ -86,7 +86,7 @@ export function parseSchema(json) {
     return { title: json.title, elements: json.elements };
   }
 
-  throw new Error('Unbekanntes Format: weder formularerstellen-form-v1 noch bare Legacy-Schema erkannt');
+  throw new Error('Unknown format: neither formularerstellen-form-v1 nor a bare legacy schema was recognized');
 }
 
 export function fieldKey(element) {
