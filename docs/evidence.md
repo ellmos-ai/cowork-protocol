@@ -116,10 +116,14 @@ baseline controls: 3 role="tab" buttons, a title input, a field-type select,
 an Add button, a paste textarea, two load buttons and one suggestion
 button); `accessibility-browser-smoke.mjs`'s AX-role allowlist gained `tab`
 alongside the existing five roles, since the three new tab buttons are
-genuinely interactive but weren't in the old list. `smoke:contrast` needed no
-code change: 1,132 audited text items (up from 902) with 0 unsupported/failing
-and the same unrounded 4.5656:1 minimum, because the new UI reuses existing,
-already-vetted color tokens rather than introducing new ones. Writing
+genuinely interactive but weren't in the old list. `smoke:contrast` gained an
+eleventh rendered state, `builder-offer-visible` (the FormBuilder Studio Build
+tab with one visible "Model suggests a field" offer chip), added to
+`EXPECTED_PIXEL_CONTRAST_STATES` in `pixel-contrast-smoke-lib.mjs`: 1,248
+audited text items (up from 902 across the original ten states) with 0
+unsupported/failing and the same unrounded 4.5656:1 minimum, because the new
+UI reuses existing, already-vetted color tokens rather than introducing new
+ones. Writing
 `smoke:builder` caught one real bug before it shipped: `renderFillTab()`
 dropped the Fill form's submit button permanently on the very first render
 (0 fields), because the empty-state branch never re-appended it and every

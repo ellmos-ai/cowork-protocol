@@ -640,6 +640,14 @@ try {
     `document.querySelector("#talk")?.classList.contains("is-listening") === true && document.querySelector("#talk")?.textContent.trim() === "Listening…"`
   ));
 
+  await dispatchTrustedClick(call, 'document.querySelector("#builder-tab-build")', "FormBuilder Studio Build tab");
+  await dispatchTrustedClick(call, 'document.querySelector("#builder-suggest-add")', "Model suggests a field");
+  states.push(await auditRenderedState(
+    call,
+    "builder-offer-visible",
+    `document.querySelectorAll("#builder-offer-list .offer-chip").length === 1`
+  ));
+
   const observation = {
     browserVersion: version.Browser,
     auditMethod: "chrome-css-background-ranges",

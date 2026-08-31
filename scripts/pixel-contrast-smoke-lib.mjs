@@ -10,7 +10,8 @@ export const EXPECTED_PIXEL_CONTRAST_STATES = Object.freeze([
   "feedback-recorded",
   "agent-solo",
   "human-solo",
-  "listening"
+  "listening",
+  "builder-offer-visible"
 ]);
 
 function requireCondition(condition, message) {

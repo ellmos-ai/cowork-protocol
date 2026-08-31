@@ -237,10 +237,10 @@ provider-backed repetition sent one 502-character turn to local Ollama
 The current UI keeps all 35 controls reachable at true 200% browser zoom and
 at a 390×844 CSS viewport: 35/35 AX controls are named, 35/35 Tab stops are
 visible, and horizontal overflow is zero. The rendered-contrast smoke audits
-1,132 visible text items across ten states with no unsupported or failing
-range and the same 4.5656:1 minimum. Real microphone practice, a remote
-provider, screen-reader practice and a connected ChatGPT-agent invocation
-remain open.
+1,248 visible text items across eleven states (the FormBuilder Studio
+suggestion offer is now one of them) with no unsupported or failing range and
+the same 4.5656:1 minimum. Real microphone practice, a remote provider,
+screen-reader practice and a connected ChatGPT-agent invocation remain open.
 
 A separate Chrome for Testing 152 acceptance explicitly disabled WebMCP and
 loaded the built Browser Companion extension. Before the trusted action
@@ -311,7 +311,7 @@ replica that pulls intervening deltas on return.
 
 `npm run smoke:builder` opens the FormBuilder Studio Build/Fill/Export section in an isolated Chrome profile and proves it end to end with no agent involved: add a field from the palette, fill it in on the Fill tab, submit a valid `formularerstellen-response-v1` response, and confirm all three export controls are present. It then proves the one Cowork integration point is click-gated like everything else: a "Model suggests a field" offer stays inert (the canvas is unchanged) until a real trusted click, after which the canvas changes by exactly the offered amount and exactly one verified receipt appears. It also checks that `document.modelContext.getTools().length` (when WebMCP is enabled) is still 9.
 
-`npm run smoke:contrast` uses a separate temporary Chrome profile and audits the actual rendered foreground against Chrome-resolved background ranges. It requires exactly ten collaboration states, at least 30 visible text items in every state, zero unresolved backgrounds and an unrounded 4.5:1 minimum for every audited range. The deterministic Listening state substitutes only the recognition boundary; it does not claim microphone capture or audible output.
+`npm run smoke:contrast` uses a separate temporary Chrome profile and audits the actual rendered foreground against Chrome-resolved background ranges. It requires exactly eleven collaboration states (ten Cowork demo states plus one FormBuilder Studio state: a visible builder suggestion offer chip), at least 30 visible text items in every state, zero unresolved backgrounds and an unrounded 4.5:1 minimum for every audited range. The deterministic Listening state substitutes only the recognition boundary; it does not claim microphone capture or audible output.
 
 ### Scope of the imported showcase
 
