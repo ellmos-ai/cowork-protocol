@@ -37,6 +37,7 @@ test("a model endpoint and model id must be configured together", () => {
     }),
     /configured together/
   );
+  const sessionStorePath = path.resolve("/state/cowork.json");
   const config = configModule.createCompanionCliConfig({
     env: {
       COWORK_ALLOWED_ORIGINS: "https://forms.example",
@@ -44,12 +45,12 @@ test("a model endpoint and model id must be configured together", () => {
       COWORK_MODEL: "preferred-model",
       COWORK_OPEN_WINDOW: "0",
       COWORK_TRAY: "0",
-      COWORK_SESSION_STORE: "C:\\state\\cowork.json"
+      COWORK_SESSION_STORE: sessionStorePath
     },
     cwd: "C:\\repo"
   });
   assert.equal(config.openWindow, false);
   assert.equal(config.tray, false);
   assert.equal(config.model.model, "preferred-model");
-  assert.equal(config.sessionStorePath, "C:\\state\\cowork.json");
+  assert.equal(config.sessionStorePath, sessionStorePath);
 });
