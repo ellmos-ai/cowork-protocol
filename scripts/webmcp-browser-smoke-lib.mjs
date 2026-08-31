@@ -446,6 +446,9 @@ export function validateAccessibilityObservation(observed) {
   const textClippedControls = Array.isArray(observed.textClippedControls)
     ? observed.textClippedControls
     : [];
+  const overflowingTextElements = Array.isArray(observed.overflowingTextElements)
+    ? observed.overflowingTextElements
+    : [];
   const tabSequence = Array.isArray(observed.tabSequence) ? observed.tabSequence : [];
   requireCondition(
     observed.viewportCssWidth === 390 &&
@@ -457,9 +460,11 @@ export function validateAccessibilityObservation(observed) {
       new Set(tabSequence).size === CURRENT_INTERACTIVE_CONTROL_COUNT &&
       clippedControls.length === 0 &&
       textClippedControls.length === 0 &&
+      overflowingTextElements.length === 0 &&
       typeof observed.documentHorizontalOverflow === "number" &&
       observed.documentHorizontalOverflow <= 1,
-    "Every current control must remain reachable at the 390px browser viewport"
+    "Every current control must remain reachable at the 390px browser viewport " +
+      `(page-wide text overflow ${JSON.stringify(overflowingTextElements)})`
   );
 
   return {

@@ -380,6 +380,7 @@ function validAccessibilityObservation() {
     viewportCssWidth: 390,
     viewportCssHeight: 844,
     documentHorizontalOverflow: 0,
+    overflowingTextElements: [],
     interactiveControlCount: 25,
     reachableControlCount: 25,
     focusVisibleControlCount: 25,
@@ -424,6 +425,16 @@ test("current accessibility evidence rejects narrow-layout overflow or incomplet
   observed.documentHorizontalOverflow = 8;
   observed.reachableControlCount = 20;
   observed.horizontallyClippedControls = ["stop-speech"];
+
+  assert.throws(
+    () => validateAccessibilityObservation(observed),
+    /Every current control must remain reachable at the 390px browser viewport/
+  );
+});
+
+test("current accessibility evidence rejects a page-wide text element that overflows the 390px viewport", () => {
+  const observed = validAccessibilityObservation();
+  observed.overflowingTextElements = ["lede"];
 
   assert.throws(
     () => validateAccessibilityObservation(observed),

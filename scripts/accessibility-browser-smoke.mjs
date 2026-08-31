@@ -224,6 +224,27 @@ try {
         textClipping.push(label);
       }
     }
+    // Page-wide overflow scan: the control-only checks above miss running text
+    // (headings, ledes, help copy) that never receives focus but can still be
+    // clipped at the right edge of a narrow viewport.
+    const textSelector = [
+      "p", "h1", "h2", "h3", "h4", "h5", "h6", "span", "label", "li",
+      "strong", "small", "dt", "dd", "pre", "legend", "figcaption"
+    ].join(",");
+    const overflowingTextElements = [];
+    for (const element of document.querySelectorAll(textSelector)) {
+      const text = element.textContent.trim();
+      if (!text) continue;
+      const style = getComputedStyle(element);
+      if (style.display === "none" || style.visibility === "hidden") continue;
+      const rect = element.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) continue;
+      if (rect.right > window.innerWidth + 1) {
+        overflowingTextElements.push(
+          element.id || element.className || element.tagName + ":" + text.slice(0, 40)
+        );
+      }
+    }
     return {
       url: location.href,
       title: document.title,
@@ -237,7 +258,8 @@ try {
       ) - document.documentElement.clientWidth,
       interactiveControlCount: controls.length,
       horizontallyClippedControls: horizontalClipping,
-      textClippedControls: textClipping
+      textClippedControls: textClipping,
+      overflowingTextElements
     };
   })()`);
 
