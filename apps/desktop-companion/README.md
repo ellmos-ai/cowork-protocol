@@ -21,6 +21,14 @@ The current Windows prototype includes:
 - one serialized, turn-ID-deduplicating Model Gateway for every Cowork-owned
   surface;
 - typed conversation, browser speech recognition and speech synthesis;
+- an explicit execution switch: structured WebMCP stays blue and pointer-free;
+  a deliberate local click may start the profiled Open Compute fallback, whose
+  verified red control overlay and second model pointer disappear again on
+  stop, abort or shutdown;
+- a bundled `cowork-pointer-budget-v1` filter profile that asks Open Compute
+  for UIA semantics first, caps delivery at 12 elements/1,200 characters,
+  permits only a 400×400 escalation lens, forbids fullscreen and blanks named
+  assistant/chat windows that overlap the lens;
 - a native tray icon that is green while the human is present, yellow while
   briefly away, and red during longer absence;
 - explicit loopback binding and website-origin pairing; wildcard origins are
@@ -53,6 +61,24 @@ npm run start:companion-host
 The Companion displays the configured `COWORK_MODEL` identifier in its model
 seat. Model endpoint, key and reasoning settings remain host-owned startup
 configuration; the browser surface does not receive them.
+
+Computer Use is optional and lazy. No Open Compute process starts until the
+human presses its cockpit switch. By default the Companion launches the
+Git-hosted `open-compute[mcp,local,uia]` MCP server through `uvx` with
+`OC_SAFETY_MODE=confirm`; this proves and displays control but reports actions
+without executing them. An operator may explicitly select `allow_all` only
+when Cowork's per-action human authorization is the intended gate:
+
+```powershell
+$env:COWORK_OPEN_COMPUTE_SAFETY='allow_all'
+# Optional local-development override:
+$env:COWORK_OPEN_COMPUTE_COMMAND='python'
+$env:COWORK_OPEN_COMPUTE_ARGS='["-m","open_compute.mcp_server"]'
+```
+
+Set `COWORK_COMPUTER_USE=0` to remove this fallback. The Companion never calls
+Open Compute's raw `tree` or `capture` tools; its adapter allowlists only the
+profile-filtered observation/lens, verified signal tools and gated `do`.
 
 The default endpoint is `http://127.0.0.1:47831/cowork/v1`, and the surface is
 `http://127.0.0.1:47831/cowork/v1/ui`. Sessions are stored under the local

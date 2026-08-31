@@ -16,6 +16,8 @@ test("the movable Companion exposes the shared actor and relay cockpit", async (
   assert.match(html, /class="human-figure"/);
   assert.match(html, /class="model-figure"/);
   assert.match(html, /id="model-identity"/);
+  assert.match(html, /id="execution-control"[\s\S]*aria-pressed="false"/);
+  assert.match(html, /id="computer-use-indicator"[\s\S]*aria-hidden="true"/);
 });
 
 test("the Companion offers a persistent accessible cockpit background picker", async () => {
@@ -45,6 +47,8 @@ test("the Companion derives its actor language from the shared presentation", as
   assert.match(app, /function cycleModelEngagement/);
   assert.match(app, /#human-control/);
   assert.match(app, /#model-control/);
+  assert.match(app, /cockpit\.dataset\.executionMode/);
+  assert.match(app, /#execution-control/);
 });
 
 test("actor states use pose, symbols and reduced-motion fallbacks in addition to aura", async () => {
@@ -57,5 +61,7 @@ test("actor states use pose, symbols and reduced-motion fallbacks in addition to
   assert.match(css, /\[data-relay-state="live"\]/);
   assert.match(css, /\[data-relay-state="to-model"\]/);
   assert.match(css, /\[data-relay-state="watching"\]/);
+  assert.match(css, /\[data-execution-mode="computer-use"\][\s\S]*\.model-pointer/);
+  assert.match(css, /\[data-execution-mode="structured"\][\s\S]*\.computer-use-indicator/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });

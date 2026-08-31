@@ -317,6 +317,124 @@ h2 { margin: 0; font-size: 17px; letter-spacing: -.025em; }
   text-align: center;
 }
 
+.execution-deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 7px;
+  margin-top: 10px;
+}
+.execution-control {
+  display: flex;
+  min-height: 54px !important;
+  padding: 7px 9px !important;
+  align-items: center;
+  gap: 10px;
+  border-color: rgba(23,107,175,.2) !important;
+  border-radius: 16px !important;
+  color: #153f63 !important;
+  background: linear-gradient(135deg, #f5fbff, #e9f4ff) !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.75);
+  text-align: left;
+}
+.execution-glyph {
+  position: relative;
+  display: block;
+  width: 48px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 1px solid #91b8d8;
+  border-radius: 999px;
+  background: #d9ebf8;
+  box-shadow: inset 0 2px 6px rgba(30,78,115,.12);
+}
+.execution-lens {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 14px;
+  height: 11px;
+  border: 2px solid #257cb8;
+  border-radius: 4px;
+  opacity: .72;
+}
+.execution-switch-knob {
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 2px 6px rgba(22,58,87,.25);
+  transition: transform .2s ease, background .2s ease;
+}
+.execution-copy { display: grid; min-width: 0; }
+.execution-copy strong, .execution-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.execution-copy strong { font-size: 11px; }
+.execution-copy small { color: #4f718c; font-size: 8px; }
+.computer-use-indicator {
+  position: relative;
+  min-height: 52px;
+  padding: 8px 10px 8px 49px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(210,59,52,.35);
+  border-radius: 16px;
+  color: #7d1f1a;
+  background: linear-gradient(120deg, #fff4f2, #ffe3df);
+  box-shadow: 0 0 18px rgba(227,74,65,.14);
+}
+.computer-use-indicator > span:last-child { display: grid; }
+.computer-use-indicator strong { font-size: 11px; }
+.computer-use-indicator small { font-size: 8px; }
+.companion-cockpit[data-execution-mode="structured"] .computer-use-indicator {
+  display: none;
+}
+.companion-cockpit[data-execution-mode="computer-use"] {
+  border-color: rgba(217,54,47,.4);
+  box-shadow: 0 13px 32px rgba(58,42,16,.09), 0 0 24px rgba(225,60,52,.13);
+}
+.companion-cockpit[data-execution-mode="computer-use"] .execution-control {
+  border-color: rgba(211,53,46,.38) !important;
+  color: #791f1b !important;
+  background: linear-gradient(135deg, #fff8f6, #ffe6e1) !important;
+}
+.companion-cockpit[data-execution-mode="computer-use"] .execution-switch-knob {
+  transform: translateX(16px);
+  background: var(--red);
+}
+.companion-cockpit[data-execution-mode="computer-use"] .computer-use-indicator {
+  display: flex;
+}
+.companion-cockpit[data-execution-mode="computer-use"] .model-pointer {
+  position: absolute;
+  left: 18px;
+  top: 14px;
+  width: 0;
+  height: 0;
+  border-top: 22px solid #d9362f;
+  border-right: 13px solid transparent;
+  filter: drop-shadow(0 0 5px rgba(220,48,42,.5));
+  transform: rotate(-18deg);
+  animation: model-pointer-ready 1.6s ease-in-out infinite;
+}
+.companion-cockpit[data-execution-mode="computer-use"] .model-pointer::after {
+  position: absolute;
+  left: 3px;
+  top: -20px;
+  width: 2px;
+  height: 13px;
+  content: "";
+  background: white;
+  transform: rotate(-18deg);
+  transform-origin: top;
+}
+
 .protocol-rhythm { display: flex; align-items: center; justify-content: center; gap: 5px; margin: 10px 0; color: var(--muted); font-size: 7px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 .protocol-rhythm i { width: 9px; height: 1px; background: var(--gold); }
 .status-card, .conversation-card { padding: 15px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.88); box-shadow: 0 12px 30px rgba(66,44,13,.07); }
@@ -346,6 +464,7 @@ textarea { width: 100%; resize: vertical; padding: 11px; border: 1px solid #9283
 @keyframes relay-flow { to { stroke-dashoffset: -38; } }
 @keyframes relay-awake { 50% { transform: scale(1.13) rotate(8deg); filter: drop-shadow(0 0 5px #f2c65b); } }
 @keyframes relay-to-model { 0% { transform: translateX(0); } 80%, 100% { transform: translateX(96px); } }
+@keyframes model-pointer-ready { 50% { filter: drop-shadow(0 0 9px rgba(220,48,42,.78)); } }
 
 @media (max-width: 360px) {
   .shell { padding: 12px; }

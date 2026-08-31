@@ -1,0 +1,48 @@
+{
+  "profileId": "cowork-pointer-budget-v1",
+  "semanticFirst": true,
+  "maxElements": 12,
+  "maxCharacters": 1200,
+  "textLimit": 120,
+  "valuePolicy": "focused-only",
+  "selectionLimit": 160,
+  "focusRadius": 0.18,
+  "visualLens": {
+    "width": 400,
+    "height": 400
+  },
+  "allowFullscreen": false,
+  "excludeElementNameContains": [
+    "Cowork Protocol Companion",
+    "ChatGPT",
+    "Claude",
+    "Codex",
+    "Copilot"
+  ],
+  "excludeWindowTitleContains": [
+    "Cowork Protocol Companion",
+    "ChatGPT",
+    "Claude",
+    "Codex",
+    "Copilot"
+  ],
+  "allowedTools": [
+    "observe_filtered",
+    "capture_filtered",
+    "signal_show",
+    "signal_hide",
+    "signal_status",
+    "do"
+  ],
+  "allowedActionTypes": [
+    "mouse_move",
+    "left_click",
+    "double_click",
+    "triple_click",
+    "left_click_drag",
+    "type",
+    "key",
+    "scroll",
+    "wait"
+  ]
+}

@@ -42,6 +42,11 @@ The repository currently contains:
   independently movable app window, audio controls and a Windows tray icon
   whose green/yellow/red state mirrors human presence, plus token-free page
   visibility signals and exact delta recovery on tab return;
+- a lazy Open Compute MCP adapter for the Desktop Companion: a deliberate local
+  switch starts a verified red Computer Use signal, while the bundled profile
+  exposes only focus-near UIA semantics, a requested 400×400 visual lens and
+  exact click-authorized actions; raw tree/fullscreen capture and named
+  assistant windows stay outside the model path;
 - a responsive FormBuilder showcase with adaptive Follow-me attention (pointer,
   click, keyboard focus and text selection), click-only, text-marker-only and
   off modes, a labeled blue model-focus spotlight, a labeled coral working
@@ -225,6 +230,10 @@ npm run start:companion-host
 ```
 
 Set `COWORK_OPEN_WINDOW=0` or `COWORK_TRAY=0` to disable either presentation.
+Set `COWORK_COMPUTER_USE=0` to remove the lazy Open Compute fallback. It defaults
+to the non-executing `confirm` safety ceiling; see
+[apps/desktop-companion/README.md](apps/desktop-companion/README.md) for the
+explicit operator override and the bundled token-filter profile.
 
 ## Build the optional browser extension
 

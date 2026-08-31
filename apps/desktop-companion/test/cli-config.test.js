@@ -24,6 +24,14 @@ test("CLI configuration persists sessions and opens the independent surface by d
   assert.equal(config.openWindow, true);
   assert.equal(config.tray, true);
   assert.equal(config.model, null);
+  assert.equal(config.computerUse.command, "uvx");
+  assert.equal(config.computerUse.env.OC_SAFETY_MODE, "confirm");
+  assert.match(config.computerUse.profilePath, /cowork-open-compute-filter\.v1\.json$/);
+  assert.deepEqual(config.computerUse.args, [
+    "--from",
+    "open-compute[mcp,local,uia] @ git+https://github.com/ellmos-ai/open-compute.git",
+    "open-compute-mcp"
+  ]);
 });
 
 test("a model endpoint and model id must be configured together", () => {
@@ -53,4 +61,38 @@ test("a model endpoint and model id must be configured together", () => {
   assert.equal(config.tray, false);
   assert.equal(config.model.model, "preferred-model");
   assert.equal(config.sessionStorePath, sessionStorePath);
+});
+
+test("Computer Use is a profile-filtered optional driver with an explicit safety ceiling", () => {
+  const disabled = configModule.createCompanionCliConfig({
+    env: {
+      COWORK_ALLOWED_ORIGINS: "https://forms.example",
+      COWORK_COMPUTER_USE: "0"
+    },
+    cwd: "C:\\repo"
+  });
+  assert.equal(disabled.computerUse, null);
+
+  const custom = configModule.createCompanionCliConfig({
+    env: {
+      COWORK_ALLOWED_ORIGINS: "https://forms.example",
+      COWORK_OPEN_COMPUTE_COMMAND: "python",
+      COWORK_OPEN_COMPUTE_ARGS: JSON.stringify(["-m", "open_compute.mcp_server"]),
+      COWORK_OPEN_COMPUTE_SAFETY: "read_only"
+    },
+    cwd: "C:\\repo"
+  });
+  assert.equal(custom.computerUse.command, "python");
+  assert.deepEqual(custom.computerUse.args, ["-m", "open_compute.mcp_server"]);
+  assert.equal(custom.computerUse.env.OC_SAFETY_MODE, "read_only");
+
+  assert.throws(
+    () => configModule.createCompanionCliConfig({
+      env: {
+        COWORK_ALLOWED_ORIGINS: "https://forms.example",
+        COWORK_OPEN_COMPUTE_SAFETY: "unsafe"
+      }
+    }),
+    /OPEN_COMPUTE_SAFETY/
+  );
 });

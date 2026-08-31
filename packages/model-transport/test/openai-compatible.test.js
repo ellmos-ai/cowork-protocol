@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   ModelGatewayError,
+  createOpenAiCompatibleGatewaySender,
   createOpenAiCompatibleTurnSender
 } from "../src/openai-compatible.js";
 
@@ -28,6 +29,40 @@ const turn = {
     includedTranscriptCharacters: 14,
     omittedTranscriptCharacters: 0
   }
+};
+
+const gatewayTurn = {
+  protocolVersion: "0.1",
+  type: "model-gateway-turn",
+  sessionId: "session-1",
+  turnId: "turn-1",
+  sourceSurfaceId: "desktop:session-1",
+  modelSeat: {
+    leaseId: "seat-1",
+    owner: "cowork-companion",
+    providerId: "preferred-model",
+    expiresAt: "2026-09-01T12:00:00.000Z"
+  },
+  session: {
+    revision: 4,
+    humanPresence: "present",
+    agentPresence: "active",
+    effectiveMode: "cowork",
+    primarySurfaceId: "desktop:session-1",
+    surfaceKind: "desktop",
+    focus: null,
+    actionMode: "suggest",
+    lease: null
+  },
+  context: {
+    type: "model-context",
+    protocolVersion: "0.1",
+    sessionId: "session-1",
+    recentTurns: [],
+    compactSummary: "Continue the shared form task.",
+    metrics: { serializedCharacters: 160 }
+  },
+  input: { transcript: "What should we do next?" }
 };
 
 test("the compatible gateway keeps credentials server-side and returns a bounded reply", async () => {
@@ -71,6 +106,32 @@ test("the compatible gateway keeps credentials server-side and returns a bounded
   assert.deepEqual(body.response_format, { type: "json_object" });
   assert.deepEqual(JSON.parse(body.messages[1].content), turn);
   assert.equal(JSON.stringify(reply).includes("server-only-key"), false);
+});
+
+test("the Companion sender accepts the real bounded Model Gateway packet", async () => {
+  let body;
+  const sender = createOpenAiCompatibleGatewaySender({
+    endpoint: "https://models.example.test/v1/chat/completions",
+    model: "preferred-model",
+    fetchImpl: async (_url, options) => {
+      body = JSON.parse(options.body);
+      return Response.json({
+        choices: [{ message: { content: JSON.stringify({ message: "Continue with email." }) } }]
+      });
+    }
+  });
+
+  assert.equal((await sender(gatewayTurn)).message, "Continue with email.");
+  assert.deepEqual(JSON.parse(body.messages[1].content), gatewayTurn);
+
+  await assert.rejects(
+    sender({
+      ...gatewayTurn,
+      input: { transcript: "Continue", pageHtml: "must not cross" }
+    }),
+    (error) => error instanceof ModelGatewayError &&
+      error.code === "INVALID_MODEL_GATEWAY_TURN"
+  );
 });
 
 test("the gateway rejects an unsupported reasoning level before any provider call", () => {

@@ -47,6 +47,7 @@
         data-human-state="present"
         data-model-state="paused"
         data-relay-state="dormant"
+        data-execution-mode="structured"
         aria-labelledby="collaboration-title"
       >
         <div class="instrument-heading">
@@ -126,6 +127,30 @@
               <span id="model-identity" class="model-identity" title="No model connected">No model connected</span>
             </span>
           </button>
+        </div>
+
+        <div class="execution-deck">
+          <button
+            id="execution-control"
+            class="execution-control"
+            type="button"
+            aria-label="Toggle profile-filtered Computer Use"
+            aria-pressed="false"
+            aria-describedby="execution-detail"
+          >
+            <span class="execution-glyph" aria-hidden="true">
+              <span class="execution-lens"></span>
+              <span class="execution-switch-knob"></span>
+            </span>
+            <span class="execution-copy">
+              <strong id="execution-label">Structured actions</strong>
+              <small id="execution-detail">WebMCP first · no system pointer</small>
+            </span>
+          </button>
+          <div id="computer-use-indicator" class="computer-use-indicator" aria-hidden="true">
+            <span class="model-pointer" aria-hidden="true"></span>
+            <span><strong>Computer Use</strong><small>Profile-filtered · 400 × 400 max lens</small></span>
+          </div>
         </div>
         <p id="cockpit-status" class="cockpit-status">Connect a page to awaken the relay.</p>
       </section>

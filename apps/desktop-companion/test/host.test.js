@@ -693,3 +693,131 @@ test("the persistent Companion renews its own model seat before a turn", async (
     await host.close();
   }
 });
+
+test("the local cockpit alone switches one session into verified profiled Computer Use", async () => {
+  const origin = "https://forms.example";
+  const calls = [];
+  let closed = 0;
+  let computerStatus = {
+    available: false,
+    executionMode: "structured",
+    indicatorVisible: false,
+    activeSessionId: null,
+    lastAbortMessage: null
+  };
+  const computerUse = {
+    readStatus: () => ({ ...computerStatus }),
+    async activate(input) {
+      calls.push({ method: "activate", input });
+      computerStatus = {
+        ...computerStatus,
+        available: true,
+        executionMode: "computer-use",
+        indicatorVisible: true,
+        activeSessionId: input.sessionId
+      };
+      return { ...computerStatus };
+    },
+    async deactivate(input) {
+      calls.push({ method: "deactivate", input });
+      computerStatus = {
+        ...computerStatus,
+        executionMode: "structured",
+        indicatorVisible: false,
+        activeSessionId: null
+      };
+      return { ...computerStatus };
+    },
+    async refreshStatus(input) {
+      calls.push({ method: "refreshStatus", input });
+      return { ...computerStatus };
+    },
+    async close() { closed += 1; }
+  };
+  const host = createCompanionSessionHost({
+    allowedOrigins: [origin],
+    port: 0,
+    createLinkSessionId: () => "computer-link",
+    computerUse
+  });
+  const address = await host.listen();
+  const companionOrigin = `http://${address.hostname}:${address.port}`;
+  try {
+    const authority = createCoworkSessionAuthority({
+      sessionId: "computer-session",
+      initialState: {
+        humanPresence: "present",
+        agentPresence: "active",
+        effectiveMode: "cowork"
+      },
+      primarySurface: { surfaceId: "formbuilder:embedded", kind: "embedded" }
+    });
+    const snapshot = authority.readSnapshot();
+    const link = createHttpCompanionLink({
+      endpoint: `${companionOrigin}/cowork/v1`,
+      fetchImpl: (url, init) => fetch(url, {
+        ...init,
+        headers: { ...init.headers, origin }
+      })
+    });
+    await link.join({
+      hello: createCompanionHello({
+        sessionId: snapshot.sessionId,
+        surfaceId: "formbuilder:embedded",
+        revision: snapshot.revision,
+        origin
+      }),
+      snapshot
+    });
+
+    const postExecution = (body) => fetch(
+      `${companionOrigin}/cowork/v1/ui/sessions/computer-link/computer-use`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: companionOrigin },
+        body: JSON.stringify(body)
+      }
+    );
+    const rebindingAttempt = await fetch(
+      `${companionOrigin}/cowork/v1/ui/sessions/computer-link/computer-use`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://rebind.example",
+          host: "rebind.example"
+        },
+        body: JSON.stringify({ enabled: true, humanGesture: true })
+      }
+    );
+    assert.equal(rebindingAttempt.status, 403);
+    assert.equal(calls.length, 0);
+
+    const untrusted = await postExecution({ enabled: true, humanGesture: false });
+    assert.equal(untrusted.status, 400);
+    assert.deepEqual(await untrusted.json(), { code: "HUMAN_ACTIVATION_REQUIRED" });
+    assert.equal(calls.length, 0);
+
+    assert.equal((await postExecution({ enabled: true, humanGesture: true })).status, 200);
+    let state = await fetch(`${companionOrigin}/cowork/v1/ui/state`).then((response) =>
+      response.json()
+    );
+    assert.equal(state.sessions[0].computerUseAvailable, true);
+    assert.equal(state.sessions[0].executionMode, "computer-use");
+    assert.equal(state.sessions[0].computerUseIndicatorVisible, true);
+    assert.deepEqual(calls[0], {
+      method: "activate",
+      input: { sessionId: "computer-session", humanGesture: true }
+    });
+
+    assert.equal((await postExecution({ enabled: false, humanGesture: true })).status, 200);
+    state = await fetch(`${companionOrigin}/cowork/v1/ui/state`).then((response) =>
+      response.json()
+    );
+    assert.equal(state.sessions[0].executionMode, "structured");
+    assert.equal(state.sessions[0].computerUseIndicatorVisible, false);
+  } finally {
+    await host.close();
+  }
+  assert.equal(closed, 1);
+});

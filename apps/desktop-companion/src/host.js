@@ -75,6 +75,11 @@ function assertLoopbackHostname(hostname) {
   }
 }
 
+function formatLoopbackOrigin(hostname, port) {
+  const host = hostname.includes(":") ? `[${hostname}]` : hostname;
+  return `http://${host}:${port}`;
+}
+
 function assertAllowedOrigins(origins) {
   if (
     !Array.isArray(origins) ||
@@ -208,6 +213,7 @@ export function createCompanionSessionHost({
   sendModelTurn = null,
   modelProviderId = "preferred-model",
   modelSeatDurationMs = 30 * 60 * 1000,
+  computerUse = null,
   now = () => new Date().toISOString(),
   createLinkSessionId = () => randomUUID()
 }) {
@@ -224,6 +230,14 @@ export function createCompanionSessionHost({
   }
   if (sendModelTurn !== null && typeof sendModelTurn !== "function") {
     throw new TypeError("sendModelTurn must be a function when a model is configured");
+  }
+  if (
+    computerUse !== null &&
+    ["readStatus", "activate", "deactivate", "refreshStatus", "close"].some(
+      (method) => typeof computerUse?.[method] !== "function"
+    )
+  ) {
+    throw new TypeError("computerUse must be a complete profiled execution adapter");
   }
   if (
     typeof modelProviderId !== "string" ||
@@ -348,7 +362,21 @@ export function createCompanionSessionHost({
     return persistence;
   }
 
-  function readUiState() {
+  async function readComputerUseStatus() {
+    if (computerUse === null) return null;
+    let status = computerUse.readStatus();
+    if (status?.activeSessionId && status?.indicatorVisible) {
+      try {
+        status = await computerUse.refreshStatus({ sessionId: status.activeSessionId });
+      } catch {
+        status = computerUse.readStatus();
+      }
+    }
+    return status;
+  }
+
+  async function readUiState() {
+    const computerUseStatus = await readComputerUseStatus();
     return {
       protocolVersion: PROTOCOL_VERSION,
       type: "companion-ui-state",
@@ -370,6 +398,20 @@ export function createCompanionSessionHost({
           modelAvailable: value.gateway !== null,
           modelIdentity: value.gateway === null ? null : modelProviderId,
           modelStatus: value.gateway?.readStatus() ?? null,
+          computerUseAvailable: computerUse !== null,
+          executionMode:
+            computerUseStatus?.activeSessionId === snapshot.sessionId &&
+            computerUseStatus?.indicatorVisible
+              ? "computer-use"
+              : "structured",
+          computerUseIndicatorVisible: Boolean(
+            computerUseStatus?.activeSessionId === snapshot.sessionId &&
+            computerUseStatus?.indicatorVisible
+          ),
+          computerUseAbortMessage:
+            computerUseStatus?.lastAbortSessionId === snapshot.sessionId
+              ? computerUseStatus?.lastAbortMessage ?? null
+              : null,
           context: value.contextManager.readContext()
         };
       })
@@ -405,7 +447,14 @@ export function createCompanionSessionHost({
       return existing.promise;
     }
     const transcript = input?.transcript;
-    if (typeof transcript !== "string" || transcript.trim() === "") {
+    if (
+      typeof transcript !== "string" ||
+      transcript.trim() === "" ||
+      !input ||
+      typeof input !== "object" ||
+      Array.isArray(input) ||
+      Object.keys(input).length !== 1
+    ) {
       throw new CompanionHostError(
         "INVALID_MODEL_TURN",
         "Companion model turns require a transcript"
@@ -641,10 +690,14 @@ export function createCompanionSessionHost({
       return;
     }
     if (request.method === "GET" && requestUrl.pathname === "/cowork/v1/ui/state") {
-      writeJson(response, 200, readUiState());
+      writeJson(response, 200, await readUiState());
       return;
     }
-    const localUiOrigin = `http://${request.headers.host}`;
+    const boundAddress = server.address();
+    const localUiOrigin = formatLoopbackOrigin(
+      hostname,
+      boundAddress && typeof boundAddress !== "string" ? boundAddress.port : port
+    );
     const uiTurnMatch = requestUrl.pathname.match(
       /^\/cowork\/v1\/ui\/sessions\/([^/]+)\/turns$/
     );
@@ -654,14 +707,55 @@ export function createCompanionSessionHost({
     const uiEngagementMatch = requestUrl.pathname.match(
       /^\/cowork\/v1\/ui\/sessions\/([^/]+)\/engagement$/
     );
-    if (request.method === "POST" && (uiTurnMatch || uiPresenceMatch || uiEngagementMatch)) {
+    const uiComputerUseMatch = requestUrl.pathname.match(
+      /^\/cowork\/v1\/ui\/sessions\/([^/]+)\/computer-use$/
+    );
+    if (
+      request.method === "POST" &&
+      (uiTurnMatch || uiPresenceMatch || uiEngagementMatch || uiComputerUseMatch)
+    ) {
       if (request.headers.origin !== localUiOrigin) {
         writeJson(response, 403, { code: "COMPANION_UI_ORIGIN_REQUIRED" });
         return;
       }
       try {
         const body = await readJson(request);
-        if (uiTurnMatch) {
+        if (uiComputerUseMatch) {
+          if (body?.humanGesture !== true) {
+            throw new CompanionHostError(
+              "HUMAN_ACTIVATION_REQUIRED",
+              "Only a deliberate local cockpit gesture can change Computer Use",
+              400
+            );
+          }
+          if (typeof body.enabled !== "boolean") {
+            throw new CompanionHostError(
+              "INVALID_COMPUTER_USE_REQUEST",
+              "Computer Use requests require an enabled boolean"
+            );
+          }
+          if (computerUse === null) {
+            throw new CompanionHostError(
+              "COMPUTER_USE_UNAVAILABLE",
+              "No profiled Open Compute adapter is configured",
+              503
+            );
+          }
+          const linkSession = sessions.get(decodeURIComponent(uiComputerUseMatch[1]));
+          if (!linkSession) {
+            throw new CompanionHostError(
+              "LINK_SESSION_NOT_FOUND",
+              "Companion link session is unavailable",
+              404
+            );
+          }
+          const sessionId = linkSession.authority.readSnapshot().sessionId;
+          const status = await computerUse[body.enabled ? "activate" : "deactivate"]({
+            sessionId,
+            humanGesture: true
+          });
+          writeJson(response, 200, { status });
+        } else if (uiTurnMatch) {
           const reply = await submitModelTurn(decodeURIComponent(uiTurnMatch[1]), body);
           writeJson(response, 200, { reply });
         } else if (uiPresenceMatch) {
@@ -678,8 +772,24 @@ export function createCompanionSessionHost({
           writeJson(response, 200, { revision: result.revision });
         }
       } catch (error) {
-        const status = error instanceof CompanionHostError ? error.status : 500;
-        const code = error instanceof CompanionHostError ? error.code : "COMPANION_HOST_ERROR";
+        const computerUseStatuses = {
+          HUMAN_ACTIVATION_REQUIRED: 400,
+          INVALID_COMPUTER_USE_SESSION: 400,
+          COMPUTER_USE_NOT_ACTIVE: 409,
+          COMPUTER_USE_SEAT_TAKEN: 409,
+          OPEN_COMPUTE_CAPABILITIES_MISSING: 503,
+          MCP_PROCESS_UNAVAILABLE: 503,
+          MCP_PROCESS_START_FAILED: 503,
+          OPEN_COMPUTE_SIGNAL_UNVERIFIED: 502
+        };
+        const status = error instanceof CompanionHostError
+          ? error.status
+          : computerUseStatuses[error?.code] ?? 500;
+        const code = error instanceof CompanionHostError
+          ? error.code
+          : typeof error?.code === "string"
+            ? error.code
+            : "COMPANION_HOST_ERROR";
         writeJson(response, status, { code });
       }
       return;
@@ -843,10 +953,12 @@ export function createCompanionSessionHost({
       return { hostname, port: address.port };
     },
     async close() {
-      if (!server.listening) return;
-      await new Promise((resolve, reject) =>
-        server.close((error) => (error ? reject(error) : resolve()))
-      );
+      await computerUse?.close();
+      if (server.listening) {
+        await new Promise((resolve, reject) =>
+          server.close((error) => (error ? reject(error) : resolve()))
+        );
+      }
     },
     readSnapshot(linkSessionId) {
       const snapshot = sessions.get(linkSessionId)?.snapshot;

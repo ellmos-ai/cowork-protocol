@@ -1,0 +1,6 @@
+{
+  "name": "@cowork-protocol/open-compute-adapter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module"
+}

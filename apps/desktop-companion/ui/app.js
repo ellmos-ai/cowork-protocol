@@ -86,6 +86,22 @@ function render(state) {
   cockpit.dataset.humanState = presentation.humanState;
   cockpit.dataset.modelState = presentation.modelState;
   cockpit.dataset.relayState = presentation.relayState;
+  const executionMode = currentSession?.executionMode ?? "structured";
+  const computerUseActive = executionMode === "computer-use";
+  cockpit.dataset.executionMode = executionMode;
+  $("#execution-control").setAttribute("aria-pressed", String(computerUseActive));
+  $("#execution-label").textContent = computerUseActive
+    ? "Computer Use active"
+    : "Structured actions";
+  $("#execution-detail").textContent = computerUseActive
+    ? "Filtered Open Compute · red pointer visible"
+    : currentSession?.computerUseAvailable
+      ? "WebMCP first · click for filtered fallback"
+      : "WebMCP first · fallback unavailable";
+  $("#computer-use-indicator").setAttribute(
+    "aria-hidden",
+    String(!currentSession?.computerUseIndicatorVisible)
+  );
   $("#human-label").textContent = presentation.humanLabel;
   $("#model-label").textContent = presentation.modelLabel;
   const modelIdentity = currentSession?.modelIdentity ?? "No model connected";
@@ -105,7 +121,11 @@ function render(state) {
   $("#relay-label").textContent = presentation.modeLabel;
   $("#relay-detail").textContent = relayDetail(presentation, connected);
   $("#cockpit-status").textContent = connected
-    ? presentation.relayState === "live"
+    ? currentSession?.computerUseAbortMessage
+      ? `Computer Use stopped: ${currentSession.computerUseAbortMessage}`
+      : computerUseActive
+      ? "The red model pointer marks profile-filtered system control. Click again to stop."
+      : presentation.relayState === "live"
       ? "Cowork is live. Click either figure to change who participates."
       : presentation.relayState === "watching"
         ? "The model can discuss context but will not act."
@@ -145,6 +165,8 @@ function render(state) {
   );
   $("#human-control").disabled = !connected || controlBusy;
   $("#model-control").disabled = !currentSession?.modelAvailable || controlBusy;
+  $("#execution-control").disabled =
+    !connected || !currentSession?.computerUseAvailable || controlBusy;
   $("#conversation-input").disabled = !modelInputEnabled;
   $("#send").disabled = !modelInputEnabled || busy;
   $("#talk").disabled = !modelInputEnabled;
@@ -198,8 +220,17 @@ function cycleModelEngagement() {
   });
 }
 
+function toggleComputerUse(event) {
+  if (!event.isTrusted || !currentSession?.computerUseAvailable) return;
+  return postControl("computer-use", {
+    enabled: currentSession.executionMode !== "computer-use",
+    humanGesture: true
+  });
+}
+
 $("#human-control").addEventListener("click", cycleHumanPresence);
 $("#model-control").addEventListener("click", cycleModelEngagement);
+$("#execution-control").addEventListener("click", toggleComputerUse);
 
 $("#appearance-toggle").addEventListener("click", () => {
   setAppearancePanel($("#appearance-panel").hidden);

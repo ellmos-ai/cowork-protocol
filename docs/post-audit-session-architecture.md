@@ -230,9 +230,42 @@ the `executionMode: computer-use` signal must carry a persistent `Computer use`
 label plus a higher-token-use notice so the human can distinguish visual
 control from native WebMCP. The ordinary no-WebMCP relay remains
 `executionMode: structured` and does not earn this indicator: until an executor
-actually controls a pointer, the product must not simulate one. The shipped
-Cockpit already renders this explicit state but its current native and bridge
-executors truthfully report only `structured`.
+actually controls a pointer, the product must not simulate one. The Desktop
+Companion now earns this state only after its local Open Compute MCP runtime has
+discovered the complete profiled tool set and `signal_show(mode="control")` has
+confirmed a visible overlay. Stop, abort and host shutdown remove the signal;
+native and ordinary bridge actions remain truthfully `structured`.
+
+## Profiled Open Compute fallback
+
+Cowork does not copy or fork an autonomous computer-use agent. Open Compute
+owns one generic local filter boundary; Cowork imports it through MCP and
+supplies the versioned `cowork-pointer-budget-v1` use-case profile. Other
+products can provide different profiles without adding Cowork concepts to Open
+Compute.
+
+```text
+Follow-me focus
+  -> local UI Automation tree
+  -> Open Compute profile filter
+       12 elements / 1,200 characters / focused value only
+       excluded assistant UI names removed
+  -> bounded semantic packet to the model
+  -> requested escalation only: 400×400 focus lens
+       excluded overlapping windows blanked locally
+  -> exact Cowork click authorization
+  -> profile action allowlist
+  -> Open Compute SafetyPolicy
+  -> local executor
+```
+
+Fullscreen is forbidden by the Cowork profile. Raw `tree` and raw `capture`
+are not present in the adapter's capability path. The default operator ceiling
+is `confirm`, so the runtime reports but does not perform actions; an explicit
+operator configuration may select `allow_all` when the exact Cowork human-click
+authorization is intended to be the interactive gate. Starting Computer Use is
+itself a trusted local cockpit gesture and only one Cowork session can own the
+system pointer at a time.
 
 ## Acceptance use cases
 
