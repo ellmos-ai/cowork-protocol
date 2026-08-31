@@ -45,6 +45,8 @@ test("FormBuilder reads as its own app while Cowork reads as an attached instrum
   assert.match(html, /data-cowork-surface="embedded"/);
   assert.match(html, /aria-label="Detach Cowork panel"/);
   assert.match(html, /aria-label="Open Cowork Companion"/);
+  assert.match(html, /styles\.css\?v=dialogue-relay-v2/);
+  assert.match(html, /src\/app\.js\?v=dialogue-relay-v2/);
   assert.match(css, /--formbuilder-violet:\s*#[0-9a-f]{6}/i);
   assert.match(css, /--cowork-coral:\s*#ff604a/i);
   assert.match(css, /--cowork-teal:\s*#0a7a72/i);
