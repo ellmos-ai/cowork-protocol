@@ -15,6 +15,8 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | Solo work is lease-scoped | `packages/core/test/solo-lease.test.js`; FormBuilder connector action tests; connected Edge fallback interaction | Local limits, brief/longer delegated AFK, visible real-time expiry, return summary and agent-pause/Human-Solo path proven; background continuity open |
 | Nine Native WebMCP tools register and clean up | `packages/native-webmcp/test/registration.test.js`; `npm run smoke:webmcp` | Contract fake plus Chrome 152 discovery and eight focus/context/offer/change/feedback/conversation invocations proven; connected-agent journey open |
 | FormBuilder web validation/export is retained | attributed engine, `formbuilder-use-case.test.js`; upstream Web Companion 48/48 tests; connected Edge fallback interaction | Web logic and click-gated field change proven; full visual/WebMCP flow open |
+| FormBuilder Studio designs, fills in and exports a form with zero Cowork dependency | `form-builder.mjs`/`fodt-export.mjs` tests incl. a source-scan solo-mode test; `npm run smoke:builder` | Chrome 152 added a field, filled it in, submitted a real `formularerstellen-response-v1` response and exercised all three export controls (schema JSON, response JSON, Flat ODF `.fodt`) with no agent; `buildFormSchema()` round-trips losslessly through `form-engine.mjs`'s `parseSchema()` |
+| Canvas-editing capabilities reuse the existing offer/click/receipt path with no new WebMCP tool | `packages/formbuilder-connector/test/builder-canvas.test.js`; `apps/formbuilder-showcase/test/builder-cowork.test.js`; `npm run smoke:builder`; `npm run smoke:webmcp` | `form-add-field`/`form-update-field`/`form-move-field` proven at the connector, bridge and Chrome levels: an unclicked offer leaves the canvas untouched, a stale page-version click and an expired offer both fail closed, and a real trusted click produces exactly one verified receipt; native tool count stays 9 in Chrome |
 | WebMCP Bridge is bounded and fail-closed | `packages/bridge/test/webmcp-bridge.test.js`; Chrome 152 browser-host fixture in `npm run smoke:webmcp` | Two host-supplied capabilities, two reads, 1,200-character preview and offer-only mutation proven in-browser; unrelated live-site discovery open |
 | Adaptive runtime selects the strongest supplied layer | `packages/bridge/test/runtime.test.js`; `npm run demo:adapter` | Native → generic WebMCP → legacy-host selection and fail-closed exhaustion proven with host fixtures; no browser-wide discovery claim |
 | Legacy host companion is bounded and click-gated | bridge companion tests, visual eval and `npm run demo:adapter`; real `npm run smoke:companion` | Callback contract plus Chrome 152 extension attachment proven: WebMCP absent, default off, 350/1,200-character tiers, real 160,000-pixel one-shot crop, inert offer, trusted click, verified mutation and toggle off; model-client/full-page claims false |
@@ -92,6 +94,40 @@ with one expected error for `.nojekyll` (HTTP 404, a control file Pages does
 not serve). That closes the identity gap this ledger left open above; it is
 recorded here as that run's finding, not a measurement repeated in this batch.
 
+Commits `395f229` (Builder core: `form-builder.mjs`, `fodt-export.mjs`,
+`builder-cowork.js`, and the three `formbuilder-connector` canvas
+capabilities) and `1714983` (the Build/Fill/Export UI, `builder-cowork-ui.js`,
+and `scripts/formbuilder-builder-browser-smoke.mjs`) added FormBuilder Studio
+on `release/public-preview`. The complete local gate reported 301/301 Node
+tests, the 12-case character-budget eval, the eight-step juror proof,
+`check:architecture` and `check:secrets` clean, a 28-file Pages build (up
+from 23: the allowlist in `scripts/build-pages.mjs` needed the 5 new source
+files added explicitly, or the deployed page would 404 on them) and an
+unaffected 21-file browser-companion build. Six sequential Chrome 152 smokes
+passed unchanged in behavior: `smoke:webmcp` (9 tools), `smoke:surface`,
+`smoke:model-host`, `smoke:companion`, `smoke:companion-native` and
+`smoke:companion-cockpit` (the latter needed one retry after a
+"page target not found" flake with no stack-trace-adjacent cause, consistent
+with resource contention from several headless Chrome launches in quick
+succession, not a code regression). The new `smoke:builder` and the updated
+`smoke:accessibility`/`smoke:contrast` are described above under "What each
+check proves". The interactive-control count grew from 25 to 35 (10 new
+baseline controls: 3 role="tab" buttons, a title input, a field-type select,
+an Add button, a paste textarea, two load buttons and one suggestion
+button); `accessibility-browser-smoke.mjs`'s AX-role allowlist gained `tab`
+alongside the existing five roles, since the three new tab buttons are
+genuinely interactive but weren't in the old list. `smoke:contrast` needed no
+code change: 1,132 audited text items (up from 902) with 0 unsupported/failing
+and the same unrounded 4.5656:1 minimum, because the new UI reuses existing,
+already-vetted color tokens rather than introducing new ones. Writing
+`smoke:builder` caught one real bug before it shipped: `renderFillTab()`
+dropped the Fill form's submit button permanently on the very first render
+(0 fields), because the empty-state branch never re-appended it and every
+later render re-queried a `<form>` that no longer contained it; fixed by
+appending the button unconditionally. `apps/formbuilder-showcase/INTEGRATION.md`
+documents the two-phase process (product first, Cowork integration second)
+and what a different app would need to replicate it.
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;
@@ -100,3 +136,5 @@ recorded here as that run's finding, not a measurement repeated in this batch.
 - remote preferred-model demonstration through the host transport; the local Qwen provider path is accepted;
 - final updated YouTube demo and final Devpost field readback. The Devpost project is already published and submitted to The WebMCP Challenge.
 - the reported 390px hero-lede/form-intro clipping regression: not reproduced under a genuinely fixed 390px CSS viewport in this environment (see the Fable-operator review batch note above); needs reproduction with a tool that reliably honors a true 390px viewport before it can be confirmed or fixed.
+- the FormBuilder Studio `.fodt` export was proven well-formed XML by a dependency-free tag-balance parser and inspected manually, but not opened in a real LibreOffice install in this environment; the OASIS Flat ODF template it fills in was written and reviewed by hand against the format's public specification, not verified by round-tripping it through LibreOffice.
+- sending a filled-in FormBuilder Studio form by mail and collecting responses back into one place (noted as a roadmap item, not a claim, in `apps/formbuilder-showcase/README.md`).

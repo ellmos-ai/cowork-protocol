@@ -178,7 +178,7 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 - `packages/core` — protocol packets, causal changes, human feedback, state decisions, authorizations and budgets.
 - `packages/conversation` — provider-neutral bounded turns and replies plus a latest-only pull inbox; silence and a paused agent never call the host model transport.
 - `packages/model-transport` — browser discovery plus a server-side OpenAI-compatible gateway; the browser sees neither provider configuration nor credentials.
-- `packages/formbuilder-connector` — maps a stable FormBuilder field into a native Cowork focus.
+- `packages/formbuilder-connector` — maps a stable FormBuilder field into a native Cowork focus, plus the same offer/plan contract for three canvas-editing capabilities (add/update/move a field) used by the Builder below.
 - `packages/native-webmcp` — registers the nine Cowork tools with the current WebMCP API.
 - `packages/integration-contract` — declares provider-neutral protocol hosts,
   replaceable surface clients and the three operator-controlled page-UI modes.
@@ -207,6 +207,8 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
   Windows presence tray.
 - `apps/formbuilder-showcase` — visible reference journey for focus, offer, confirmation, causal receipt, feedback, presence, solo lease and audio controls.
 - `apps/formbuilder-showcase/src/form-engine.mjs` — attributed web-only FormBuilder engine for required-field validation and JSON response export.
+- `apps/formbuilder-showcase/src/form-builder.mjs`, `fodt-export.mjs`, `builder-view.js` — the new, Cowork-free FormBuilder Studio product (design a form from a palette, fill it in, export schema/response/printable `.fodt`); see [`apps/formbuilder-showcase/INTEGRATION.md`](apps/formbuilder-showcase/INTEGRATION.md) for how it was then connected to Cowork on top.
+- `apps/formbuilder-showcase/src/builder-cowork.js`, `builder-cowork-ui.js` — the Builder's one Cowork integration point: three canvas capabilities (`form-add-field`, `form-update-field`, `form-move-field`) offered, clicked and verified through the same path as every other FormBuilder capability. No new WebMCP tool.
 
 See the [adapter runtime guide](packages/bridge/README.md), [browser companion guide](apps/browser-companion/README.md), [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), [docs/deployment.md](docs/deployment.md), [docs/evidence.md](docs/evidence.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
 
@@ -232,12 +234,13 @@ provider-backed repetition sent one 502-character turn to local Ollama
 `qwen3:4b`, whose exact offer stayed inert until the trusted click;
 `providerLocation` is `local` and `externalModelClaim` remains false.
 
-The current UI keeps all 25 controls reachable at true 200% browser zoom and
-at a 390×844 CSS viewport: 25/25 AX controls are named, 25/25 Tab stops are
+The current UI keeps all 35 controls reachable at true 200% browser zoom and
+at a 390×844 CSS viewport: 35/35 AX controls are named, 35/35 Tab stops are
 visible, and horizontal overflow is zero. The rendered-contrast smoke audits
-902 visible text items across ten states with no unsupported or failing range
-and a 4.5656:1 minimum. Real microphone practice, a remote provider,
-screen-reader practice and a connected ChatGPT-agent invocation remain open.
+1,132 visible text items across ten states with no unsupported or failing
+range and the same 4.5656:1 minimum. Real microphone practice, a remote
+provider, screen-reader practice and a connected ChatGPT-agent invocation
+remain open.
 
 A separate Chrome for Testing 152 acceptance explicitly disabled WebMCP and
 loaded the built Browser Companion extension. Before the trusted action
@@ -304,7 +307,9 @@ controls, observes token-free page visibility, sends one turn through its
 shared Model Gateway and leaves the page as a synchronized application/UI
 replica that pulls intervening deltas on return.
 
-`npm run smoke:accessibility` opens another isolated Chrome profile at an exact 390×844 CSS viewport. It requires exactly 25 non-ignored interactive browser accessibility nodes with non-empty names and unique DOM identities, then drives 25 real Tab events and requires every stop to remain visible with `:focus-visible`. It also clicks the embedded model through observing, paused and collaborating and the human through brief-away, long-away and present. Horizontal control/text clipping and more than one pixel of document overflow fail the gate. This is browser accessibility-tree and keyboard/layout evidence, not screen-reader practice.
+`npm run smoke:accessibility` opens another isolated Chrome profile at an exact 390×844 CSS viewport. It requires exactly 35 non-ignored interactive browser accessibility nodes (now including the FormBuilder Studio Build/Fill/Export controls, and the ARIA `tab` role alongside `button`/`checkbox`/`combobox`/`link`/`textbox`) with non-empty names and unique DOM identities, then drives 35 real Tab events and requires every stop to remain visible with `:focus-visible`. It also clicks the embedded model through observing, paused and collaborating and the human through brief-away, long-away and present. Horizontal control/text clipping and more than one pixel of document overflow fail the gate. This is browser accessibility-tree and keyboard/layout evidence, not screen-reader practice.
+
+`npm run smoke:builder` opens the FormBuilder Studio Build/Fill/Export section in an isolated Chrome profile and proves it end to end with no agent involved: add a field from the palette, fill it in on the Fill tab, submit a valid `formularerstellen-response-v1` response, and confirm all three export controls are present. It then proves the one Cowork integration point is click-gated like everything else: a "Model suggests a field" offer stays inert (the canvas is unchanged) until a real trusted click, after which the canvas changes by exactly the offered amount and exactly one verified receipt appears. It also checks that `document.modelContext.getTools().length` (when WebMCP is enabled) is still 9.
 
 `npm run smoke:contrast` uses a separate temporary Chrome profile and audits the actual rendered foreground against Chrome-resolved background ranges. It requires exactly ten collaboration states, at least 30 visible text items in every state, zero unresolved backgrounds and an unrounded 4.5:1 minimum for every audited range. The deterministic Listening state substitutes only the recognition boundary; it does not claim microphone capture or audible output.
 
