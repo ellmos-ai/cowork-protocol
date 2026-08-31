@@ -81,6 +81,16 @@ returns HTTP 200 at
 `https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/`.
 Release readback must additionally match the published commit identity; an HTTP
 200 alone proves availability, not that the post-audit artifact is deployed.
+The identity check itself was carried out separately: an operator verification
+run on 2026-08-31 (`_reports/OPERATOR-VERIFY-20260831.md` §3) took an anonymous
+clone of the public repository, which matched local `HEAD`
+`8088c194f80ee0b9f2e5b3ec497ff2cf5c78fb7c`, then compared all 22 files the
+live Pages deployment serves against that commit's build; every file was
+identical once Windows-checkout CRLF line endings were normalized (`index.html`
+differed by exactly 260 bytes, matching 260 CRLF pairs, before normalization),
+with one expected error for `.nojekyll` (HTTP 404, a control file Pages does
+not serve). That closes the identity gap this ledger left open above; it is
+recorded here as that run's finding, not a measurement repeated in this batch.
 
 ## Explicitly not yet evidenced
 
