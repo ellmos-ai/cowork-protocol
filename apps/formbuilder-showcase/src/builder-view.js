@@ -145,6 +145,20 @@ export function initBuilderStudio(root = document) {
       });
       requiredLabel.append(requiredInput, document.createTextNode(" Required"));
       row.append(requiredLabel);
+
+      const helpField = document.createElement("label");
+      const helpText = document.createElement("span");
+      helpText.textContent = "Help text (optional)";
+      const helpInput = document.createElement("input");
+      helpInput.value = element.helpText ?? "";
+      helpInput.maxLength = 200;
+      helpInput.setAttribute("aria-label", `Help text for field ${index + 1}`);
+      helpInput.addEventListener("change", () => {
+        state.elements = updateField(state.elements, element.id, { helpText: helpInput.value });
+        renderFillTab();
+      });
+      helpField.append(helpText, helpInput);
+      row.append(helpField);
     }
 
     if (classification === "checkbox-single" || classification === "checkbox-multi") {
@@ -299,11 +313,14 @@ export function initBuilderStudio(root = document) {
       control.addEventListener("input", () => {
         fillValues[element.id] = control.value;
       });
-      label.append(control);
-      wrapper.append(label);
-    } else {
-      label.append(control);
-      wrapper.append(label);
+    }
+    label.append(control);
+    wrapper.append(label);
+    if (element.helpText) {
+      const help = document.createElement("p");
+      help.className = "field-help";
+      help.textContent = element.helpText;
+      wrapper.append(help);
     }
     return wrapper;
   }

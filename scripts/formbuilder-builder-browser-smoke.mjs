@@ -166,9 +166,24 @@ try {
   const afterAdd = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
   requireCondition(afterAdd === 1, `Expected one field row after Add, got ${afterAdd}`);
 
+  await dispatchTrustedClick(call, "#builder-tab-build");
+  await evaluateValue(call, `(() => {
+    const helpInput = document.querySelector('.builder-field-row input[aria-label^="Help text"]');
+    helpInput.value = "Used on your event badge.";
+    helpInput.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
+
   await dispatchTrustedClick(call, "#builder-tab-fill");
   const fillFieldCount = await evaluateValue(call, `document.querySelectorAll(".builder-fill-field").length`);
   requireCondition(fillFieldCount === 1, `Expected one renderable Fill field, got ${fillFieldCount}`);
+  const helpTextRendered = await evaluateValue(
+    call,
+    `document.querySelector(".builder-fill-field .field-help")?.textContent`
+  );
+  requireCondition(
+    helpTextRendered === "Used on your event badge.",
+    `Expected the edited help text to render in Fill, got: ${helpTextRendered}`
+  );
 
   await evaluateValue(call, `(() => {
     const input = document.querySelector(".builder-fill-field input[type=text]");

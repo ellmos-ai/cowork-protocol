@@ -81,6 +81,13 @@ test("updateField patches label, required and options without touching id or typ
   assert.deepEqual(updated.options, ["A", "B", "C"]);
 });
 
+test("updateField patches an optional helpText string", () => {
+  const field = createField("text-short", { label: "Full name" });
+  assert.equal(field.helpText, undefined);
+  const next = updateField([field], field.id, { helpText: "Used on your event badge." });
+  assert.equal(next[0].helpText, "Used on your event badge.");
+});
+
 test("updateField rejects an attempt to change id or type", () => {
   const field = createField("text-short");
   assert.throws(() => updateField([field], field.id, { type: "Datumsauswahl" }), {
