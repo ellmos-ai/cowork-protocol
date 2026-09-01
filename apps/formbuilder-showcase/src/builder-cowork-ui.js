@@ -3,7 +3,7 @@
 // only file that renders builder offer chips and receipts; app.js just calls
 // initBuilderCoworkUi() once both pieces exist. See ../INTEGRATION.md.
 
-import { createField } from "./form-builder.mjs";
+import { classificationDisplayName, classificationOf, createField } from "./form-builder.mjs";
 import { BUILDER_CANVAS_TARGET_ID, builderFieldTargetId, createBuilderCoworkBridge } from "./builder-cowork.js";
 import { classifyBuilderDirective } from "./builder-directive-classifier.js";
 
@@ -29,7 +29,8 @@ const DRAFT_QUESTIONS = [
 function describeBuilderOffer(offer) {
   const args = offer.proposedArguments;
   if (offer.capabilityId === "form-add-field") {
-    return `Add "${args.field.label}" (${args.field.type})`;
+    // GAP-08: the kind badge, not the raw schema typeString.
+    return `Add "${args.field.label}" (${classificationDisplayName(classificationOf(args.field))})`;
   }
   if (offer.capabilityId === "form-update-field") {
     const [key, value] = Object.entries(args.patch)[0] ?? [];

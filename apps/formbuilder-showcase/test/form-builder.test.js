@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { classifyType, parseSchema } from "../src/form-engine.mjs";
 import {
   buildFormSchema,
+  classificationDisplayName,
   createField,
   emptyBuilderState,
   FIELD_TYPE_PALETTE,
@@ -19,6 +20,43 @@ test("every palette entry classifies to a real, distinct form-engine.mjs type", 
   const classifications = FIELD_TYPE_PALETTE.map((entry) => classifyType(entry.typeString));
   assert.equal(classifications.filter((value) => value === "unknown").length, 0);
   assert.equal(new Set(classifications).size, FIELD_TYPE_PALETTE.length);
+});
+
+// --- GAP-08: the UI shows a display name, never the raw schema typeString. ---
+
+test("every palette entry has a non-empty displayName distinct from the raw typeString", () => {
+  for (const entry of FIELD_TYPE_PALETTE) {
+    assert.equal(typeof entry.displayName, "string");
+    assert.ok(entry.displayName.length > 0, `${entry.paletteId} needs a displayName`);
+    assert.notEqual(entry.displayName, entry.typeString);
+  }
+});
+
+test("classificationDisplayName covers every classification a field can have, including both heading levels", () => {
+  const classifications = [
+    "heading-h1",
+    "heading-h2",
+    "description",
+    "text-short",
+    "text-long",
+    "date",
+    "checkbox-single",
+    "checkbox-multi",
+    "separator"
+  ];
+  for (const classification of classifications) {
+    const displayName = classificationDisplayName(classification);
+    assert.equal(typeof displayName, "string");
+    assert.ok(displayName.length > 0);
+    // Never a raw German schema string leaking through as a "display name".
+    assert.doesNotMatch(displayName, /Textfeld|Checkbox|Datumsauswahl|Trennlinie|Beschreibung|Überschrift/);
+  }
+  // Both heading levels share one human-readable kind name.
+  assert.equal(classificationDisplayName("heading-h1"), classificationDisplayName("heading-h2"));
+});
+
+test("classificationDisplayName falls back to the classification itself for anything unrecognized", () => {
+  assert.equal(classificationDisplayName("unknown"), "unknown");
 });
 
 test("createField mints a fresh, unique, immutable id per call", () => {

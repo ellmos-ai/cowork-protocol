@@ -7,6 +7,7 @@
 
 import {
   buildFormSchema,
+  classificationDisplayName,
   classificationOf,
   createField,
   emptyBuilderState,
@@ -68,7 +69,7 @@ export function initBuilderStudio(root = document) {
     for (const entry of FIELD_TYPE_PALETTE) {
       const option = document.createElement("option");
       option.value = entry.paletteId;
-      option.textContent = entry.paletteId === "separator" ? "Divider line" : entry.defaultLabel || entry.paletteId;
+      option.textContent = entry.displayName;
       select.append(option);
     }
   }
@@ -90,14 +91,16 @@ export function initBuilderStudio(root = document) {
     // these are plain DOM attributes, not a protocol import.
     row.className = "builder-field-row form-field";
     row.dataset.fieldId = element.id;
-    row.dataset.label = element.label ?? element.type;
+    row.dataset.label = element.label || classificationDisplayName(classification);
     row.dataset.controlKind = classification;
 
     const head = document.createElement("div");
     head.className = "builder-field-row-head";
     const kind = document.createElement("span");
     kind.className = "builder-field-kind";
-    kind.textContent = element.type;
+    // GAP-08: never the raw schema typeString (e.g. "Textfeld (Lang)") - every
+    // long-answer field would otherwise show the identical badge text.
+    kind.textContent = classificationDisplayName(classification);
     head.append(kind);
     row.append(head);
 

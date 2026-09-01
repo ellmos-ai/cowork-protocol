@@ -20,10 +20,15 @@ export class FormBuilderError extends Error {
 // One palette entry per required Build-mode field type. `typeString` is the exact
 // upstream FormularErstellen type name so `classifyType()` recognizes it the same
 // way the real desktop app and the attributed engine already do.
+// `displayName` is a UI-only label (GAP-08): the German `typeString` is the
+// real formularerstellen-form-v1 schema value and stays exactly as-is for
+// compatibility with the upstream desktop app and classifyType() - only the
+// rendered kind badge and the Add-field palette use `displayName`.
 export const FIELD_TYPE_PALETTE = Object.freeze([
   {
     paletteId: "heading",
     typeString: "Überschrift H2",
+    displayName: "Heading",
     defaultLabel: "Section heading",
     category: "layout",
     hasOptions: false
@@ -31,6 +36,7 @@ export const FIELD_TYPE_PALETTE = Object.freeze([
   {
     paletteId: "description",
     typeString: "Beschreibung",
+    displayName: "Description",
     defaultLabel: "Add helpful context for this section.",
     category: "layout",
     hasOptions: false
@@ -38,6 +44,7 @@ export const FIELD_TYPE_PALETTE = Object.freeze([
   {
     paletteId: "text-short",
     typeString: "Textfeld (Kurz)",
+    displayName: "Short answer",
     defaultLabel: "Short answer",
     category: "input",
     hasOptions: false
@@ -45,6 +52,7 @@ export const FIELD_TYPE_PALETTE = Object.freeze([
   {
     paletteId: "text-long",
     typeString: "Textfeld (Lang)",
+    displayName: "Long answer",
     defaultLabel: "Long answer",
     category: "input",
     hasOptions: false
@@ -52,6 +60,7 @@ export const FIELD_TYPE_PALETTE = Object.freeze([
   {
     paletteId: "date",
     typeString: "Datumsauswahl",
+    displayName: "Date",
     defaultLabel: "Date",
     category: "input",
     hasOptions: false
@@ -59,6 +68,7 @@ export const FIELD_TYPE_PALETTE = Object.freeze([
   {
     paletteId: "checkbox-single",
     typeString: "Checkbox (Single)",
+    displayName: "Choose one",
     defaultLabel: "Choose one",
     category: "input",
     hasOptions: true
@@ -66,6 +76,7 @@ export const FIELD_TYPE_PALETTE = Object.freeze([
   {
     paletteId: "checkbox-multi",
     typeString: "Checkbox (Multi)",
+    displayName: "Choose any",
     defaultLabel: "Choose any",
     category: "input",
     hasOptions: true
@@ -73,6 +84,7 @@ export const FIELD_TYPE_PALETTE = Object.freeze([
   {
     paletteId: "separator",
     typeString: "Trennlinie",
+    displayName: "Divider",
     defaultLabel: "",
     category: "layout",
     hasOptions: false
@@ -81,6 +93,29 @@ export const FIELD_TYPE_PALETTE = Object.freeze([
 
 const PALETTE_BY_ID = new Map(FIELD_TYPE_PALETTE.map((entry) => [entry.paletteId, entry]));
 const HEADING_LEVEL_TYPES = { 1: "Überschrift H1", 2: "Überschrift H2" };
+
+// classifyType() distinguishes heading-h1/heading-h2 (two classifications,
+// one palette entry), so the kind-badge lookup is keyed by classification,
+// not by paletteId.
+const DISPLAY_NAME_BY_CLASSIFICATION = Object.freeze({
+  "heading-h1": "Heading",
+  "heading-h2": "Heading",
+  description: "Description",
+  "text-short": "Short answer",
+  "text-long": "Long answer",
+  date: "Date",
+  "checkbox-single": "Choose one",
+  "checkbox-multi": "Choose any",
+  separator: "Divider"
+});
+
+/** The human-readable kind name for a field (GAP-08): never the raw German
+ *  typeString the schema uses internally. Falls back to the classification
+ *  itself for anything unrecognized rather than throwing, since this is a
+ *  display concern, not a validation one. */
+export function classificationDisplayName(classification) {
+  return DISPLAY_NAME_BY_CLASSIFICATION[classification] ?? classification;
+}
 
 // Sanity: every palette entry must classify to a real, distinct classification so
 // the Build palette and the Fill renderer always agree with form-engine.mjs.

@@ -170,6 +170,22 @@ try {
   const afterAdd = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
   requireCondition(afterAdd === 1, `Expected one field row after Add, got ${afterAdd}`);
 
+  // --- GAP-08: the kind badge shows a display name, never the raw German
+  // schema typeString every field of the same kind would otherwise share. ---
+  const kindBadgeText = await evaluateValue(call, `document.querySelector(".builder-field-kind").textContent`);
+  requireCondition(
+    kindBadgeText === "Short answer",
+    `Expected the kind badge to show a display name, got: ${kindBadgeText}`
+  );
+  const paletteOptionText = await evaluateValue(
+    call,
+    `document.querySelector('#builder-field-type option[value="text-long"]').textContent`
+  );
+  requireCondition(
+    paletteOptionText === "Long answer",
+    `Expected the palette option to show a display name, got: ${paletteOptionText}`
+  );
+
   await dispatchTrustedClick(call, "#builder-tab-build");
   await evaluateValue(call, `(() => {
     const helpInput = document.querySelector('.builder-field-row input[aria-label^="Help text"]');
