@@ -67,6 +67,13 @@ import { replyToShowcaseTurn } from "./local-conversation.js";
 const SESSION_ID = "formbuilder-showcase";
 const EMBEDDED_SURFACE_ID = "formbuilder:embedded";
 const DETACHED_SURFACE_ID = "formbuilder:document-pip";
+// This demo lease is intentionally fixed (one focused field, a short window)
+// - it is the fixed-form counterpart to the Builder's own configurable
+// Delegate dialog (goal/call-budget/duration as human inputs), not the same
+// mechanism. Named here, once, so the microcopy describing it (GAP-04
+// microcopy) can never drift from what it actually grants.
+const LEASE_MAX_CALLS = 2;
+const LEASE_DURATION_MS = 120_000;
 const integrationDeclaration = createProtocolHostDeclaration({
   hostId: "formbuilder-showcase",
   transports: ["webmcp"],
@@ -79,6 +86,11 @@ coworkPanel.before(panelHomeMarker);
 
 const $ = (selector) =>
   document.querySelector(selector) ?? coworkPanel.querySelector(selector);
+// GAP-04 microcopy: describe the real configured lease, not a string that
+// could silently drift from LEASE_MAX_CALLS/LEASE_DURATION_MS above.
+$("#lease-microcopy").textContent =
+  `This field-scoped demo lease lasts ${Math.round(LEASE_DURATION_MS / 60_000)} minutes, permits at most ${LEASE_MAX_CALLS} attempts, and ends after a verified page change. ` +
+  `The Builder's own delegation (Build tab) lets you set your own call budget and duration.`;
 const fields = [...document.querySelectorAll(".form-field[data-field-id]")];
 const schemaFields = new Map(
   SHOWCASE_SCHEMA.form.elements.map((field) => [field.id, field])
@@ -1152,13 +1164,18 @@ function startAway(duration, { authorizeDelegated = false } = {}) {
   const now = Date.now();
   const lease = {
     leaseId: `lease-${now}`,
+    // GAP-01: a lease is a delegation grant now, not merely a scoped
+    // capability list - authorizeSoloAction() requires a real human origin.
+    // startAway() is reachable only from a real button/actor click, never
+    // synthetically, so "human-click" is accurate here.
+    origin: "human-click",
     goal,
     allowedCapabilityIds: focusPacket.capabilityIds.filter((id) => id !== "form.explain_field"),
     allowedTargetIds: [focusPacket.targetId],
-    maxCalls: 2,
+    maxCalls: LEASE_MAX_CALLS,
     maxContextLevel: 2,
     pageVersion,
-    expiresAt: new Date(now + 120_000).toISOString()
+    expiresAt: new Date(now + LEASE_DURATION_MS).toISOString()
   };
   leaseCallsUsed = 0;
   commitSession(

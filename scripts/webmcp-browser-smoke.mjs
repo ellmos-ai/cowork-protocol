@@ -638,6 +638,55 @@ try {
       mutationError
     };
   })()`);
+  // --- Solo lease + cowork_execute_solo/cowork_read_presence: neither tool
+  // was previously exercised in this smoke. Added specifically to prove the
+  // GAP-01 delegation-grant change (authorizeSoloAction() now checks the
+  // grant's own human origin instead of humanPresence) did not silently
+  // break the pre-existing fixed-form AFK lease it also governs. ---
+  await evaluateValue(call, `(() => {
+    document.querySelector('[data-field-id="email"]')
+      .dispatchEvent(new PointerEvent("pointerenter", { bubbles: true }));
+  })()`);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  await evaluateValue(call, `(() => {
+    const select = document.querySelector("#action-mode");
+    select.value = "delegated";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
+  await dispatchTrustedClick(call, 'document.querySelector("#away-short")', "Briefly away, granting a solo lease");
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const presenceExecution = await evaluateValue(
+    call,
+    toolExecutionExpression("cowork_read_presence", {})
+  );
+  const soloExecution = await evaluateValue(
+    call,
+    toolExecutionExpression("cowork_execute_solo", {
+      capabilityId: "form.set_value",
+      targetId: "form-field:email",
+      value: "lukas@example.com"
+    })
+  );
+  const soloObserved = await evaluateValue(call, `(() => ({
+    emailValueAfterSolo: document.querySelector("#email")?.value
+  }))()`);
+  await dispatchTrustedClick(call, 'document.querySelector("#return-human")', "Return from the solo lease");
+  observed.presenceExecution = presenceExecution;
+  observed.soloExecution = { ...soloExecution, ...soloObserved };
+  if (presenceExecution.packet?.effectiveMode !== "agent-solo") {
+    throw new Error(
+      `cowork_read_presence did not report agent-solo under the active lease: ${JSON.stringify(presenceExecution)}`
+    );
+  }
+  if (
+    soloExecution.packet?.status !== "verified" ||
+    soloObserved.emailValueAfterSolo !== "lukas@example.com"
+  ) {
+    throw new Error(
+      `cowork_execute_solo did not verify a real solo-lease action: ${JSON.stringify({ soloExecution, soloObserved })}`
+    );
+  }
+
   const summary = validateNativeWebMcpObservation(observed);
   const conversationSummary = validateConversationObservation(conversationObserved);
   const bridgeSummary = validateBrowserHostBridgeObservation(bridgeObserved);
@@ -649,7 +698,10 @@ try {
     bridge: bridgeSummary,
     zoom: zoomSummary,
     hostTokenClaim: false,
-    toolNames: observed.toolNames
+    toolNames: observed.toolNames,
+    agentSoloLeaseClaim: true,
+    presenceReportedEffectiveMode: presenceExecution.packet?.effectiveMode,
+    soloExecutionStatus: soloExecution.packet?.status
   }, null, 2));
   socket.close();
 } finally {
