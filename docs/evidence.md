@@ -22,6 +22,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | A human utterance under an active grant authorizes an action directly (GAP-02) | `packages/core/test/directive-authorization.test.js`; `apps/formbuilder-showcase/test/builder-delegation.test.js`; `npm run smoke:builder` | `authorizeActionOffer()` accepts `origin: "human-utterance"` only with a grant that covers the exact capability/target and has not expired; an agent can never claim this origin; Chrome proved a recognized spoken phrase ("make it required") applying with no offer chip and no second click |
 | A bounded return-from-handover summary and multi-field highlight exist (GAP-03) | `packages/core/test/handover-delta.test.js`; `apps/formbuilder-showcase/test/builder-delegation.test.js`; `npm run smoke:builder` | `createHandoverDeltaSummary()` caps target ids at 12 (de-duplicated) with a 350-character summary; `buildFocusSet()` highlights up to 12 targets at once, separate from the existing single-target focus lens; Chrome's "I'm back" click narrated "3 fields added" and highlighted exactly those 3 rows via a new `.is-new-since-handover` style |
 | The Builder canvas has a container-scoped solo/delegation path (GAP-04) | `packages/formbuilder-connector/test/builder-solo.test.js`; `apps/formbuilder-showcase/test/builder-delegation.test.js`; `npm run smoke:builder` | `planSoloBuilderFieldMutation()` plus a Delegate dialog (goal/call-budget/duration as human inputs, not fixed constants) let a grant add up to 12 fields in one window instead of the old fixed 2-call/120-second lease; Chrome added exactly 3 fields under a 3-call grant with 0 clicks |
+| The model watches and comments on a human's own change, only while advising (GAP-06) | `apps/formbuilder-showcase/test/advisor-comment.test.js`; `npm run smoke:webmcp` | `adviseCommentForHumanChange()` fires only for a human-sourced ChangeEvent in Explain mode with an active agent, never for an agent-caused change, never while paused, and never on silence/an unchanged value (`change` stays null); latest-only by construction (a single overwritten variable, not a list). No offer, no action - a silent, non-interactive panel line, so the interactive-control baseline is unaffected. Chrome confirmed the comment appears naming the changed field and hides live the moment Explain mode ends |
 | The session enters an explicit awaiting-feedback state after a directive or a returned batch (GAP-05) | `apps/formbuilder-showcase/test/builder-delegation.test.js`; `packages/evals/test/juror-proof.test.js`; `npm run smoke:builder` | A verified directive or a batch return with touched fields sets `awaitingFeedback`; only a real feedback click (`accepted\|rejected\|revise`, `packages/core`'s existing verdict vocabulary) clears it; Chrome proved both the single-directive and whole-batch cases resolving via a real click |
 | WebMCP Bridge is bounded and fail-closed | `packages/bridge/test/webmcp-bridge.test.js`; Chrome 152 browser-host fixture in `npm run smoke:webmcp` | Two host-supplied capabilities, two reads, 1,200-character preview and offer-only mutation proven in-browser; unrelated live-site discovery open |
 | Adaptive runtime selects the strongest supplied layer | `packages/bridge/test/runtime.test.js`; `npm run demo:adapter` | Native → generic WebMCP → legacy-host selection and fail-closed exhaustion proven with host fixtures; no browser-wide discovery claim |
@@ -281,6 +282,50 @@ did not introduce overflow) and `smoke:contrast` (0 unsupported/failing)
 all Chrome-verified green; `smoke:builder`, `smoke:surface`,
 `smoke:model-host`, `smoke:companion`, `smoke:companion-native` and
 `smoke:companion-cockpit` reconfirmed unaffected.
+
+A final, deliberately small pass (commit `59758a9`) closed GAP-06 - "Rolle
+3: Modell als Beobachter und Kommentator" - as a real product capability, not
+only the story's role model: while a human is present and working and the
+agent is only advising (Explain mode), a human-caused ChangeEvent may draw
+exactly one silent, bounded comment. `advisor-comment.js` is a new, pure,
+disclosed heuristic in the same family as `local-conversation.js` and
+`builder-directive-classifier.js` - not a claim of language understanding -
+built test-first (10 tests written and confirmed red before the
+implementation existed, then green): it fires only for `change.source ===
+"human"`, only in `explain` mode, never while `agentPresence === "paused"`,
+never for silence or an unchanged value (the caller never even constructs a
+`ChangeEvent` for those), and is bounded at 350 characters like every other
+Cowork-adjacent text. The comment names the changed field and states whether
+it is required, and for a required field names how many *other* required
+fields are still empty - a pattern derived directly from the existing schema
+and value state, not invented text. `app.js` stores it in a single
+overwritten variable (latest-only by construction, not a list) and
+`render()` gates its visibility live on the *current* mode/presence, so
+leaving Explain mode or pausing the agent hides an already-shown comment
+immediately, not only future ones. It renders as one non-interactive `<p>`
+reusing the existing `.microcopy` styling with the transcript's quiet
+left-border treatment - no offer, no button, no new AX control, so the
+interactive-control baseline stays exactly 41. `smoke:webmcp` gained a real
+Chrome check: switching to Explain mode and editing a field shows the exact
+comment naming that field, and switching away hides it live in the same
+render pass, with no fixed delay between the two assertions.
+
+While extending `smoke:builder` for this pass, two consecutive runs failed
+early (`Cannot set properties of null`, then `Expected one field row after
+Add, got 0`) immediately after its fixed 800ms post-navigation wait, then
+passed on retry - a pattern distinct from the earlier `smoke:companion-cockpit`
+retry, and specifically isolated before proceeding rather than assumed away:
+neither failure touched code this pass changed (GAP-06 lives entirely in the
+fixed demo form's flow, not the Builder's own init sequence), and three
+further runs failed twice more at the exact same point. The smoke's fixed
+delay was replaced with `waitForExpression()` (already used elsewhere in this
+repo, e.g. `pixel-contrast-browser-smoke.mjs`) polling for
+`document.readyState === "complete" && document.querySelector("#builder-add-field")
+!== null` instead of guessing a duration; three consecutive runs then passed
+cleanly. This is recorded as a smoke-script robustness fix, not a GAP-06 code
+change, and is not claimed as a definitive root-cause diagnosis of the
+underlying timing sensitivity - only as the fix that resolved the observed
+flakiness in this environment.
 
 ## Explicitly not yet evidenced
 
