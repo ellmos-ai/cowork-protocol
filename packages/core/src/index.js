@@ -693,12 +693,29 @@ export function createFeedbackEvent(input) {
   };
 }
 
-export function authorizeActionOffer({ offer, event, now }) {
-  if (event.origin !== "human-click") {
+/**
+ * Authorizes an offer from a real human click, or (GAP-02) from a real human
+ * utterance made under an active delegation grant - "the words are the
+ * click." Every other binding (exact offer id/target, current page version,
+ * exact proposed value) is identical either way; only the trust anchor
+ * differs, and that trade-off is deliberate, not accidental: a click proves
+ * the human saw the exact rendered value before it was applied, while an
+ * utterance proves a real, present human currently trusts the model with
+ * this capability, without a second confirmation for each individual value.
+ * `grant` is required and validated only for the utterance path; the click
+ * path is completely unchanged from before this parameter existed.
+ */
+export function authorizeActionOffer({ offer, event, now, grant = null }) {
+  const validOrigin =
+    event.origin === "human-click" || (event.origin === "human-utterance" && grant !== null);
+  if (!validOrigin) {
     throw new CoworkProtocolError(
       "HUMAN_CONFIRMATION_REQUIRED",
-      "Only a visible human click can authorize this offer"
+      "Only a visible human click, or a human utterance under an active delegation grant, can authorize this offer"
     );
+  }
+  if (event.origin === "human-utterance") {
+    assertGrantCoversOffer(grant, offer, now);
   }
   const authorizationTime = Date.parse(now);
   const offerExpiry = Date.parse(offer.expiresAt);
@@ -730,10 +747,11 @@ export function authorizeActionOffer({ offer, event, now }) {
     protocolVersion: "0.1",
     type: "action-authorization",
     offerId: offer.offerId,
-    authorizationSource: "human-click",
+    authorizationSource: event.origin === "human-utterance" ? "human-utterance" : "human-click",
     authorizedArgumentsDigest,
     pageVersion: offer.pageVersion,
-    expiresAt: offer.expiresAt
+    expiresAt: offer.expiresAt,
+    ...(event.origin === "human-utterance" ? { grantId: grant.grantId } : {})
   };
 }
 
