@@ -224,40 +224,44 @@ function assertNonEmptyString(value, message) {
   }
 }
 
-/**
- * Verifies a human-authorized offer against the current builder field list and
- * returns a plan describing exactly one structural operation to apply. This
- * function only validates and describes the operation; the caller (the app,
- * which owns the field-list model) applies it and verifies the result, the
- * same separation `planAuthorizedFormBuilderMutation` uses for value changes.
- */
-export function planAuthorizedBuilderFieldMutation({ offer, authorization, currentElements }) {
-  if (!BUILDER_CAPABILITY_IDS.has(offer.capabilityId)) {
+function assertBuilderCapabilityKnown(capabilityId) {
+  if (!BUILDER_CAPABILITY_IDS.has(capabilityId)) {
     throw new CoworkProtocolError(
       "CAPABILITY_UNAVAILABLE",
-      `Capability cannot mutate the FormBuilder canvas: ${offer.capabilityId}`
+      `Capability cannot mutate the FormBuilder canvas: ${capabilityId}`
     );
   }
-  if (CANVAS_ONLY_CAPABILITY_IDS.has(offer.capabilityId)) {
-    if (offer.targetId !== BUILDER_CANVAS_TARGET_ID) {
+}
+
+function assertBuilderTargetMatchesCapability(capabilityId, targetId, proposedArguments) {
+  if (CANVAS_ONLY_CAPABILITY_IDS.has(capabilityId)) {
+    if (targetId !== BUILDER_CANVAS_TARGET_ID) {
       throw new CoworkProtocolError("STALE_FOCUS", "form-add-field must target the form canvas");
     }
-  } else if (typeof offer.proposedArguments?.fieldId !== "string" ||
-    offer.targetId !== builderFieldTargetId(offer.proposedArguments.fieldId)) {
+    return;
+  }
+  if (
+    typeof proposedArguments?.fieldId !== "string" ||
+    targetId !== builderFieldTargetId(proposedArguments.fieldId)
+  ) {
     throw new CoworkProtocolError(
       "STALE_FOCUS",
       "This capability must target the exact addressable field it names"
     );
   }
-  assertBuilderAuthorizationMatchesOffer(offer, authorization);
+}
+
+/** The part of the plan that is identical whether a human click authorized it
+ *  (planAuthorizedBuilderFieldMutation) or a delegation grant did
+ *  (planSoloBuilderFieldMutation): what operation the arguments describe
+ *  against the current field list, independent of how it was authorized. */
+function computeBuilderMutationPlan(capabilityId, args, currentElements) {
+  assertPlainObject(args, "Builder mutation arguments must be an object");
   if (!Array.isArray(currentElements)) {
     throw new CoworkProtocolError("INVALID_ARGUMENTS", "Current builder elements must be a list");
   }
 
-  const args = offer.proposedArguments;
-  assertPlainObject(args, "Builder mutation arguments must be an object");
-
-  if (offer.capabilityId === "form-add-field") {
+  if (capabilityId === "form-add-field") {
     const field = args.field;
     assertPlainObject(field, "form-add-field requires a field object");
     assertNonEmptyString(field.id, "form-add-field requires a stable field id");
@@ -269,10 +273,10 @@ export function planAuthorizedBuilderFieldMutation({ offer, authorization, curre
     if (!Number.isInteger(index) || index < 0 || index > currentElements.length) {
       throw new CoworkProtocolError("INVALID_ARGUMENTS", "form-add-field index is out of range");
     }
-    return { operation: "add-field", field, index, undoAvailable: offer.undoAvailable };
+    return { operation: "add-field", field, index };
   }
 
-  if (offer.capabilityId === "form-update-field") {
+  if (capabilityId === "form-update-field") {
     assertNonEmptyString(args.fieldId, "form-update-field requires a fieldId");
     assertPlainObject(args.patch, "form-update-field requires a patch object");
     if (Object.hasOwn(args.patch, "id") || Object.hasOwn(args.patch, "type")) {
@@ -281,12 +285,7 @@ export function planAuthorizedBuilderFieldMutation({ offer, authorization, curre
     if (!currentElements.some((element) => element.id === args.fieldId)) {
       throw new CoworkProtocolError("STALE_FOCUS", `Field no longer exists: ${args.fieldId}`);
     }
-    return {
-      operation: "update-field",
-      fieldId: args.fieldId,
-      patch: args.patch,
-      undoAvailable: offer.undoAvailable
-    };
+    return { operation: "update-field", fieldId: args.fieldId, patch: args.patch };
   }
 
   // form-move-field
@@ -305,10 +304,59 @@ export function planAuthorizedBuilderFieldMutation({ offer, authorization, curre
       "form-move-field cannot move past the canvas boundary"
     );
   }
-  return {
-    operation: "move-field",
-    fieldId: args.fieldId,
-    direction: args.direction,
-    undoAvailable: offer.undoAvailable
-  };
+  return { operation: "move-field", fieldId: args.fieldId, direction: args.direction };
+}
+
+/**
+ * Verifies a human-authorized offer against the current builder field list and
+ * returns a plan describing exactly one structural operation to apply. This
+ * function only validates and describes the operation; the caller (the app,
+ * which owns the field-list model) applies it and verifies the result, the
+ * same separation `planAuthorizedFormBuilderMutation` uses for value changes.
+ */
+export function planAuthorizedBuilderFieldMutation({ offer, authorization, currentElements }) {
+  assertBuilderCapabilityKnown(offer.capabilityId);
+  assertBuilderTargetMatchesCapability(offer.capabilityId, offer.targetId, offer.proposedArguments);
+  assertBuilderAuthorizationMatchesOffer(offer, authorization);
+  const plan = computeBuilderMutationPlan(offer.capabilityId, offer.proposedArguments, currentElements);
+  return { ...plan, undoAvailable: offer.undoAvailable };
+}
+
+/**
+ * The GAP-04 counterpart to planAuthorizedBuilderFieldMutation: authorizes a
+ * structural builder edit through a presence-independent delegation grant
+ * (GAP-01's authorizeSoloAction) instead of a human click on a rendered
+ * offer. Used both for a model working through a container-scoped grant
+ * while the human is away, and - reused unchanged - for a directive spoken
+ * while the human stays present (GAP-02 supplies `lease` from an active
+ * grant either way). `targetId` must still name the exact canvas or field
+ * target the grant was scoped to; `authorizeSoloAction` separately checks
+ * that against `lease.allowedTargetIds`.
+ */
+export function planSoloBuilderFieldMutation({
+  lease,
+  now,
+  humanPresence,
+  agentPresence,
+  capabilityId,
+  targetId,
+  pageVersion,
+  callsUsed,
+  proposedArguments,
+  currentElements
+}) {
+  assertBuilderCapabilityKnown(capabilityId);
+  assertBuilderTargetMatchesCapability(capabilityId, targetId, proposedArguments);
+  const authorization = authorizeSoloAction({
+    lease,
+    now,
+    humanPresence,
+    agentPresence,
+    capabilityId,
+    targetId,
+    pageVersion,
+    callsUsed
+  });
+  const plan = computeBuilderMutationPlan(capabilityId, proposedArguments, currentElements);
+  return { authorization, ...plan, undoAvailable: true };
 }

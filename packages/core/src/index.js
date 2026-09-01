@@ -247,6 +247,90 @@ export function buildFocusPacket(input) {
   };
 }
 
+/**
+ * A focus SET highlights several targets at once - used only for the bounded
+ * handover-return moment (GAP-03), never as a general multi-focus mechanism.
+ * `buildFocusPacket` above stays the one-target lens for everyday attention;
+ * this exists because a returning human needs "these six fields are new," not
+ * a page dump, and the existing single-target focus literally cannot express
+ * more than one id. Capped at the same 12 targets as the handover delta below
+ * so the two stay consistent with each other.
+ */
+export function buildFocusSet(input) {
+  if (!Array.isArray(input.targetIds) || input.targetIds.length === 0) {
+    throw new CoworkProtocolError("STALE_FOCUS", "A focus set needs at least one target");
+  }
+  if (input.targetIds.length > HANDOVER_DELTA_TARGET_LIMIT) {
+    throw new CoworkProtocolError(
+      "CONTEXT_BUDGET_EXCEEDED",
+      `A focus set is capped at ${HANDOVER_DELTA_TARGET_LIMIT} targets`
+    );
+  }
+  const label = truncateWithEllipsis(
+    typeof input.label === "string" ? input.label : "",
+    FOCUS_TEXT_LIMIT
+  );
+  return {
+    protocolVersion: "0.1",
+    type: "focus-set",
+    sessionId: input.sessionId,
+    source: "handover-return",
+    pageVersion: input.pageVersion,
+    targetIds: [...input.targetIds],
+    label,
+    capabilityIds: Array.isArray(input.capabilityIds) ? [...input.capabilityIds] : []
+  };
+}
+
+/**
+ * A bounded session-delta readback for the moment a human returns from a
+ * delegation grant (GAP-03): "what changed while I was away," capped exactly
+ * like every other Cowork lens instead of dumping the whole session. This is
+ * intentionally separate from the always-on latest-only change/feedback
+ * lenses (D-20260830-008): those stay latest-only for the *running* session;
+ * this is a one-time summary scoped strictly to one ended grant's window, so
+ * the token-economy argument for latest-only elsewhere is not reopened.
+ */
+export function createHandoverDeltaSummary(input) {
+  if (typeof input.leaseId !== "string" || input.leaseId.length === 0) {
+    throw new CoworkProtocolError(
+      "LEASE_SCOPE_VIOLATION",
+      "A handover delta requires the id of the grant/lease that ended"
+    );
+  }
+  const seen = new Set();
+  const targetIds = [];
+  for (const targetId of Array.isArray(input.targetIds) ? input.targetIds : []) {
+    if (typeof targetId !== "string" || targetId.length === 0 || targetId.length > 200) {
+      throw new CoworkProtocolError("CONTEXT_BUDGET_EXCEEDED", "Handover delta target ids are malformed");
+    }
+    if (seen.has(targetId)) continue;
+    seen.add(targetId);
+    targetIds.push(targetId);
+  }
+  const includedTargetIds = targetIds.slice(0, HANDOVER_DELTA_TARGET_LIMIT);
+  const summary = truncateWithEllipsis(
+    typeof input.summary === "string" ? input.summary : "",
+    HANDOVER_DELTA_SUMMARY_LIMIT
+  );
+  return {
+    protocolVersion: "0.1",
+    type: "handover-delta",
+    leaseId: input.leaseId,
+    targetIds: includedTargetIds,
+    omittedTargetCount: Math.max(0, targetIds.length - includedTargetIds.length),
+    summary,
+    verifiedCount: Number.isInteger(input.verifiedCount) ? input.verifiedCount : 0,
+    failedCount: Number.isInteger(input.failedCount) ? input.failedCount : 0,
+    metrics: {
+      totalTargetCount: targetIds.length,
+      includedTargetCount: includedTargetIds.length,
+      summaryCharacters: (typeof input.summary === "string" ? input.summary : "").length,
+      summaryIncludedCharacters: summary.length
+    }
+  };
+}
+
 export function resolvePresenceMode({ humanPresence, agentPresence, leaseValid }) {
   if (!HUMAN_PRESENCE_VALUES.has(humanPresence)) {
     throw new CoworkProtocolError(
