@@ -265,7 +265,9 @@ try {
 
   const { nodes } = await call("Accessibility.getFullAXTree");
   // "tab" was added for FormBuilder Studio's Build/Fill/Export role="tab" buttons.
-  const interactiveRoles = new Set(["button", "checkbox", "combobox", "link", "tab", "textbox"]);
+  // "spinbutton" was added for the Delegate dialog's <input type="number">
+  // call-budget/duration fields (Chrome's AX role for a number input).
+  const interactiveRoles = new Set(["button", "checkbox", "combobox", "link", "spinbutton", "tab", "textbox"]);
   observation.axInteractiveNodes = nodes
     .filter(
       (node) =>

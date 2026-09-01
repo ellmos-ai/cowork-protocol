@@ -243,6 +243,13 @@ textarea { resize: vertical; }
 .receipt-list li strong { color: var(--ink); }
 .receipt-list li.receipt-failed strong { color: var(--red); }
 .feedback-controls { display: grid; gap: .45rem; margin-top: .55rem; }
+/* The main demo's .feedback-controls are only ever created when needed and
+   removed afterward, so they never combine with [hidden]. builder-cowork-ui.js
+   reuses this class on a persistent, hidden/shown element instead - without
+   this, the class's own `display: grid` (an author rule) would outrank the
+   browser's default `[hidden] { display: none }` UA rule regardless of the
+   hidden attribute being set. */
+.feedback-controls[hidden] { display: none; }
 .feedback-controls input { min-height: 2.15rem; padding: .48rem .6rem; font-size: .72rem; }
 .feedback-buttons { display: flex; flex-wrap: wrap; gap: .35rem; }
 .feedback-buttons button {
@@ -351,6 +358,22 @@ textarea { resize: vertical; }
   background: #fff0eb;
 }
 .primary-action { color: white; background: var(--formbuilder-violet); box-shadow: 0 9px 22px rgba(89,72,200,.22); }
+
+/* GAP-03: several fields highlighted at once on return from a delegation
+   grant - distinct from is-focused (one lens) and is-model-working (one
+   active call) since a handover delta can name up to twelve fields together. */
+.form-field.is-new-since-handover {
+  border-color: var(--gold);
+  background: #fffaf0;
+  box-shadow: 0 0 0 3px rgba(228,189,80,.28), 0 0 20px rgba(228,189,80,.28);
+}
+.form-field.is-new-since-handover::before {
+  border-color: rgba(180,132,16,.4);
+  content: "✦ New";
+  color: #6b4e05;
+  background: #fff5da;
+}
+.builder-return-narration { padding: .7rem; border-left: 2px solid var(--gold); background: rgba(228,189,80,.1); }
 
 .cowork-panel {
   position: sticky;

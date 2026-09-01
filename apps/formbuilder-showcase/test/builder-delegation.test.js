@@ -85,13 +85,64 @@ test("runSoloBatch adds up to six fields in one grant - the old fixed two-call l
     nextField: (index) => createField("text-short", { label: questions[index] }),
     elements: [],
     humanPresence: "afk-short",
-    currentPageVersion: 1,
     now: "2026-09-01T10:00:01.000Z"
   });
   assert.equal(elements.length, 6);
   assert.equal(results.length, 6);
   assert.ok(results.every((result) => result.receipt.status === "verified"));
   assert.equal(bridge.hasActiveGrant("2026-09-01T10:00:02.000Z"), true); // budget spent, but grant not yet ended
+});
+
+test("a grant's own successive verified calls do not trip page-version staleness, but an outside change still does", () => {
+  const bridge = createBuilderCoworkBridge();
+  bridge.startDelegation({
+    origin: "human-click",
+    goal: "Draft two questions",
+    maxCalls: 3,
+    durationMs: 120_000,
+    pageVersion: 1,
+    now: "2026-09-01T10:00:00.000Z"
+  });
+  // A caller that tracks its own live page version, incrementing it after
+  // each of this grant's own successful calls - exactly what
+  // builder-view.js's real controller.getPageVersion() does.
+  let livePageVersion = 1;
+  const first = bridge.soloExecute({
+    field: createField("text-short", { label: "Q1" }),
+    elements: [],
+    humanPresence: "afk-short",
+    currentPageVersion: livePageVersion,
+    now: "2026-09-01T10:00:01.000Z"
+  });
+  assert.equal(first.receipt.status, "verified");
+  livePageVersion += 1;
+  // The second call, right after the first, must succeed: this grant's own
+  // prior success advancing the page is not staleness.
+  const second = bridge.soloExecute({
+    field: createField("text-short", { label: "Q2" }),
+    elements: first.elements,
+    humanPresence: "afk-short",
+    currentPageVersion: livePageVersion,
+    now: "2026-09-01T10:00:02.000Z"
+  });
+  assert.equal(second.receipt.status, "verified");
+  assert.equal(second.elements.length, 2);
+
+  // Now something *else* changes the page outside this grant's own actions
+  // (the human edited a field, say) - the caller's live version jumps ahead
+  // of what this grant expects, and the next solo call must fail closed.
+  livePageVersion += 5;
+  assert.throws(
+    () =>
+      bridge.soloExecute({
+        field: createField("text-short", { label: "Q3" }),
+        elements: second.elements,
+        humanPresence: "afk-short",
+        currentPageVersion: livePageVersion,
+        now: "2026-09-01T10:00:03.000Z"
+      }),
+    { name: "CoworkProtocolError", code: "STALE_PAGE_VERSION" }
+  );
 });
 
 test("runSoloBatch stops at the grant's call budget instead of running unbounded", () => {
@@ -109,7 +160,6 @@ test("runSoloBatch stops at the grant's call budget instead of running unbounded
     nextField: (index) => createField("text-short", { label: `Q${index}` }),
     elements: [],
     humanPresence: "afk-short",
-    currentPageVersion: 1,
     now: "2026-09-01T10:00:01.000Z"
   });
   assert.equal(elements.length, 2);
@@ -133,7 +183,6 @@ test("endDelegation returns a capped delta plus a focus set naming every field t
     nextField: (index) => createField("text-short", { label: `Q${index}` }),
     elements: [],
     humanPresence: "afk-short",
-    currentPageVersion: 1,
     now: "2026-09-01T10:00:01.000Z"
   });
   const { delta, focusSet } = bridge.endDelegation({ pageVersion: 1, now: "2026-09-01T10:02:00.000Z" });
@@ -143,6 +192,8 @@ test("endDelegation returns a capped delta plus a focus set naming every field t
   assert.ok(delta.summary.includes("3 fields added"));
   assert.deepEqual(focusSet.targetIds, elements.map((element) => builderFieldTargetId(element.id)));
   assert.equal(bridge.hasActiveGrant("2026-09-01T10:02:01.000Z"), false);
+  // GAP-05: a batch return also waits for a verdict on the whole batch.
+  assert.deepEqual(bridge.readAwaitingFeedback(), { offerId: delta.leaseId });
 });
 
 test("endDelegation with no fields touched returns a null focus set, not an empty one", () => {
@@ -158,6 +209,7 @@ test("endDelegation with no fields touched returns a null focus set, not an empt
   const { delta, focusSet } = bridge.endDelegation({ pageVersion: 1, now: "2026-09-01T10:00:01.000Z" });
   assert.equal(delta.targetIds.length, 0);
   assert.equal(focusSet, null);
+  assert.equal(bridge.readAwaitingFeedback(), null);
 });
 
 test("endDelegation fails closed when no grant is active", () => {

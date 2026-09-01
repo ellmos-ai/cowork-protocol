@@ -83,6 +83,10 @@ function cdpClient(socket) {
   const pending = new Map();
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
+    if (message.method === "Runtime.exceptionThrown") {
+      const description = message.params.exceptionDetails?.exception?.description ?? "";
+      console.error(`[page exception] ${description.split("\n")[0]}`);
+    }
     const request = pending.get(message.id);
     if (!request) return;
     pending.delete(message.id);
@@ -269,6 +273,61 @@ try {
   const offerChipsAfterClick = await evaluateValue(call, `document.querySelectorAll("#builder-offer-list .offer-chip").length`);
   requireCondition(offerChipsAfterClick === 0, "The applied offer must be resolved (removed), not still clickable");
 
+  // --- GAP-01/GAP-04: a presence-independent, container-scoped delegation
+  // that drafts several new fields in one grant - the old fixed two-call
+  // AFK-only lease could not do this at all. ---
+  const fieldsBeforeDelegation = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
+  await evaluateValue(call, `document.querySelector("#builder-delegate-max-calls").value = 3`);
+  await dispatchTrustedClick(call, "#builder-start-delegation");
+  const soloBatchHidden = await evaluateValue(call, `document.querySelector("#builder-solo-batch").hidden`);
+  requireCondition(soloBatchHidden === false, "Expected the solo-draft controls to appear once delegated");
+
+  await dispatchTrustedClick(call, "#builder-solo-batch");
+  await new Promise((resolve) => setTimeout(resolve, 2200)); // 3 steps at ~350ms apart, plus margin
+  const fieldsAfterBatch = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
+  requireCondition(
+    fieldsAfterBatch === fieldsBeforeDelegation + 3,
+    `Expected the solo batch to add exactly 3 fields under one grant, got ${fieldsBeforeDelegation} -> ${fieldsAfterBatch}`
+  );
+
+  // --- GAP-03: a bounded return narration plus a multi-field highlight. ---
+  await dispatchTrustedClick(call, "#builder-end-delegation");
+  const narrationText = await evaluateValue(call, `document.querySelector("#builder-return-narration").textContent`);
+  requireCondition(
+    narrationText.includes("3 fields added"),
+    `Expected the return narration to name the 3 added fields, got: ${narrationText}`
+  );
+  const highlightedCount = await evaluateValue(call, `document.querySelectorAll(".is-new-since-handover").length`);
+  requireCondition(highlightedCount === 3, `Expected exactly 3 fields highlighted as new, got ${highlightedCount}`);
+  const returnFeedbackVisible = await evaluateValue(call, `document.querySelector("#builder-return-feedback").hidden === false`);
+  requireCondition(returnFeedbackVisible, "Expected the return moment to wait for a feedback verdict (GAP-05)");
+
+  await dispatchTrustedClick(call, '#builder-return-feedback button[data-verdict="accepted"]');
+  const returnFeedbackResolved = await evaluateValue(call, `document.querySelector("#builder-return-feedback").hidden === true`);
+  requireCondition(returnFeedbackResolved, "Expected a real feedback click to resolve the awaiting-feedback state");
+
+  // --- GAP-02: a recognized human utterance on the pointed-at field
+  // authorizes directly - no offer chip, no second click. ---
+  const targetFieldId = await evaluateValue(call, `document.querySelector(".builder-field-row").dataset.fieldId`);
+  const targetPoint = await evaluateValue(call, `(() => {
+    const row = document.querySelector('.builder-field-row[data-field-id="${targetFieldId}"]');
+    const rect = row.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  })()`);
+  await call("Input.dispatchMouseEvent", { type: "mouseMoved", x: targetPoint.x, y: targetPoint.y });
+  await evaluateValue(call, `document.querySelector("#builder-directive-input").value = "make it required"`);
+  await dispatchTrustedClick(call, "#builder-directive-send");
+  const directiveRequired = await evaluateValue(
+    call,
+    `document.querySelector('.builder-field-row[data-field-id="${targetFieldId}"] input[type=checkbox]').checked`
+  );
+  requireCondition(directiveRequired, "Expected the spoken directive to apply with no offer and no second click");
+  const noOfferForDirective = await evaluateValue(call, `document.querySelectorAll("#builder-offer-list .offer-chip").length`);
+  requireCondition(noOfferForDirective === 0, "A directive must not create a clickable offer chip - the words are the click");
+  const awaitingFeedbackAfterDirective = await evaluateValue(call, `document.querySelector("#builder-return-feedback").hidden === false`);
+  requireCondition(awaitingFeedbackAfterDirective, "Expected the directive to also move the session into awaiting-feedback (GAP-05)");
+  await dispatchTrustedClick(call, '#builder-return-feedback button[data-verdict="accepted"]');
+
   // --- Native WebMCP tool count is unchanged: no new tool was introduced. ---
   const toolCountUnchanged = await evaluateValue(call, `(() => {
     if (!document.modelContext || typeof document.modelContext.getTools !== "function") return null;
@@ -283,6 +342,11 @@ try {
     builderSuggestionTargetsPointedAtFieldClaim: true,
     builderOfferInertBeforeClickClaim: true,
     builderReceiptVerifiedClaim: true,
+    presentDelegationClaim: true,
+    soloDraftBatchClaim: true,
+    handoverReturnHighlightClaim: true,
+    directiveNoSecondClickClaim: true,
+    awaitingFeedbackClaim: true,
     nativeToolCountUnchanged: toolCountUnchanged,
     browserVersion: (await waitForJson(`http://127.0.0.1:${debugPort}/json/version`)).Browser
   }, null, 2));

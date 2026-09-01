@@ -11,6 +11,7 @@ const PUBLIC_FILES = [
   "apps/formbuilder-showcase/src/app.js",
   "apps/formbuilder-showcase/src/builder-cowork.js",
   "apps/formbuilder-showcase/src/builder-cowork-ui.js",
+  "apps/formbuilder-showcase/src/builder-directive-classifier.js",
   "apps/formbuilder-showcase/src/builder-view.js",
   "apps/formbuilder-showcase/src/fodt-export.mjs",
   "apps/formbuilder-showcase/src/form-builder.mjs",

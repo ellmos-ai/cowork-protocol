@@ -18,7 +18,7 @@ function requireCondition(condition, message) {
 // the previous 25 (see apps/formbuilder-showcase/INTEGRATION.md and
 // docs/evidence.md); exported so scripts/test/webmcp-browser-smoke.test.js
 // does not hold its own copy of this number.
-export const CURRENT_INTERACTIVE_CONTROL_COUNT = 35;
+export const CURRENT_INTERACTIVE_CONTROL_COUNT = 41;
 
 function isNonNegativeInteger(value) {
   return Number.isInteger(value) && value >= 0;

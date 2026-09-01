@@ -89,6 +89,14 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
   let activeGrant = null;
   let callsUsedInGrant = 0;
   let targetsTouchedInGrant = [];
+  // Tracks the page version this grant's *own* successive solo calls expect
+  // next, separately from the grant's frozen `pageVersion` field. A solo
+  // batch's own verified calls advance the real page version each time,
+  // which is not staleness - it is this grant doing its job; a call from
+  // anything else changing the page unrelated to this grant still fails
+  // closed, because the caller-supplied live page version would then diverge
+  // from this tracked value.
+  let grantPageVersion = null;
   let awaitingFeedback = null; // GAP-05: { offerId } once a directive is verified, until a feedback verdict is recorded
 
   function focusFor({ pageVersion, fieldCount }) {
@@ -225,6 +233,7 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
     });
     callsUsedInGrant = 0;
     targetsTouchedInGrant = [];
+    grantPageVersion = pageVersion;
     return activeGrant;
   }
 
@@ -239,14 +248,20 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
     if (!activeGrant) {
       throw new CoworkProtocolError("LEASE_EXPIRED", "No delegation grant is active");
     }
+    // Compare against this grant's own tracked expectation, not its frozen
+    // creation-time pageVersion: this grant's own prior verified call already
+    // advanced the real page version, and that is not staleness (see the
+    // grantPageVersion declaration above for why).
+    const effectivePageVersion = currentPageVersion ?? grantPageVersion;
+    const leaseForThisCall = { ...activeGrant, pageVersion: grantPageVersion };
     const plan = planSoloBuilderFieldMutation({
-      lease: activeGrant,
+      lease: leaseForThisCall,
       now,
       humanPresence,
       agentPresence,
       capabilityId: "form-add-field",
       targetId: BUILDER_CANVAS_TARGET_ID,
-      pageVersion: currentPageVersion ?? activeGrant.pageVersion,
+      pageVersion: effectivePageVersion,
       callsUsed: callsUsedInGrant,
       proposedArguments: { field, ...(index === undefined ? {} : { index }) },
       currentElements: elements
@@ -259,12 +274,15 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
       observedChangeIds: [],
       verificationSummary: applied.verificationSummary,
       undoAvailable: plan.undoAvailable,
-      pageVersion: currentPageVersion ?? activeGrant.pageVersion
+      pageVersion: effectivePageVersion
     });
-    if (applied.verified && applied.touchedTargetId) {
-      targetsTouchedInGrant = [...targetsTouchedInGrant, builderFieldTargetId(applied.touchedTargetId)].slice(
-        -MAX_TARGETS_TOUCHED_TRACKED
-      );
+    if (applied.verified) {
+      grantPageVersion = effectivePageVersion + 1;
+      if (applied.touchedTargetId) {
+        targetsTouchedInGrant = [...targetsTouchedInGrant, builderFieldTargetId(applied.touchedTargetId)].slice(
+          -MAX_TARGETS_TOUCHED_TRACKED
+        );
+      }
     }
     receipts = [...receipts, receipt].slice(-MAX_RECEIPTS);
     return { elements: applied.elements, receipt, remainingCalls: plan.authorization.remainingCalls };
@@ -332,6 +350,10 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
     activeGrant = null;
     callsUsedInGrant = 0;
     targetsTouchedInGrant = [];
+    grantPageVersion = null;
+    // GAP-05: a batch return also waits for a verdict, referenced by the
+    // grant/lease id since there is no single offer for a whole batch.
+    awaitingFeedback = targetIds.length > 0 ? { offerId: grant.grantId } : null;
     return { delta, focusSet };
   }
 
