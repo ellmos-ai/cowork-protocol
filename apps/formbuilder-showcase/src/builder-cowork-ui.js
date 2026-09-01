@@ -4,7 +4,7 @@
 // initBuilderCoworkUi() once both pieces exist. See ../INTEGRATION.md.
 
 import { createField } from "./form-builder.mjs";
-import { createBuilderCoworkBridge } from "./builder-cowork.js";
+import { BUILDER_CANVAS_TARGET_ID, builderFieldTargetId, createBuilderCoworkBridge } from "./builder-cowork.js";
 
 const SUGGESTABLE_FIELDS = [
   { paletteId: "text-short", label: "Email address" },
@@ -28,6 +28,46 @@ function describeBuilderOffer(offer) {
 export function initBuilderCoworkUi({ root = document, controller }) {
   const $ = (selector) => root.querySelector(selector);
   const bridge = createBuilderCoworkBridge();
+  let focusedFieldId = null;
+
+  // --- GAP-00: an attention lens for one addressable builder field, not just
+  // the whole canvas. One delegated listener covers every row, including
+  // ones added or removed after this runs. ---
+  function setFocusedField(fieldId) {
+    focusedFieldId = fieldId;
+    for (const row of root.querySelectorAll("#builder-field-list .form-field")) {
+      row.classList.toggle("is-focused", row.dataset.fieldId === fieldId);
+    }
+    const target = fieldId
+      ? root.querySelector(`#builder-field-list .form-field[data-field-id="${CSS.escape(fieldId)}"]`)
+      : null;
+    $("#builder-focus-label").textContent = target
+      ? `Pointing at: ${target.dataset.label}`
+      : "Point to or select a builder field";
+  }
+
+  function focusedElement() {
+    if (!focusedFieldId) return null;
+    return controller.getElements().find((element) => element.id === focusedFieldId) ?? null;
+  }
+
+  function delegatedRowTarget(event) {
+    return event.target.closest(".form-field[data-field-id]");
+  }
+  // pointerover bubbles (unlike pointerenter), so one listener on the list
+  // container covers every row, including ones added or removed later.
+  $("#builder-field-list").addEventListener("pointerover", (event) => {
+    const row = delegatedRowTarget(event);
+    if (row) setFocusedField(row.dataset.fieldId);
+  });
+  $("#builder-field-list").addEventListener("focusin", (event) => {
+    const row = delegatedRowTarget(event);
+    if (row) setFocusedField(row.dataset.fieldId);
+  });
+  $("#builder-field-list").addEventListener("click", (event) => {
+    const row = delegatedRowTarget(event);
+    if (row) setFocusedField(row.dataset.fieldId);
+  });
 
   function renderOffers() {
     const now = new Date().toISOString();
@@ -98,10 +138,11 @@ export function initBuilderCoworkUi({ root = document, controller }) {
     }
   }
 
-  function proposeAndRender({ capabilityId, proposedArguments, summary }) {
+  function proposeAndRender({ capabilityId, targetId, proposedArguments, summary }) {
     try {
       bridge.proposeOffer({
         capabilityId,
+        targetId,
         proposedArguments,
         summary,
         pageVersion: controller.getPageVersion(),
@@ -114,6 +155,13 @@ export function initBuilderCoworkUi({ root = document, controller }) {
     renderOffers();
   }
 
+  /** The field the model would act on: whatever is currently pointed at
+   *  (GAP-00), falling back to the last field so the demo buttons still work
+   *  before anyone has pointed at anything. */
+  function targetFieldOrLast() {
+    return focusedElement() ?? controller.getElements().at(-1) ?? null;
+  }
+
   $("#builder-suggest-add").addEventListener("click", () => {
     const existingLabels = new Set(controller.getElements().map((element) => element.label));
     const suggestion =
@@ -121,17 +169,18 @@ export function initBuilderCoworkUi({ root = document, controller }) {
     const field = createField(suggestion.paletteId, { label: suggestion.label });
     proposeAndRender({
       capabilityId: "form-add-field",
+      targetId: BUILDER_CANVAS_TARGET_ID,
       proposedArguments: { field },
       summary: `Add a "${field.label}" field`
     });
   });
 
   $("#builder-suggest-rename").addEventListener("click", () => {
-    const elements = controller.getElements();
-    const target = elements.at(-1);
+    const target = targetFieldOrLast();
     if (!target) return;
     proposeAndRender({
       capabilityId: "form-update-field",
+      targetId: builderFieldTargetId(target.id),
       proposedArguments: { fieldId: target.id, patch: { required: !target.required } },
       summary: `Mark "${target.label}" as ${target.required ? "optional" : "required"}`
     });
@@ -139,16 +188,18 @@ export function initBuilderCoworkUi({ root = document, controller }) {
 
   $("#builder-suggest-move").addEventListener("click", () => {
     const elements = controller.getElements();
-    const target = elements.at(-1);
+    const target = targetFieldOrLast();
     if (!target || elements.length < 2) return;
     proposeAndRender({
       capabilityId: "form-move-field",
+      targetId: builderFieldTargetId(target.id),
       proposedArguments: { fieldId: target.id, direction: "up" },
       summary: `Move "${target.label}" earlier in the form`
     });
   });
 
   controller.onPageVersionChange(() => {
+    if (focusedFieldId && !focusedElement()) setFocusedField(null);
     renderOffers();
   });
   renderOffers();

@@ -2,12 +2,18 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { createField, insertField } from "../src/form-builder.mjs";
-import { createBuilderCoworkBridge } from "../src/builder-cowork.js";
+import { BUILDER_CANVAS_TARGET_ID, builderFieldTargetId, createBuilderCoworkBridge } from "../src/builder-cowork.js";
 
-test("focusFor exposes the three builder capabilities for the current field count", () => {
+test("focusFor (the canvas) exposes only form-add-field; focusForField exposes the two field-scoped capabilities", () => {
   const bridge = createBuilderCoworkBridge();
-  const focus = bridge.focusFor({ pageVersion: 1, fieldCount: 0 });
-  assert.deepEqual(focus.capabilityIds, ["form-add-field", "form-update-field", "form-move-field"]);
+  const canvasFocus = bridge.focusFor({ pageVersion: 1, fieldCount: 2 });
+  assert.equal(canvasFocus.targetId, BUILDER_CANVAS_TARGET_ID);
+  assert.deepEqual(canvasFocus.capabilityIds, ["form-add-field"]);
+
+  const fieldFocus = bridge.focusForField({ pageVersion: 1, fieldId: "field-3", label: "Question three" });
+  assert.equal(fieldFocus.targetId, builderFieldTargetId("field-3"));
+  assert.equal(fieldFocus.focus.label, "Question three");
+  assert.deepEqual(fieldFocus.capabilityIds, ["form.explain_field", "form-update-field", "form-move-field"]);
 });
 
 test("a proposed add-field offer is inert until authorizeAndApply is called with the matching offerId", () => {
@@ -15,6 +21,7 @@ test("a proposed add-field offer is inert until authorizeAndApply is called with
   const field = createField("text-short", { label: "Email address" });
   const offer = bridge.proposeOffer({
     capabilityId: "form-add-field",
+    targetId: BUILDER_CANVAS_TARGET_ID,
     proposedArguments: { field },
     summary: `Add ${field.label}`,
     pageVersion: 1,
@@ -44,6 +51,7 @@ test("an offer that is never authorized leaves the canvas untouched", () => {
   const field = createField("text-short", { label: "Never applied" });
   bridge.proposeOffer({
     capabilityId: "form-add-field",
+    targetId: BUILDER_CANVAS_TARGET_ID,
     proposedArguments: { field },
     summary: "Add Never applied",
     pageVersion: 1,
@@ -68,6 +76,7 @@ test("a stale page version fails closed instead of applying the offer", () => {
   const field = createField("text-short", { label: "Stale" });
   const offer = bridge.proposeOffer({
     capabilityId: "form-add-field",
+    targetId: BUILDER_CANVAS_TARGET_ID,
     proposedArguments: { field },
     summary: "Add Stale",
     pageVersion: 1,
@@ -93,6 +102,7 @@ test("an expired offer cannot be authorized even at the matching page version", 
   const bridge = createBuilderCoworkBridge();
   const offer = bridge.proposeOffer({
     capabilityId: "form-add-field",
+    targetId: BUILDER_CANVAS_TARGET_ID,
     proposedArguments: { field: createField("text-short", { label: "Expired" }) },
     summary: "Add Expired",
     pageVersion: 1,
@@ -115,6 +125,7 @@ test("a rejected mutation (e.g. duplicate id) leaves the canvas unchanged with a
   const existing = createField("text-short", { label: "Existing" });
   const offer = bridge.proposeOffer({
     capabilityId: "form-add-field",
+    targetId: BUILDER_CANVAS_TARGET_ID,
     proposedArguments: { field: existing },
     summary: "Add Existing again",
     pageVersion: 1,
@@ -131,7 +142,7 @@ test("a rejected mutation (e.g. duplicate id) leaves the canvas unchanged with a
   );
 });
 
-test("update-field and move-field offers apply through the same bridge", () => {
+test("update-field and move-field offers target the exact addressable field and apply through the same bridge", () => {
   const bridge = createBuilderCoworkBridge();
   const a = createField("text-short", { label: "A" });
   const b = createField("text-short", { label: "B" });
@@ -139,6 +150,7 @@ test("update-field and move-field offers apply through the same bridge", () => {
 
   const updateOffer = bridge.proposeOffer({
     capabilityId: "form-update-field",
+    targetId: builderFieldTargetId(a.id),
     proposedArguments: { fieldId: a.id, patch: { required: true } },
     summary: "Require A",
     pageVersion: 1,
@@ -154,6 +166,7 @@ test("update-field and move-field offers apply through the same bridge", () => {
 
   const moveOffer = bridge.proposeOffer({
     capabilityId: "form-move-field",
+    targetId: builderFieldTargetId(b.id),
     proposedArguments: { fieldId: b.id, direction: "up" },
     summary: "Move B up",
     pageVersion: 1,
@@ -168,12 +181,30 @@ test("update-field and move-field offers apply through the same bridge", () => {
   assert.deepEqual(afterMove.elements.map((f) => f.id), [b.id, a.id]);
 });
 
+test("an update-field offer pointed at the wrong field target is rejected (GAP-00)", () => {
+  const bridge = createBuilderCoworkBridge();
+  const a = createField("text-short", { label: "A" });
+  const offer = bridge.proposeOffer({
+    capabilityId: "form-update-field",
+    targetId: builderFieldTargetId("someone-else"),
+    proposedArguments: { fieldId: a.id, patch: { label: "Hijacked" } },
+    summary: "Rename A",
+    pageVersion: 1,
+    now: "2026-08-31T10:00:00.000Z"
+  });
+  assert.throws(
+    () => bridge.authorizeAndApply({ offerId: offer.offerId, elements: [a], now: "2026-08-31T10:00:01.000Z" }),
+    { name: "CoworkProtocolError", code: "STALE_FOCUS" }
+  );
+});
+
 test("at most three pending builder offers are allowed at once", () => {
   const bridge = createBuilderCoworkBridge();
   const now = "2026-08-31T10:00:00.000Z";
   for (let i = 0; i < 3; i += 1) {
     bridge.proposeOffer({
       capabilityId: "form-add-field",
+      targetId: BUILDER_CANVAS_TARGET_ID,
       proposedArguments: { field: createField("text-short", { label: `Field ${i}` }) },
       summary: `Add field ${i}`,
       pageVersion: 1,
@@ -184,6 +215,7 @@ test("at most three pending builder offers are allowed at once", () => {
     () =>
       bridge.proposeOffer({
         capabilityId: "form-add-field",
+        targetId: BUILDER_CANVAS_TARGET_ID,
         proposedArguments: { field: createField("text-short", { label: "One too many" }) },
         summary: "Add one too many",
         pageVersion: 1,

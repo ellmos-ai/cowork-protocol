@@ -76,6 +76,7 @@ test("a read-only FormBuilder capability cannot produce a mutation plan", () => 
 test("an AFK FormBuilder mutation is planned only inside the human-approved solo lease", () => {
   const lease = {
     leaseId: "lease-form-1",
+    origin: "human-click",
     goal: "Complete only the focused field",
     allowedCapabilityIds: ["form.set_value"],
     allowedTargetIds: ["form-field:email"],

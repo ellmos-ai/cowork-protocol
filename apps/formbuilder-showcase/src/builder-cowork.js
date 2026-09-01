@@ -15,6 +15,8 @@ import {
 import {
   BUILDER_CANVAS_TARGET_ID,
   buildFormBuilderCanvasFocus,
+  buildFormBuilderFieldFocus,
+  builderFieldTargetId,
   planAuthorizedBuilderFieldMutation
 } from "../../../packages/formbuilder-connector/src/index.js";
 import { insertField, moveField, updateField } from "./form-builder.mjs";
@@ -23,7 +25,7 @@ const OFFER_LIFETIME_MS = 60_000;
 const MAX_PENDING_OFFERS = 3;
 const MAX_RECEIPTS = 10;
 
-export { BUILDER_CANVAS_TARGET_ID };
+export { BUILDER_CANVAS_TARGET_ID, builderFieldTargetId };
 
 /**
  * A small, self-contained Cowork integration for one Builder canvas. It owns
@@ -41,6 +43,13 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
     return buildFormBuilderCanvasFocus({ sessionId, pageVersion, fieldCount });
   }
 
+  /** Focus on one addressable field ("question three"), not the whole canvas.
+   *  See GAP-00: before this, every builder offer targeted the canvas, so a
+   *  model could point at the form but never at one field. */
+  function focusForField({ pageVersion, fieldId, label, focusKind }) {
+    return buildFormBuilderFieldFocus({ sessionId, pageVersion, fieldId, label, focusKind });
+  }
+
   function expireOffers(nowIso) {
     const nowMs = Date.parse(nowIso);
     offers = offers.filter((offer) => Date.parse(offer.expiresAt) > nowMs);
@@ -51,7 +60,12 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
     return [...offers];
   }
 
-  function proposeOffer({ capabilityId, proposedArguments, summary, pageVersion, now = new Date().toISOString() }) {
+  /** `targetId` must be the exact focus target the offer is about:
+   *  BUILDER_CANVAS_TARGET_ID for form-add-field, or
+   *  builderFieldTargetId(fieldId) for form-update-field/form-move-field. The
+   *  bridge does not guess it from the capability id - the caller already
+   *  knows which field (or the canvas) it is proposing a change for. */
+  function proposeOffer({ capabilityId, targetId, proposedArguments, summary, pageVersion, now = new Date().toISOString() }) {
     expireOffers(now);
     if (offers.length >= MAX_PENDING_OFFERS) {
       throw new CoworkProtocolError(
@@ -63,7 +77,7 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
     const offer = createActionOffer({
       offerId: `builder-offer-${Date.now()}-${offerCounter}`,
       capabilityId,
-      targetId: BUILDER_CANVAS_TARGET_ID,
+      targetId,
       pageVersion,
       proposedArguments,
       summary,
@@ -147,6 +161,7 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
 
   return {
     focusFor,
+    focusForField,
     pendingOffers,
     proposeOffer,
     authorizeAndApply,

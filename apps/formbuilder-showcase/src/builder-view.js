@@ -79,12 +79,19 @@ export function initBuilderStudio(root = document) {
 
   function renderFieldRow(element, index, total) {
     const row = document.createElement("li");
-    row.className = "builder-field-row";
-    row.dataset.fieldId = element.id;
-
     const classification = classificationOf(element);
     const isInput = isInputType(classification);
     const heading = classification === "heading-h1" || classification === "heading-h2";
+
+    // Same integration boundary the fixed demo form uses (data-field-id /
+    // data-label, D-20260830-002): this is what makes one builder field an
+    // addressable focus and offer target instead of only the whole canvas
+    // being addressable (GAP-00). builder-view.js stays Cowork-free even so -
+    // these are plain DOM attributes, not a protocol import.
+    row.className = "builder-field-row form-field";
+    row.dataset.fieldId = element.id;
+    row.dataset.label = element.label ?? element.type;
+    row.dataset.controlKind = classification;
 
     const head = document.createElement("div");
     head.className = "builder-field-row-head";
@@ -103,6 +110,7 @@ export function initBuilderStudio(root = document) {
       labelInput.setAttribute("aria-label", `${labelText.textContent} for field ${index + 1}`);
       labelInput.addEventListener("change", () => {
         state.elements = updateField(state.elements, element.id, { label: labelInput.value });
+        row.dataset.label = labelInput.value;
         bumpPageVersion();
         renderFillTab();
       });

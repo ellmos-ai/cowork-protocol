@@ -173,9 +173,46 @@ try {
     helpInput.dispatchEvent(new Event("change", { bubbles: true }));
   })()`);
 
+  // --- GAP-00: one addressable builder field, not just the whole canvas. ---
+  await evaluateValue(call, `document.querySelector("#builder-field-type").value = "text-short"`);
+  await dispatchTrustedClick(call, "#builder-add-field");
+  const rows = await evaluateValue(call, `[...document.querySelectorAll(".builder-field-row")].map((row) => row.dataset.fieldId)`);
+  requireCondition(rows.length === 2, `Expected two field rows, got ${rows.length}`);
+  const [firstFieldId] = rows;
+
+  const firstRowPoint = await evaluateValue(call, `(() => {
+    const row = document.querySelector('.builder-field-row[data-field-id="${firstFieldId}"]');
+    const rect = row.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  })()`);
+  await call("Input.dispatchMouseEvent", { type: "mouseMoved", x: firstRowPoint.x, y: firstRowPoint.y });
+  const focusLabel = await evaluateValue(call, `document.querySelector("#builder-focus-label").textContent`);
+  requireCondition(
+    focusLabel.startsWith("Pointing at:"),
+    `Expected pointing at the first field to update the focus label, got: ${focusLabel}`
+  );
+  const firstRowIsFocused = await evaluateValue(
+    call,
+    `document.querySelector('.builder-field-row[data-field-id="${firstFieldId}"]').classList.contains("is-focused")`
+  );
+  requireCondition(firstRowIsFocused, "Expected the pointed-at row to carry the shared .is-focused style");
+
+  // The offer must target the *pointed-at* field, not merely the last one
+  // added: apply it and confirm the first field (not the second) changed.
+  await dispatchTrustedClick(call, "#builder-suggest-rename");
+  await dispatchTrustedClick(call, "#builder-offer-list .offer-chip");
+  const firstFieldRequired = await evaluateValue(call, `(() => {
+    const checkbox = document.querySelector('.builder-field-row[data-field-id="${firstFieldId}"] input[type=checkbox]');
+    return checkbox ? checkbox.checked : null;
+  })()`);
+  requireCondition(
+    firstFieldRequired === true,
+    `Expected the rename/require suggestion to target the pointed-at first field, got required=${firstFieldRequired}`
+  );
+
   await dispatchTrustedClick(call, "#builder-tab-fill");
   const fillFieldCount = await evaluateValue(call, `document.querySelectorAll(".builder-fill-field").length`);
-  requireCondition(fillFieldCount === 1, `Expected one renderable Fill field, got ${fillFieldCount}`);
+  requireCondition(fillFieldCount === 2, `Expected two renderable Fill fields, got ${fillFieldCount}`);
   const helpTextRendered = await evaluateValue(
     call,
     `document.querySelector(".builder-fill-field .field-help")?.textContent`
@@ -219,15 +256,15 @@ try {
   const offerChipsBeforeClick = await evaluateValue(call, `document.querySelectorAll("#builder-offer-list .offer-chip").length`);
   requireCondition(offerChipsBeforeClick === 1, `Expected exactly one pending offer chip, got ${offerChipsBeforeClick}`);
   const fieldCountBeforeClick = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
-  requireCondition(fieldCountBeforeClick === 1, "The canvas must be unchanged before the offer is clicked");
+  requireCondition(fieldCountBeforeClick === 2, "The canvas must be unchanged before the offer is clicked");
 
   await dispatchTrustedClick(call, "#builder-offer-list .offer-chip");
   const fieldCountAfterClick = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
-  requireCondition(fieldCountAfterClick === 2, `Expected the click to add exactly one field, got ${fieldCountAfterClick}`);
+  requireCondition(fieldCountAfterClick === 3, `Expected the click to add exactly one field, got ${fieldCountAfterClick}`);
   const receiptCount = await evaluateValue(call, `document.querySelectorAll("#builder-receipt-list li").length`);
-  requireCondition(receiptCount === 1, `Expected exactly one verified receipt, got ${receiptCount}`);
+  requireCondition(receiptCount === 2, `Expected two verified receipts (the earlier rename plus this add), got ${receiptCount}`);
   const receiptText = await evaluateValue(call, `document.querySelector("#builder-receipt-list li").textContent`);
-  requireCondition(receiptText.startsWith("Verified"), `Expected a verified receipt, got: ${receiptText}`);
+  requireCondition(receiptText.startsWith("Verified"), `Expected the latest receipt to be verified, got: ${receiptText}`);
 
   const offerChipsAfterClick = await evaluateValue(call, `document.querySelectorAll("#builder-offer-list .offer-chip").length`);
   requireCondition(offerChipsAfterClick === 0, "The applied offer must be resolved (removed), not still clickable");
@@ -242,6 +279,8 @@ try {
     formBuilderStudioClaim: true,
     soloProductClaim: true,
     designFillExportClaim: true,
+    builderFieldAddressableClaim: true,
+    builderSuggestionTargetsPointedAtFieldClaim: true,
     builderOfferInertBeforeClickClaim: true,
     builderReceiptVerifiedClaim: true,
     nativeToolCountUnchanged: toolCountUnchanged,

@@ -136,11 +136,28 @@ export function planSoloFormBuilderMutation(input) {
 // exact same offer -> human click -> authorization -> plan -> verified receipt
 // path as the value capabilities above; no new WebMCP tool is introduced.
 
+// Two distinct target kinds share these three capabilities: the whole canvas
+// (used only by form-add-field, which has no pre-existing field to attach
+// to) and one addressable field (used by form-update-field/form-move-field,
+// which are always about a field that already exists - "question three",
+// not "the form"). See GAP-00: before this, every builder offer targeted the
+// canvas, so a model could point at the whole form but never at one field.
 export const BUILDER_CANVAS_TARGET_ID = "form-builder:canvas";
 const BUILDER_CAPABILITY_IDS = new Set(["form-add-field", "form-update-field", "form-move-field"]);
+const BUILDER_FIELD_CAPABILITY_IDS = Object.freeze(["form.explain_field", "form-update-field", "form-move-field"]);
+const CANVAS_ONLY_CAPABILITY_IDS = new Set(["form-add-field"]);
 
 export function builderCanvasCapabilityIds() {
   return [...BUILDER_CAPABILITY_IDS];
+}
+
+/** The stable target id one addressable builder field is offered and focused
+ *  under - the same `form-field:<id>` convention the fixed demo form uses. */
+export function builderFieldTargetId(fieldId) {
+  if (typeof fieldId !== "string" || fieldId.length === 0) {
+    throw new CoworkProtocolError("CONNECTOR_DEGRADED", "A builder field focus requires a stable field id");
+  }
+  return `form-field:${fieldId}`;
 }
 
 export function buildFormBuilderCanvasFocus({ sessionId, pageVersion, fieldCount }) {
@@ -159,7 +176,25 @@ export function buildFormBuilderCanvasFocus({ sessionId, pageVersion, fieldCount
     focusKind: "pinned",
     label: `Form canvas (${fieldCount} field${fieldCount === 1 ? "" : "s"})`,
     selectedText: "",
-    capabilityIds: builderCanvasCapabilityIds()
+    capabilityIds: [...CANVAS_ONLY_CAPABILITY_IDS]
+  });
+}
+
+/** Focus on one addressable builder field - "question three", not "the
+ *  canvas". Only exposes the two capabilities that make sense for an
+ *  already-existing field (rename/require, reorder); adding a field has no
+ *  existing target to attach to and stays canvas-scoped. */
+export function buildFormBuilderFieldFocus({ sessionId, pageVersion, fieldId, label, focusKind = "pointer" }) {
+  return buildFocusPacket({
+    sessionId,
+    source: `human-${focusKind}`,
+    capabilityLevel: "native",
+    targetId: builderFieldTargetId(fieldId),
+    pageVersion,
+    focusKind,
+    label,
+    selectedText: "",
+    capabilityIds: [...BUILDER_FIELD_CAPABILITY_IDS]
   });
 }
 
@@ -203,8 +238,16 @@ export function planAuthorizedBuilderFieldMutation({ offer, authorization, curre
       `Capability cannot mutate the FormBuilder canvas: ${offer.capabilityId}`
     );
   }
-  if (offer.targetId !== BUILDER_CANVAS_TARGET_ID) {
-    throw new CoworkProtocolError("STALE_FOCUS", "Builder mutations must target the form canvas");
+  if (CANVAS_ONLY_CAPABILITY_IDS.has(offer.capabilityId)) {
+    if (offer.targetId !== BUILDER_CANVAS_TARGET_ID) {
+      throw new CoworkProtocolError("STALE_FOCUS", "form-add-field must target the form canvas");
+    }
+  } else if (typeof offer.proposedArguments?.fieldId !== "string" ||
+    offer.targetId !== builderFieldTargetId(offer.proposedArguments.fieldId)) {
+    throw new CoworkProtocolError(
+      "STALE_FOCUS",
+      "This capability must target the exact addressable field it names"
+    );
   }
   assertBuilderAuthorizationMatchesOffer(offer, authorization);
   if (!Array.isArray(currentElements)) {
