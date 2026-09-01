@@ -7,10 +7,10 @@ test("the juror proof exercises human authorization, scoped solo work and the re
   const proof = runJurorProof();
   const steps = Object.fromEntries(proof.steps.map((step) => [step.id, step]));
 
-  assert.equal(proof.proofVersion, "cowork-juror-proof-v4");
+  assert.equal(proof.proofVersion, "cowork-juror-proof-v5");
   assert.equal(proof.browserClaim, false);
   assert.equal(proof.hostTokenClaim, false);
-  assert.deepEqual(proof.summary, { passed: 9, failed: 0 });
+  assert.deepEqual(proof.summary, { passed: 10, failed: 0 });
 
   assert.equal(steps.focus.evidence.targetId, "form-field:full-name");
   assert.equal(steps.focus.evidence.contextCharacters <= 350, true);
@@ -54,6 +54,12 @@ test("the juror proof exercises human authorization, scoped solo work and the re
   assert.equal(steps["collaborative-form-design"].evidence.fieldsBeforeClick, 0);
   assert.equal(steps["collaborative-form-design"].evidence.fieldsAfterClick, 1);
   assert.equal(steps["collaborative-form-design"].evidence.receiptStatus, "verified");
+
+  assert.equal(steps["delegation-directive-feedback"].evidence.grantOrigin, "human-utterance");
+  assert.equal(steps["delegation-directive-feedback"].evidence.authorizationSource, "human-utterance");
+  assert.equal(steps["delegation-directive-feedback"].evidence.fieldNowRequired, true);
+  assert.equal(steps["delegation-directive-feedback"].evidence.awaitedBeforeVerdict, true);
+  assert.equal(steps["delegation-directive-feedback"].evidence.verdict, "accepted");
 
   assert.equal(steps.export.evidence.schema, "formularerstellen-response-v1");
   assert.equal(steps.export.evidence.answerCount, 4);

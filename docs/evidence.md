@@ -17,6 +17,12 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | FormBuilder web validation/export is retained | attributed engine, `formbuilder-use-case.test.js`; upstream Web Companion 48/48 tests; connected Edge fallback interaction | Web logic and click-gated field change proven; full visual/WebMCP flow open |
 | FormBuilder Studio designs, fills in and exports a form with zero Cowork dependency | `form-builder.mjs`/`fodt-export.mjs` tests incl. a source-scan solo-mode test; `npm run smoke:builder` | Chrome 152 added a field, filled it in, submitted a real `formularerstellen-response-v1` response and exercised all three export controls (schema JSON, response JSON, Flat ODF `.fodt`) with no agent; `buildFormSchema()` round-trips losslessly through `form-engine.mjs`'s `parseSchema()` |
 | Canvas-editing capabilities reuse the existing offer/click/receipt path with no new WebMCP tool | `packages/formbuilder-connector/test/builder-canvas.test.js`; `apps/formbuilder-showcase/test/builder-cowork.test.js`; `npm run smoke:builder`; `npm run smoke:webmcp` | `form-add-field`/`form-update-field`/`form-move-field` proven at the connector, bridge and Chrome levels: an unclicked offer leaves the canvas untouched, a stale page-version click and an expired offer both fail closed, and a real trusted click produces exactly one verified receipt; native tool count stays 9 in Chrome |
+| One builder field is individually addressable, not only the whole canvas (GAP-00) | `packages/formbuilder-connector/test/builder-canvas.test.js`; `apps/formbuilder-showcase/test/builder-cowork.test.js`; `npm run smoke:builder` | `buildFormBuilderFieldFocus()`/`builderFieldTargetId()` give one field a `form-field:<id>` target with exactly the two capabilities that make sense for an existing field; `form-update-field`/`form-move-field` reject a target that does not name the field their own arguments patch; Chrome pointed at a field, saw the shared `.is-focused` style and a live focus label, and a suggestion applied to exactly that field, not merely the last one added |
+| A delegation grant authorizes solo work independent of presence (GAP-01) | `packages/core/test/delegation-grant.test.js`; `packages/core/test/solo-lease.test.js`; `packages/formbuilder-connector/test/builder-solo.test.js` | `createDelegationGrant()` requires a real human origin (click or utterance, never an agent) and a bounded goal; `authorizeSoloAction()` now succeeds with `humanPresence: "present"` where it previously threw `CANCELLED` - the exact regression-turned-feature the fix is about - while still rejecting a lease without a valid origin |
+| A human utterance under an active grant authorizes an action directly (GAP-02) | `packages/core/test/directive-authorization.test.js`; `apps/formbuilder-showcase/test/builder-delegation.test.js`; `npm run smoke:builder` | `authorizeActionOffer()` accepts `origin: "human-utterance"` only with a grant that covers the exact capability/target and has not expired; an agent can never claim this origin; Chrome proved a recognized spoken phrase ("make it required") applying with no offer chip and no second click |
+| A bounded return-from-handover summary and multi-field highlight exist (GAP-03) | `packages/core/test/handover-delta.test.js`; `apps/formbuilder-showcase/test/builder-delegation.test.js`; `npm run smoke:builder` | `createHandoverDeltaSummary()` caps target ids at 12 (de-duplicated) with a 350-character summary; `buildFocusSet()` highlights up to 12 targets at once, separate from the existing single-target focus lens; Chrome's "I'm back" click narrated "3 fields added" and highlighted exactly those 3 rows via a new `.is-new-since-handover` style |
+| The Builder canvas has a container-scoped solo/delegation path (GAP-04) | `packages/formbuilder-connector/test/builder-solo.test.js`; `apps/formbuilder-showcase/test/builder-delegation.test.js`; `npm run smoke:builder` | `planSoloBuilderFieldMutation()` plus a Delegate dialog (goal/call-budget/duration as human inputs, not fixed constants) let a grant add up to 12 fields in one window instead of the old fixed 2-call/120-second lease; Chrome added exactly 3 fields under a 3-call grant with 0 clicks |
+| The session enters an explicit awaiting-feedback state after a directive or a returned batch (GAP-05) | `apps/formbuilder-showcase/test/builder-delegation.test.js`; `packages/evals/test/juror-proof.test.js`; `npm run smoke:builder` | A verified directive or a batch return with touched fields sets `awaitingFeedback`; only a real feedback click (`accepted\|rejected\|revise`, `packages/core`'s existing verdict vocabulary) clears it; Chrome proved both the single-directive and whole-batch cases resolving via a real click |
 | WebMCP Bridge is bounded and fail-closed | `packages/bridge/test/webmcp-bridge.test.js`; Chrome 152 browser-host fixture in `npm run smoke:webmcp` | Two host-supplied capabilities, two reads, 1,200-character preview and offer-only mutation proven in-browser; unrelated live-site discovery open |
 | Adaptive runtime selects the strongest supplied layer | `packages/bridge/test/runtime.test.js`; `npm run demo:adapter` | Native → generic WebMCP → legacy-host selection and fail-closed exhaustion proven with host fixtures; no browser-wide discovery claim |
 | Legacy host companion is bounded and click-gated | bridge companion tests, visual eval and `npm run demo:adapter`; real `npm run smoke:companion` | Callback contract plus Chrome 152 extension attachment proven: WebMCP absent, default off, 350/1,200-character tiers, real 160,000-pixel one-shot crop, inert offer, trusted click, verified mutation and toggle off; model-client/full-page claims false |
@@ -27,7 +33,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | Exact session state can join a persistent local Companion | Session Authority, Context Manager, Model Gateway, Companion Link and desktop-host tests; Chrome 152 `npm run smoke:surface` | Two contiguous authority deltas claim Desktop surface and renewable model seat; initial/hidden/visible page signals contain no page content and invoke no model; work committed while hidden reaches the returning replica as ordered deltas |
 | Desktop Companion exposes the shared UI and Windows presence tray | Desktop cockpit/UI/host/launcher/tray tests; PowerShell parser; Chrome 152 `npm run smoke:surface` | The real 430×760 app window cycles collaborating, observing, paused and away actor states, has zero horizontal overflow, rejects model turns while paused, waits when away has no lease and animates Agent Solo only after a bounded lease; typed/audio controls and green/yellow/red tray mapping remain present, while audible speech and real microphone quality remain open |
 | The movable cockpit identifies its active model and preserves a chosen background | Desktop host/UI tests; Chrome 152 `npm run smoke:surface` | Host model ID is visible without endpoint/key data; five presets plus a custom color survive a Chrome reload in the same shared session |
-| Core jury journey is reproducible without credentials | `npm run proof`; `packages/evals/test/juror-proof.test.js` | Nine deterministic integration steps proven, including an exact-id conversation reply and a collaborative-form-design canvas edit; output explicitly denies browser and host-token claims |
+| Core jury journey is reproducible without credentials | `npm run proof`; `packages/evals/test/juror-proof.test.js` | Ten deterministic integration steps proven, including an exact-id conversation reply, a collaborative-form-design canvas edit and a full delegation-grant/spoken-directive/awaiting-feedback/verdict loop; output explicitly denies browser and host-token claims |
 | Independent code review closed the baseline release findings | Claude Code 2.1.251 with the Fable model reviewed the full tree and the bounded baseline follow-up diffs | Baseline verdict `Ready to publish code: Yes` with no Critical or Important findings; two later context-request attempts and one 240-second visibility/delta review attempt timed out without output, while the final cockpit review retry was refused by the account's monthly spend limit, so those increments are not claimed as Fable-reviewed |
 | Public-preview tree is reproducible | clean clone of local `release/public-preview` at `6dfc848277495903121b4f3fd414dd6a6f96d8e6` | `npm ci`, 161/161 tests, 12/12 character evals, 8/8 proof steps, no-WebMCP extension plus native WebMCP/model-host/accessibility/contrast Chrome 152 smokes, 19-file Pages and 10-file extension builds, 75 source plus 22 built-artifact syntax checks, 0 vulnerabilities, 0 secret findings and clean Git readback |
 | Post-audit protocol/surface split is release-gated | implementation commit `008942e27e556edca014006258335af67e462ee8`; complete local gate on 2026-08-31 | 205/205 tests, 12/12 character evals, 8/8 proof steps, adapter demo, 100 source syntax checks, 22-file Pages and 16-file extension builds, architecture/secret/audit gates, plus legacy extension, Native-first extension, model-host, native WebMCP, surface handoff, accessibility and contrast Chrome 152 smokes all passed |
@@ -142,6 +148,83 @@ the resulting canvas holds exactly the offered field with a verified receipt
 by the three new capability ids instead of a new tool. `npm run proof` now
 reports 9/9 passed.
 
+A follow-up batch (video-worker code review, GAP-V4.md revision 2) closed five
+protocol gaps a stricter creative review of the V3 story surfaced: the
+Builder canvas had exactly one target (the whole canvas) and no addressable
+field identity (GAP-00); `authorizeSoloAction()` rejected any solo work the
+instant `humanPresence === "present"`, making "the human is right here and
+has explicitly delegated this" an unreachable state (GAP-01); a human's own
+utterance always produced a click-gated offer, never a direct authorization
+(GAP-02); there was no bounded way to summarize or highlight what happened
+during an ended delegation window (GAP-03); the Builder canvas had zero
+presence/lease path of any kind, and the one that existed for the fixed demo
+form was hard-capped at 2 calls and 120 seconds regardless of the task
+(GAP-04); and no explicit "waiting for your verdict" state existed after an
+unsupervised action (GAP-05). GAP-07 (the lease's `goal` field was read and
+stored but never validated in `packages/core`) was folded into the GAP-01 fix
+for free, since `createDelegationGrant()` needed to validate a goal anyway.
+
+Fix order followed the dependency chain GAP-00 → (GAP-03 ‖ GAP-04) → GAP-01 →
+GAP-02 → GAP-05 the gap analysis identified, across six commits
+(`54b7598`, `a5413a8`, `dc2c019`, `e2cd61d`, `0670ff9`, plus this ledger
+entry). Two real bugs surfaced only while wiring the fix into the actual UI,
+neither designed in from the start:
+
+- `soloExecute()` compared each call's page version against the grant's own
+  frozen creation-time value, so a grant's *own* first successful call made
+  every subsequent call in the same batch look stale and reject with
+  `STALE_PAGE_VERSION` - the exact multi-call failure GAP-04 exists to fix.
+  Fixed by having the bridge track the grant's own expected page version
+  internally, advancing it only on that grant's own verified calls, while a
+  page change from anything else still fails closed (new regression test
+  proves both halves).
+- `#builder-return-feedback` combined the existing `.feedback-controls` CSS
+  class with the `hidden` attribute - a combination the original code never
+  needed, since the main demo's feedback controls are only ever created and
+  removed, never toggled. The class's own `display: grid` (an author rule)
+  silently outranked the browser's default `[hidden] { display: none }`, so
+  the Good/Adjust/Different buttons stayed visible and Tab-reachable at every
+  page load. `smoke:accessibility` caught this, not any unit test, because
+  unit tests never render real CSS cascade; fixed with a scoped
+  `.feedback-controls[hidden] { display: none; }` override.
+
+`packages/evals`'s juror proof gained a tenth step,
+`delegation-directive-feedback`: a field-scoped grant with
+`origin: "human-utterance"` authorizes a `form-update-field` change directly
+(no offer, no click), the session enters `awaitingFeedback`, and only a real
+feedback verdict (`accepted`) clears it. `npm run proof` now reports 10/10.
+
+The interactive-control baseline grew from 35 to 41 (the Delegate dialog's
+goal/call-budget/duration inputs and its button, plus the directive input and
+its send button); `accessibility-browser-smoke.mjs`'s AX-role allowlist
+gained `spinbutton` (Chrome's AX role for `<input type="number">`, needed for
+the two new number inputs - the same kind of gap "tab" closed in the previous
+batch). Chrome 152 confirmed 41/41 named, reachable, focus-visible controls
+and 0 overflow. `smoke:contrast` needed no code change: 1,446 audited text
+items (up from 1,248), 0 unsupported/failing, the same unrounded 4.5656:1
+minimum, because the new panels reuse existing color tokens. `smoke:builder`
+now drives the complete loop in real Chrome (delegate with a 3-call budget,
+draft all 3, return with narration and a 3-field highlight, resolve the
+feedback, then a spoken "make it required" directive with no offer chip).
+All other Chrome smokes (webmcp, surface, model-host, companion,
+companion-native, companion-cockpit) and native tool count (9, unchanged)
+were reconfirmed unaffected. The complete local gate reported 362/362 Node
+tests, 12/12 eval cases, 10/10 proof steps, `check:architecture` and
+`check:secrets` clean, a 29-file Pages build (the new
+`builder-directive-classifier.js` added to the allowlist) and an unaffected
+21-file browser-companion build.
+
+Honest scope notes on this batch: the Delegate dialog's "stay and watch vs.
+step away" choice is not wired to the main Cowork demo panel's own
+human-seat presence indicator - the Builder's delegation status is a
+separate, self-contained readout, not a cross-module rewrite of the
+already-tested main session state machine; the directive classifier
+(`builder-directive-classifier.js`) is a small, disclosed keyword heuristic
+- the same kind of scripted stand-in `local-conversation.js` already is for
+the fixed demo form - not a claim of natural-language understanding; and
+GAP-06 (the model commenting on human-made changes in an advise mode)
+remains unbuilt, as it was P1 and video-uncritical per GAP-V4.md.
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;
@@ -152,3 +235,6 @@ reports 9/9 passed.
 - the reported 390px hero-lede/form-intro clipping regression: not reproduced under a genuinely fixed 390px CSS viewport in this environment (see the Fable-operator review batch note above); needs reproduction with a tool that reliably honors a true 390px viewport before it can be confirmed or fixed.
 - the FormBuilder Studio `.fodt` export was proven well-formed XML by a dependency-free tag-balance parser and inspected manually, but not opened in a real LibreOffice install in this environment; the OASIS Flat ODF template it fills in was written and reviewed by hand against the format's public specification, not verified by round-tripping it through LibreOffice.
 - sending a filled-in FormBuilder Studio form by mail and collecting responses back into one place (noted as a roadmap item, not a claim, in `apps/formbuilder-showcase/README.md`).
+- GAP-06 (the model commenting on human-made ChangeEvents in an advise mode): not built - P1 and explicitly video-uncritical per GAP-V4.md.
+- the Delegate dialog's "stay and watch vs. step away" state is not connected to the main Cowork demo panel's own human-seat presence indicator; the two presence readouts remain separate.
+- `builder-directive-classifier.js`'s recognized phrases (required/optional/move up or down/"make this the first question") are a small, disclosed keyword heuristic, the same kind of scripted stand-in `local-conversation.js` already is - not a claim that the Builder understands natural language.

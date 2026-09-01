@@ -19,6 +19,7 @@ import { createShowcaseSubmission } from "../../../apps/formbuilder-showcase/src
 import { observeControlChange } from "../../../apps/formbuilder-showcase/src/interaction-log.js";
 import {
   BUILDER_CANVAS_TARGET_ID,
+  builderFieldTargetId,
   createBuilderCoworkBridge
 } from "../../../apps/formbuilder-showcase/src/builder-cowork.js";
 import { createField } from "../../../apps/formbuilder-showcase/src/form-builder.mjs";
@@ -214,6 +215,40 @@ export function runJurorProof() {
     now: "2026-08-30T10:00:41.000Z"
   });
 
+  // Delegation -> directive -> awaiting-feedback -> verdict (GAP-01/GAP-02/
+  // GAP-05): a real human utterance, under a field-scoped delegation grant,
+  // authorizes one structural change directly - no offer, no click - and the
+  // session then waits for a verdict instead of proceeding on its own.
+  const directiveBridge = createBuilderCoworkBridge({ sessionId: "juror-proof-directive" });
+  const existingField = createField("text-short", { label: "Preferred contact time" });
+  const directiveGrant = directiveBridge.startDelegation({
+    origin: "human-utterance",
+    goal: "Make the contact-time field required, by voice",
+    maxCalls: 1,
+    durationMs: 60_000,
+    pageVersion: 1,
+    allowedCapabilityIds: ["form-update-field"],
+    allowedTargetIds: [builderFieldTargetId(existingField.id)],
+    now: "2026-08-30T10:00:50.000Z"
+  });
+  const awaitingBeforeDirective = directiveBridge.readAwaitingFeedback();
+  const directiveResult = directiveBridge.directiveFromUtterance({
+    capabilityId: "form-update-field",
+    targetId: builderFieldTargetId(existingField.id),
+    proposedArguments: { fieldId: existingField.id, patch: { required: true } },
+    summary: "Make it required",
+    pageVersion: 1,
+    elements: [existingField],
+    now: "2026-08-30T10:00:51.000Z"
+  });
+  const awaitingAfterDirective = directiveBridge.readAwaitingFeedback();
+  const directiveVerdict = directiveBridge.recordFeedback({
+    verdict: "accepted",
+    pageVersion: 1,
+    now: "2026-08-30T10:00:55.000Z"
+  });
+  const awaitingAfterVerdict = directiveBridge.readAwaitingFeedback();
+
   const formResult = createShowcaseSubmission(values);
   const steps = [
     proofStep(
@@ -310,6 +345,24 @@ export function runJurorProof() {
       }
     ),
     proofStep(
+      "delegation-directive-feedback",
+      directiveGrant.origin === "human-utterance" &&
+        awaitingBeforeDirective === null &&
+        directiveResult.receipt.status === "verified" &&
+        directiveResult.authorization.authorizationSource === "human-utterance" &&
+        directiveResult.elements[0].required === true &&
+        awaitingAfterDirective !== null &&
+        directiveVerdict.verdict === "accepted" &&
+        awaitingAfterVerdict === null,
+      {
+        grantOrigin: directiveGrant.origin,
+        authorizationSource: directiveResult.authorization.authorizationSource,
+        fieldNowRequired: directiveResult.elements[0].required,
+        awaitedBeforeVerdict: awaitingAfterDirective !== null,
+        verdict: directiveVerdict.verdict
+      }
+    ),
+    proofStep(
       "export",
       formResult.ok === true && formResult.response.schema === "formularerstellen-response-v1",
       {
@@ -320,7 +373,7 @@ export function runJurorProof() {
   ];
 
   return {
-    proofVersion: "cowork-juror-proof-v4",
+    proofVersion: "cowork-juror-proof-v5",
     browserClaim: false,
     hostTokenClaim: false,
     steps,
