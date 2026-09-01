@@ -225,6 +225,63 @@ the fixed demo form - not a claim of natural-language understanding; and
 GAP-06 (the model commenting on human-made changes in an advise mode)
 remains unbuilt, as it was P1 and video-uncritical per GAP-V4.md.
 
+A follow-up pass closed two small findings from a video-worker screenshot
+review (GAP-08 and a GAP-04 microcopy gap) and, while auditing the fixed
+demo form's own AFK lease against the GAP-01 core change, found and fixed
+one real regression the automated suite had not caught (commits `852f845`,
+`3e119b8`).
+
+GAP-08: `builder-view.js` rendered the raw `formularerstellen-form-v1`
+`typeString` ("Textfeld (Lang)") as every long-answer field's kind badge,
+uppercased by CSS - Susan's six drafted questions all looked identical.
+The German typeString is unchanged (it is the real schema value
+`classifyType()` and the upstream desktop app key off); `form-builder.mjs`
+gained a `displayName` per palette entry and a `classificationDisplayName()`
+covering all nine classifications, and both the kind badge and the Add-field
+palette (plus the "Add ... (&lt;type&gt;)" offer-chip detail text, which had
+the identical leak) now render it. New tests cover every classification
+including the shared heading-h1/heading-h2 name; `smoke:builder` checks the
+rendered text directly ("Short answer", "Long answer").
+
+The regression: `authorizeSoloAction()`'s GAP-01 change requires a lease's
+`origin` field to be a real human signal, but `app.js`'s `startAway()` -
+the fixed demo form's own AFK/Agent-Solo lease, unrelated to the Builder's
+new delegation - built its lease object with no `origin` field at all. The
+first genuine `cowork_execute_solo` call against that lease would have
+thrown `HUMAN_CONFIRMATION_REQUIRED`, silently breaking the pre-existing
+Agent-Solo demo. `grep` across every Chrome smoke found the reason it
+survived local review unnoticed: only `pixel-contrast-browser-smoke.mjs`
+ever clicked `#away-short`, and only to capture the visual "agent-solo"
+state, never to drive a real solo tool call; `smoke:webmcp` discovered and
+exercised eight tools but never `cowork_execute_solo` or
+`cowork_read_presence`. Fixed by setting `origin: "human-click"` on the
+lease (accurate, since `startAway()` is reachable only from a real
+button/actor click) and extracting `LEASE_MAX_CALLS`/`LEASE_DURATION_MS` as
+named constants. `smoke:webmcp` now closes the coverage gap that let this
+happen: it switches to Delegated lease, clicks away, then genuinely calls
+`cowork_execute_solo` and `cowork_read_presence` via
+`document.modelContext.executeTool()` and requires `effectiveMode:
+"agent-solo"` and `status: "verified"` with `#email` actually updated -
+confirmed live against the fixed code (`soloExecutionStatus: "verified"` in
+the smoke's own output), not merely reasoned through.
+
+GAP-04 microcopy: the fixed demo form's Handoff panel stated "The demo
+lease lasts two minutes, permits at most two attempts..." as a hand-typed
+string. Once the Builder's own Delegate dialog made call-budget and
+duration human-configurable on the same page, that static claim sat next
+to a dialog visibly contradicting it. The line (`#lease-microcopy`) is now
+generated from `LEASE_MAX_CALLS`/`LEASE_DURATION_MS` at load time, clarifies
+this lease is scoped to one field (distinct from the Builder's
+canvas-scoped delegation), and points to where the configurable version
+lives.
+
+365/365 Node tests; `smoke:webmcp` (with the two newly-exercised tools),
+`smoke:accessibility` (41/41 controls, 0 overflow - the longer microcopy
+did not introduce overflow) and `smoke:contrast` (0 unsupported/failing)
+all Chrome-verified green; `smoke:builder`, `smoke:surface`,
+`smoke:model-host`, `smoke:companion`, `smoke:companion-native` and
+`smoke:companion-cockpit` reconfirmed unaffected.
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;
