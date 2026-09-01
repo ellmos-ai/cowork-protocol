@@ -63,6 +63,7 @@ import {
 } from "./view-model.js";
 import { createRecognitionSession } from "./speech-controller.js";
 import { replyToShowcaseTurn } from "./local-conversation.js";
+import { adviseCommentForHumanChange } from "./advisor-comment.js";
 
 const SESSION_ID = "formbuilder-showcase";
 const EMBEDDED_SURFACE_ID = "formbuilder:embedded";
@@ -116,6 +117,7 @@ let offers = [];
 let receipts = [];
 let feedbackEvents = [];
 let changeEvents = [];
+let advisorComment = null; // GAP-06: latest advisor comment on a human change, or null; render() gates its display.
 let pageVersion = 1;
 let capabilityLevel = "unavailable";
 let registrationController = null;
@@ -825,6 +827,14 @@ function render() {
   );
   renderOffers(view);
   renderReceipts();
+  // GAP-06: a silent advisory line, gated live on the current mode/presence
+  // (not only at the moment the comment was created) so pausing the agent or
+  // leaving Explain mode hides it immediately, matching "aus wenn der Agent
+  // pausiert ist" even for a comment shown earlier.
+  const advisorVisible =
+    advisorComment !== null && session.actionMode === "explain" && session.agentPresence !== "paused";
+  $("#advisor-comment").hidden = !advisorVisible;
+  if (advisorVisible) $("#advisor-comment").textContent = advisorComment;
 }
 
 function presentConversationReply({ turn, reply, transportLabel, contextHumanTurnId }) {
@@ -1497,6 +1507,22 @@ for (const field of fields) {
       if (change) changeEvents = [...changeEvents, change].slice(-20);
       setStatus(`Change ${pageVersion} observed on ${field.dataset.label}; causes were recorded without creating a model turn.`);
     }
+    // GAP-06: the model watches and comments on a human's own change while it
+    // is only advising (Explain-mode) - never on its own actions, never while
+    // paused. Latest-only: this always overwrites, never accumulates.
+    const schemaField = schemaFields.get(field.dataset.fieldId);
+    const nextAdvisorComment = adviseCommentForHumanChange({
+      change,
+      actionMode: session.actionMode,
+      agentPresence: session.agentPresence,
+      label: schemaField?.label,
+      required: schemaField?.required === true,
+      emptyRequiredOtherCount: [...schemaFields.values()].filter(
+        (candidate) =>
+          candidate.id !== field.dataset.fieldId && candidate.required && !observedValues.get(candidate.id)
+      ).length
+    });
+    if (nextAdvisorComment) advisorComment = nextAdvisorComment;
     commitSession("page-change-observed", session, {
       causeRefs: change?.causeRefs ?? [],
       payload: {

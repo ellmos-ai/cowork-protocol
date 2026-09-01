@@ -687,6 +687,38 @@ try {
     );
   }
 
+  // --- GAP-06: the model comments on a human's own change, only in Explain
+  // (advise) mode, and the comment hides live the moment that mode ends. ---
+  await evaluateValue(call, `(() => {
+    const select = document.querySelector("#action-mode");
+    select.value = "explain";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
+  await evaluateValue(call, `(() => {
+    const textarea = document.querySelector("#access-needs");
+    textarea.value = "Please provide a ramp.";
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const advisorObserved = await evaluateValue(call, `(() => ({
+    hidden: document.querySelector("#advisor-comment")?.hidden,
+    text: document.querySelector("#advisor-comment")?.textContent
+  }))()`);
+  if (advisorObserved.hidden !== false || !advisorObserved.text?.includes("Access needs")) {
+    throw new Error(`Expected a visible advisor comment naming the changed field: ${JSON.stringify(advisorObserved)}`);
+  }
+  await evaluateValue(call, `(() => {
+    const select = document.querySelector("#action-mode");
+    select.value = "suggest";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const advisorHiddenAfterModeChange = await evaluateValue(call, `document.querySelector("#advisor-comment")?.hidden`);
+  if (advisorHiddenAfterModeChange !== true) {
+    throw new Error("Expected the advisor comment to hide live once Explain mode ends");
+  }
+  observed.advisorComment = advisorObserved;
+
   const summary = validateNativeWebMcpObservation(observed);
   const conversationSummary = validateConversationObservation(conversationObserved);
   const bridgeSummary = validateBrowserHostBridgeObservation(bridgeObserved);
@@ -701,7 +733,9 @@ try {
     toolNames: observed.toolNames,
     agentSoloLeaseClaim: true,
     presenceReportedEffectiveMode: presenceExecution.packet?.effectiveMode,
-    soloExecutionStatus: soloExecution.packet?.status
+    soloExecutionStatus: soloExecution.packet?.status,
+    advisorCommentClaim: true,
+    advisorCommentHiddenOutsideExplainMode: advisorHiddenAfterModeChange
   }, null, 2));
   socket.close();
 } finally {

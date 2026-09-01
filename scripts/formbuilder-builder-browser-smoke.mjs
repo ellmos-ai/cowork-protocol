@@ -106,6 +106,18 @@ async function evaluateValue(call, expression) {
   return evaluation.result.value;
 }
 
+async function waitForExpression(call, expression, label, attempts = 80) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      if (await evaluateValue(call, expression)) return;
+    } catch {
+      // The navigation may not have created its execution context yet.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Timed out waiting for ${label}`);
+}
+
 async function dispatchTrustedClick(call, selector) {
   const point = await evaluateValue(call, `(() => {
     const element = document.querySelector(${JSON.stringify(selector)});
@@ -162,7 +174,14 @@ try {
   await call("Runtime.enable");
   await call("Page.enable");
   await call("Page.bringToFront");
-  await new Promise((resolve) => setTimeout(resolve, 800));
+  // A fixed delay here was observed to be flaky under load (the click below
+  // could land before the module script finished evaluating); wait for the
+  // actual control to exist and be part of a completed document instead.
+  await waitForExpression(
+    call,
+    `document.readyState === "complete" && document.querySelector("#builder-add-field") !== null`,
+    "the FormBuilder Studio Build tab to be ready"
+  );
 
   // --- Solo product: design a field, fill it in, export it. No agent involved. ---
   await evaluateValue(call, `document.querySelector("#builder-field-type").value = "text-short"`);

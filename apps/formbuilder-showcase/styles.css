@@ -237,6 +237,10 @@ textarea { resize: vertical; }
 .conversation-form label { font-size: .78rem; }
 .speak-replies { margin-top: .65rem; }
 .transcript { min-height: 2.2rem; padding: .65rem; border-left: 2px solid var(--blue); background: rgba(39,94,170,.055); white-space: pre-line; }
+/* GAP-06: a silent advisory comment on a human-made change - Explain-mode
+   only, never an offer or an action, so it borrows the transcript's quiet
+   left-border treatment rather than the offer-chip styling. */
+.advisor-comment { padding: .55rem .65rem; border-left: 2px solid var(--teal); background: rgba(11,116,104,.06); }
 
 .receipt-list { display: grid; gap: .45rem; margin: .7rem 0 0; padding-left: 1.3rem; }
 .receipt-list li { padding-left: .2rem; color: var(--muted); font-size: .75rem; }

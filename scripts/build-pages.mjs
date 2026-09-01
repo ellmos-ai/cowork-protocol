@@ -8,6 +8,7 @@ const PUBLIC_FILES = [
   "apps/formbuilder-showcase/FORMBUILDER-NOTICE.md",
   "apps/formbuilder-showcase/index.html",
   "apps/formbuilder-showcase/styles.css",
+  "apps/formbuilder-showcase/src/advisor-comment.js",
   "apps/formbuilder-showcase/src/app.js",
   "apps/formbuilder-showcase/src/builder-cowork.js",
   "apps/formbuilder-showcase/src/builder-cowork-ui.js",
