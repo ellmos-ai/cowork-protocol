@@ -11,6 +11,12 @@ const AGENT_PRESENCE_VALUES = new Set(["active", "paused"]);
 const CHANGE_SOURCE_VALUES = new Set(["human", "agent", "app", "bridge"]);
 const CAUSALITY_CONFIDENCE_VALUES = new Set(["low", "medium", "high"]);
 const FEEDBACK_VERDICT_VALUES = new Set(["accepted", "rejected", "revise"]);
+// A delegation grant's origin must be a real human signal: a click, or a real
+// spoken/typed utterance (never an agent simulating either). See GAP-01/GAP-02.
+const GRANT_ORIGIN_VALUES = new Set(["human-click", "human-utterance"]);
+const GRANT_GOAL_LIMIT = 200;
+const HANDOVER_DELTA_TARGET_LIMIT = 12;
+const HANDOVER_DELTA_SUMMARY_LIMIT = 350;
 const SHA256_CONSTANTS = new Uint32Array([
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
   0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
@@ -278,6 +284,103 @@ export function createPresenceEvent(input) {
   };
 }
 
+/**
+ * A delegation grant is presence-independent: it authorizes scoped solo work
+ * (packages/core's `authorizeSoloAction`) and, when supplied to
+ * `authorizeActionOffer`, a single directive spoken or typed while the human
+ * stays present (GAP-02). It always originates from a real human signal
+ * (click or utterance, never an agent) and is versioned, scoped and expiring
+ * exactly like an action offer. Presence itself (`humanPresence`) says who is
+ * there; it is no longer a precondition for whether a grant may be used -
+ * only the grant's own origin, scope and expiry decide that (GAP-01).
+ */
+export function createDelegationGrant(input) {
+  if (!GRANT_ORIGIN_VALUES.has(input?.origin)) {
+    throw new CoworkProtocolError(
+      "HUMAN_CONFIRMATION_REQUIRED",
+      "A delegation grant must originate from a real human click or utterance"
+    );
+  }
+  if (typeof input.goal !== "string" || input.goal.trim() === "") {
+    throw new CoworkProtocolError(
+      "LEASE_SCOPE_VIOLATION",
+      "A delegation grant needs a concrete, human-authored goal"
+    );
+  }
+  if (
+    !Array.isArray(input.allowedCapabilityIds) ||
+    input.allowedCapabilityIds.length === 0 ||
+    !Array.isArray(input.allowedTargetIds) ||
+    input.allowedTargetIds.length === 0 ||
+    !Number.isInteger(input.maxCalls) ||
+    input.maxCalls <= 0 ||
+    !Number.isInteger(input.pageVersion) ||
+    typeof input.expiresAt !== "string" ||
+    !Number.isFinite(Date.parse(input.expiresAt))
+  ) {
+    throw new CoworkProtocolError(
+      "LEASE_SCOPE_VIOLATION",
+      "Delegation grant scope must contain capability/target arrays, a positive call budget, a page version and a valid expiry"
+    );
+  }
+
+  const trimmedGoal = input.goal.trim();
+  const goal = truncateWithEllipsis(trimmedGoal, GRANT_GOAL_LIMIT);
+  return {
+    protocolVersion: "0.1",
+    type: "delegation-grant",
+    grantId: input.grantId,
+    // A delegation grant IS the lease `authorizeSoloAction` consumes; `leaseId`
+    // is kept as an alias of `grantId` so that existing lease-shaped code
+    // (authorizeSoloAction's own `lease.leaseId` read, session state, UI)
+    // needs no parallel field.
+    leaseId: input.grantId,
+    origin: input.origin,
+    goal,
+    allowedCapabilityIds: [...input.allowedCapabilityIds],
+    allowedTargetIds: [...input.allowedTargetIds],
+    maxCalls: input.maxCalls,
+    maxContextLevel: input.maxContextLevel ?? null,
+    pageVersion: input.pageVersion,
+    expiresAt: input.expiresAt,
+    metrics: {
+      goalCharacters: trimmedGoal.length,
+      goalIncludedCharacters: goal.length
+    }
+  };
+}
+
+function assertGrantCoversOffer(grant, offer, now) {
+  if (
+    !grant ||
+    typeof grant !== "object" ||
+    !GRANT_ORIGIN_VALUES.has(grant.origin) ||
+    !Array.isArray(grant.allowedCapabilityIds) ||
+    !Array.isArray(grant.allowedTargetIds)
+  ) {
+    throw new CoworkProtocolError(
+      "HUMAN_CONFIRMATION_REQUIRED",
+      "A human utterance can authorize an action only under a real delegation grant"
+    );
+  }
+  const grantExpiry = Date.parse(grant.expiresAt);
+  if (!Number.isFinite(grantExpiry) || Date.parse(now) >= grantExpiry) {
+    throw new CoworkProtocolError("LEASE_EXPIRED", "Delegation grant expired");
+  }
+  if (!grant.allowedCapabilityIds.includes(offer.capabilityId)) {
+    throw new CoworkProtocolError(
+      "LEASE_SCOPE_VIOLATION",
+      `Capability outside the delegation grant: ${offer.capabilityId}`
+    );
+  }
+  if (!grant.allowedTargetIds.includes(offer.targetId)) {
+    throw new CoworkProtocolError(
+      "LEASE_SCOPE_VIOLATION",
+      `Target outside the delegation grant: ${offer.targetId}`
+    );
+  }
+}
+
 export function authorizeSoloAction(request) {
   if (!request || typeof request !== "object" || Array.isArray(request)) {
     throw new CoworkProtocolError(
@@ -311,15 +414,23 @@ export function authorizeSoloAction(request) {
       "Solo lease scope must contain capability and target arrays"
     );
   }
+  // The lease must itself be a real delegation grant (GAP-01): its origin
+  // must be a genuine human click or utterance. This does not simulate
+  // consent - it re-verifies, at the point of use, that consent was real at
+  // the point of grant. Presence is deliberately not checked here: presence
+  // says who is there, not who may act (see the function doc comment above).
+  if (!GRANT_ORIGIN_VALUES.has(lease.origin)) {
+    throw new CoworkProtocolError(
+      "HUMAN_CONFIRMATION_REQUIRED",
+      "A solo lease must be a real delegation grant with a human origin"
+    );
+  }
   const now = Date.parse(request.now);
   const expiresAt = Date.parse(lease.expiresAt);
   if (!Number.isFinite(now) || !Number.isFinite(expiresAt)) {
     throw new CoworkProtocolError("LEASE_EXPIRED", "Solo lease time is invalid");
   }
 
-  if (request.humanPresence === "present") {
-    throw new CoworkProtocolError("CANCELLED", "Human returned; solo lease ended");
-  }
   if (request.agentPresence === "paused") {
     throw new CoworkProtocolError("SESSION_PAUSED", "Agent is paused");
   }

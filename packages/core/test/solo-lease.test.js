@@ -5,6 +5,7 @@ import { authorizeSoloAction, CoworkProtocolError } from "../src/index.js";
 
 const lease = {
   leaseId: "lease-1",
+  origin: "human-click",
   goal: "Complete the selected form field",
   allowedCapabilityIds: ["form.set_value"],
   allowedTargetIds: ["field.email"],
@@ -40,7 +41,6 @@ test("a solo lease authorizes only an active action inside every human-approved 
     remainingCalls: 0
   });
 
-  expectCode({ humanPresence: "present" }, "CANCELLED");
   expectCode({ agentPresence: "paused" }, "SESSION_PAUSED");
   expectCode({ now: "2026-08-30T10:05:00.000Z" }, "LEASE_EXPIRED");
   expectCode({ callsUsed: 2 }, "LEASE_EXPIRED");
@@ -74,5 +74,34 @@ test("malformed solo leases fail closed with the protocol error type", () => {
   expectCode(
     { lease: { ...lease, allowedTargetIds: null } },
     "LEASE_SCOPE_VIOLATION"
+  );
+});
+
+// --- GAP-01: presence says who is there, not who may act. ---
+
+test("a delegation grant authorizes solo work even while the human is present", () => {
+  assert.deepEqual(authorizeSoloAction({ ...validRequest, humanPresence: "present" }), {
+    authorized: true,
+    authorizationSource: "solo-lease",
+    leaseId: "lease-1",
+    remainingCalls: 0
+  });
+});
+
+test("a lease without a real human-originated grant cannot authorize solo work", () => {
+  expectCode({ lease: { ...lease, origin: undefined } }, "HUMAN_CONFIRMATION_REQUIRED");
+  expectCode({ lease: { ...lease, origin: "agent-tool" } }, "HUMAN_CONFIRMATION_REQUIRED");
+  expectCode({ lease: { ...lease, origin: "agent-simulated-click" } }, "HUMAN_CONFIRMATION_REQUIRED");
+});
+
+test("a delegation grant accepts a human utterance origin, not only a click", () => {
+  assert.deepEqual(
+    authorizeSoloAction({ ...validRequest, lease: { ...lease, origin: "human-utterance" } }),
+    {
+      authorized: true,
+      authorizationSource: "solo-lease",
+      leaseId: "lease-1",
+      remainingCalls: 0
+    }
   );
 });

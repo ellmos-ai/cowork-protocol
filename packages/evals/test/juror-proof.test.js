@@ -47,11 +47,10 @@ test("the juror proof exercises human authorization, scoped solo work and the re
   assert.equal(steps["agent-solo"].evidence.remainingCalls, 1);
   assert.equal(steps["agent-solo"].evidence.nextValue, "lukas@example.com");
 
-  assert.deepEqual(steps["collaborative-form-design"].evidence.capabilityIds, [
-    "form-add-field",
-    "form-update-field",
-    "form-move-field"
-  ]);
+  // The canvas focus (proposing a brand-new field) only exposes form-add-field;
+  // an already-existing field is a *separate* addressable target (GAP-00) with
+  // its own two field-scoped capabilities, not exercised by this canvas step.
+  assert.deepEqual(steps["collaborative-form-design"].evidence.capabilityIds, ["form-add-field"]);
   assert.equal(steps["collaborative-form-design"].evidence.fieldsBeforeClick, 0);
   assert.equal(steps["collaborative-form-design"].evidence.fieldsAfterClick, 1);
   assert.equal(steps["collaborative-form-design"].evidence.receiptStatus, "verified");

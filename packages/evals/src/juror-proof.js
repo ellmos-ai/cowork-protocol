@@ -17,7 +17,10 @@ import {
 } from "../../conversation/src/index.js";
 import { createShowcaseSubmission } from "../../../apps/formbuilder-showcase/src/formbuilder-use-case.js";
 import { observeControlChange } from "../../../apps/formbuilder-showcase/src/interaction-log.js";
-import { createBuilderCoworkBridge } from "../../../apps/formbuilder-showcase/src/builder-cowork.js";
+import {
+  BUILDER_CANVAS_TARGET_ID,
+  createBuilderCoworkBridge
+} from "../../../apps/formbuilder-showcase/src/builder-cowork.js";
 import { createField } from "../../../apps/formbuilder-showcase/src/form-builder.mjs";
 
 function proofStep(id, pass, evidence) {
@@ -163,6 +166,7 @@ export function runJurorProof() {
   const solo = planSoloFormBuilderMutation({
     lease: {
       leaseId: "proof-lease-1",
+      origin: "human-click",
       goal: "Complete only the email field",
       allowedCapabilityIds: ["form.set_value"],
       allowedTargetIds: ["form-field:email"],
@@ -196,6 +200,7 @@ export function runJurorProof() {
   const suggestedField = createField("text-short", { label: "Dietary requirements" });
   const builderOffer = builderBridge.proposeOffer({
     capabilityId: "form-add-field",
+    targetId: BUILDER_CANVAS_TARGET_ID,
     proposedArguments: { field: suggestedField },
     summary: `Add a "${suggestedField.label}" field`,
     pageVersion: 1,
