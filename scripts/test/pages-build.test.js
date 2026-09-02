@@ -35,6 +35,8 @@ test("the Pages artifact contains only the web showcase and its runtime modules"
     assert.equal(files.includes("apps/formbuilder-showcase/src/speech-controller.js"), true);
     assert.equal(files.includes("packages/conversation/src/index.js"), true);
     assert.equal(files.includes("packages/core/src/index.js"), true);
+    assert.equal(files.includes("packages/companion-link/src/index.js"), true);
+    assert.equal(files.includes("packages/context-manager/src/index.js"), true);
     assert.equal(files.includes("packages/formbuilder-connector/src/index.js"), true);
     assert.equal(files.includes("packages/native-webmcp/src/index.js"), true);
     assert.equal(

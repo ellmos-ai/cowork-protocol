@@ -24,6 +24,8 @@ const PUBLIC_FILES = [
   "apps/formbuilder-showcase/src/speech-controller.js",
   "apps/formbuilder-showcase/src/view-model.js",
   "packages/core/src/index.js",
+  "packages/companion-link/src/index.js",
+  "packages/context-manager/src/index.js",
   "packages/conversation/src/index.js",
   "packages/formbuilder-connector/src/index.js",
   "packages/integration-contract/src/index.js",
