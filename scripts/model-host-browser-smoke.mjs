@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+
+import { removeTempProfile } from "./smoke-runtime.mjs";
 
 import { createOpenAiCompatibleTurnSender } from "../packages/model-transport/src/openai-compatible.js";
 import { validateModelHostBrowserObservation } from "./model-host-browser-smoke-lib.mjs";
@@ -266,5 +268,5 @@ try {
 } finally {
   if (browser && !browser.killed) browser.kill();
   if (server) await new Promise((resolve) => server.close(resolve));
-  await rm(profilePath, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  await removeTempProfile(profilePath);
 }

@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+
+import { removeTempProfile, resolveExtensionBrowserPath } from "./smoke-runtime.mjs";
 
 import { buildBrowserCompanion } from "./build-browser-companion.mjs";
 import { createStaticServer } from "./serve.mjs";
@@ -10,33 +12,6 @@ const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-native-companion-"
 const extensionPath = path.resolve("dist-browser-companion");
 let browser;
 let server;
-
-async function firstExisting(paths) {
-  for (const candidate of paths) {
-    try {
-      await access(candidate);
-      return candidate;
-    } catch {
-      // Try the next explicit browser path.
-    }
-  }
-  return null;
-}
-
-async function resolveChromePath() {
-  if (process.env.COWORK_COMPANION_BROWSER_PATH) {
-    await access(process.env.COWORK_COMPANION_BROWSER_PATH);
-    return process.env.COWORK_COMPANION_BROWSER_PATH;
-  }
-  const candidate = await firstExisting([
-    "C:\\_Local_DEV\\tools\\chrome-for-testing\\chrome\\win64-152.0.7977.64\\chrome-win64\\chrome.exe",
-    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
-  ]);
-  if (!candidate) throw new Error("Chrome was not found");
-  return candidate;
-}
 
 async function waitForJson(url, attempts = 80) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -182,7 +157,7 @@ try {
   const address = server.address();
   const showcaseUrl =
     `http://127.0.0.1:${address.port}/apps/formbuilder-showcase/`;
-  browser = spawn(await resolveChromePath(), [
+  browser = spawn(await resolveExtensionBrowserPath(), [
     "--headless=new",
     "--disable-gpu",
     "--no-first-run",
@@ -282,5 +257,5 @@ try {
 } finally {
   await stopBrowser(browser);
   if (server?.listening) await new Promise((resolve) => server.close(resolve));
-  await rm(profilePath, { recursive: true, force: true, maxRetries: 10, retryDelay: 150 });
+  await removeTempProfile(profilePath);
 }

@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+
+import { removeTempProfile } from "./smoke-runtime.mjs";
 
 import { createStaticServer } from "./serve.mjs";
 import {
@@ -671,5 +673,5 @@ try {
   if (server?.listening) {
     await new Promise((resolve) => server.close(resolve));
   }
-  await rm(profilePath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  await removeTempProfile(profilePath);
 }

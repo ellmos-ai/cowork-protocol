@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+
+import { removeTempProfile } from "./smoke-runtime.mjs";
 
 import { createCompanionSessionHost } from "../apps/desktop-companion/src/host.js";
 import { createStaticServer } from "./serve.mjs";
@@ -654,5 +656,5 @@ try {
   browser?.kill();
   await companionHost?.close();
   if (server?.listening) await new Promise((resolve) => server.close(resolve));
-  await rm(profilePath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  await removeTempProfile(profilePath);
 }

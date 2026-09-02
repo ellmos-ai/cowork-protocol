@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+
+import { removeTempProfile, resolveExtensionBrowserPath } from "./smoke-runtime.mjs";
 
 import { buildBrowserCompanion } from "./build-browser-companion.mjs";
 import { validateBrowserCompanionObservation } from "./browser-companion-smoke-lib.mjs";
@@ -14,63 +16,6 @@ const evidenceDirectory = process.env.COWORK_COMPANION_EVIDENCE_DIR
   : null;
 let server;
 let browser;
-
-async function firstExisting(paths) {
-  for (const candidate of paths) {
-    try {
-      await access(candidate);
-      return candidate;
-    } catch {
-      // Try the next explicit browser path.
-    }
-  }
-  return null;
-}
-
-async function installedChromeForTesting() {
-  if (process.platform !== "win32") return null;
-  const root = "C:\\_Local_DEV\\tools\\chrome-for-testing\\chrome";
-  try {
-    const versions = (await readdir(root, { withFileTypes: true }))
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort((left, right) => right.localeCompare(left, undefined, { numeric: true }));
-    for (const version of versions) {
-      const candidate = path.join(root, version, "chrome-win64", "chrome.exe");
-      try {
-        await access(candidate);
-        return candidate;
-      } catch {
-        // Try the next locally installed testing version.
-      }
-    }
-  } catch {
-    // The optional local testing-browser cache is absent.
-  }
-  return null;
-}
-
-async function resolveChromePath() {
-  const configuredPath =
-    process.env.COWORK_COMPANION_BROWSER_PATH ?? process.env.COWORK_CHROME_PATH;
-  if (configuredPath) {
-    await access(configuredPath);
-    return configuredPath;
-  }
-  const testingBrowser = await installedChromeForTesting();
-  if (testingBrowser) return testingBrowser;
-  const candidate = await firstExisting([
-    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
-    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    "/usr/bin/google-chrome",
-    "/usr/bin/google-chrome-stable"
-  ]);
-  if (!candidate) throw new Error("Chrome was not found; set COWORK_CHROME_PATH");
-  return candidate;
-}
 
 async function waitForJson(url, attempts = 80) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -286,7 +231,7 @@ async function stopOwnedBrowser(child) {
 
 try {
   await buildBrowserCompanion({ sourceRoot: process.cwd(), outputRoot: extensionPath });
-  const chromePath = await resolveChromePath();
+  const chromePath = await resolveExtensionBrowserPath();
   server = createStaticServer({ root: process.cwd() });
   await new Promise((resolve, reject) => {
     server.once("error", reject);
@@ -576,10 +521,5 @@ try {
 } finally {
   await stopOwnedBrowser(browser);
   if (server) await new Promise((resolve) => server.close(resolve));
-  await rm(profilePath, {
-    recursive: true,
-    force: true,
-    maxRetries: 10,
-    retryDelay: 150
-  });
+  await removeTempProfile(profilePath);
 }
