@@ -4,12 +4,22 @@
 
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#fff7f6"/>
-      <stop offset="0.48" stop-color="#fffbfa"/>
-      <stop offset="1" stop-color="#fdeae8"/>
+      <stop offset="0" stop-color="#ff5fb4"/>
+      <stop offset="0.34" stop-color="#e33fa0"/>
+      <stop offset="0.7" stop-color="#8b4dff"/>
+      <stop offset="1" stop-color="#5b2bd9"/>
     </linearGradient>
+    <radialGradient id="glowA" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffb3e6" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffb3e6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#b98cff" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#b98cff" stop-opacity="0"/>
+    </radialGradient>
+    <path id="sparkle" d="M0 -10 Q 1.7 -1.7 10 0 Q 1.7 1.7 0 10 Q -1.7 1.7 -10 0 Q -1.7 -1.7 0 -10 Z"/>
     <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#241c15"/>
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#ffffff"/>
     </marker>
     <style>
       .title { font: 800 46px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #241c15; letter-spacing: -1.4px; }
@@ -23,34 +33,104 @@
       .step-copy { font: 400 14px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #6b5d53; }
       .rule { font: 600 18px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #b23a26; }
       .footnote { font: 500 15px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #6b5d53; }
+      .on-art { fill: #ffffff; filter: drop-shadow(0 2px 3px rgba(48, 6, 66, 0.55)); }
+      .on-art-soft { fill: #ffe4f5; filter: drop-shadow(0 2px 3px rgba(48, 6, 66, 0.55)); }
     </style>
   </defs>
 
   <rect width="1600" height="900" rx="30" fill="url(#background)"/>
-  <circle cx="1480" cy="80" r="180" fill="#ff8f7d" opacity="0.09"/>
-  <circle cx="110" cy="850" r="200" fill="#0a7a72" opacity="0.05"/>
+  <ellipse cx="220" cy="130" rx="470" ry="330" fill="url(#glowA)"/>
+  <ellipse cx="1360" cy="780" rx="500" ry="360" fill="url(#glowB)"/>
+  <g id="glitter">
+    <use href="#sparkle" transform="translate(223 441) rotate(60.1) scale(0.68)" fill="#ffd9f0" opacity="0.86"/>
+    <use href="#sparkle" transform="translate(1119 40) rotate(56.0) scale(0.96)" fill="#ffffff" opacity="0.65"/>
+    <use href="#sparkle" transform="translate(1515 696) rotate(21.9) scale(0.33)" fill="#ffd9f0" opacity="0.74"/>
+    <use href="#sparkle" transform="translate(249 115) rotate(86.4) scale(1.02)" fill="#ffffff" opacity="0.85"/>
+    <use href="#sparkle" transform="translate(203 218) rotate(32.3) scale(0.82)" fill="#ffffff" opacity="0.48"/>
+    <use href="#sparkle" transform="translate(615 854) rotate(73.7) scale(0.98)" fill="#ffd9f0" opacity="0.68"/>
+    <use href="#sparkle" transform="translate(1302 20) rotate(9.1) scale(0.44)" fill="#ffd9f0" opacity="0.38"/>
+    <use href="#sparkle" transform="translate(1316 195) rotate(89.2) scale(0.63)" fill="#ffffff" opacity="0.7"/>
+    <use href="#sparkle" transform="translate(1202 47) rotate(30.2) scale(1.03)" fill="#ffd9f0" opacity="0.39"/>
+    <use href="#sparkle" transform="translate(353 159) rotate(22.2) scale(0.79)" fill="#ffd9f0" opacity="0.48"/>
+    <use href="#sparkle" transform="translate(989 99) rotate(61.6) scale(0.58)" fill="#ffffff" opacity="0.88"/>
+    <use href="#sparkle" transform="translate(137 681) rotate(19.9) scale(0.59)" fill="#ffd9f0" opacity="0.9"/>
+    <use href="#sparkle" transform="translate(159 669) rotate(28.4) scale(1.02)" fill="#ffffff" opacity="0.6"/>
+    <use href="#sparkle" transform="translate(1404 111) rotate(41.0) scale(0.78)" fill="#ffd9f0" opacity="0.52"/>
+    <use href="#sparkle" transform="translate(528 62) rotate(14.7) scale(0.56)" fill="#ffffff" opacity="0.4"/>
+    <use href="#sparkle" transform="translate(833 11) rotate(71.1) scale(0.25)" fill="#ffffff" opacity="0.91"/>
+    <use href="#sparkle" transform="translate(243 177) rotate(72.2) scale(1.02)" fill="#ffd9f0" opacity="0.4"/>
+    <use href="#sparkle" transform="translate(1186 688) rotate(11.3) scale(0.82)" fill="#ffd9f0" opacity="0.45"/>
+    <use href="#sparkle" transform="translate(1132 707) rotate(76.9) scale(0.64)" fill="#ffd9f0" opacity="0.53"/>
+    <use href="#sparkle" transform="translate(917 126) rotate(34.2) scale(0.63)" fill="#ffd9f0" opacity="0.81"/>
+    <use href="#sparkle" transform="translate(298 171) rotate(25.3) scale(0.81)" fill="#ffffff" opacity="0.57"/>
+    <use href="#sparkle" transform="translate(189 441) rotate(28.0) scale(1.01)" fill="#ffffff" opacity="0.56"/>
+    <use href="#sparkle" transform="translate(1397 81) rotate(88.4) scale(0.29)" fill="#ffffff" opacity="0.38"/>
+    <use href="#sparkle" transform="translate(814 870) rotate(39.1) scale(0.34)" fill="#ffd9f0" opacity="0.46"/>
+    <use href="#sparkle" transform="translate(478 26) rotate(23.2) scale(0.32)" fill="#ffffff" opacity="0.45"/>
+    <use href="#sparkle" transform="translate(808 207) rotate(12.1) scale(0.95)" fill="#ffd9f0" opacity="0.83"/>
+    <use href="#sparkle" transform="translate(1452 54) rotate(81.1) scale(0.65)" fill="#ffffff" opacity="0.47"/>
+    <use href="#sparkle" transform="translate(280 193) rotate(84.3) scale(0.59)" fill="#ffffff" opacity="0.7"/>
+    <use href="#sparkle" transform="translate(143 361) rotate(74.8) scale(0.6)" fill="#ffd9f0" opacity="0.94"/>
+    <use href="#sparkle" transform="translate(660 101) rotate(69.1) scale(0.83)" fill="#ffd9f0" opacity="0.42"/>
+    <use href="#sparkle" transform="translate(1571 555) rotate(40.1) scale(0.74)" fill="#ffd9f0" opacity="0.68"/>
+    <use href="#sparkle" transform="translate(223 350) rotate(48.0) scale(0.72)" fill="#ffffff" opacity="0.78"/>
+    <use href="#sparkle" transform="translate(848 109) rotate(34.8) scale(0.36)" fill="#ffffff" opacity="0.86"/>
+    <use href="#sparkle" transform="translate(208 342) rotate(40.5) scale(0.5)" fill="#ffffff" opacity="0.53"/>
+    <use href="#sparkle" transform="translate(469 92) rotate(84.1) scale(0.62)" fill="#ffd9f0" opacity="0.38"/>
+    <use href="#sparkle" transform="translate(1186 224) rotate(59.8) scale(0.57)" fill="#ffffff" opacity="0.82"/>
+    <use href="#sparkle" transform="translate(308 447) rotate(59.1) scale(0.68)" fill="#ffd9f0" opacity="0.77"/>
+    <use href="#sparkle" transform="translate(124 202) rotate(56.0) scale(0.3)" fill="#ffffff" opacity="0.68"/>
+    <use href="#sparkle" transform="translate(1028 94) rotate(73.6) scale(0.57)" fill="#ffffff" opacity="0.55"/>
+    <use href="#sparkle" transform="translate(118 367) rotate(19.7) scale(0.37)" fill="#ffffff" opacity="0.77"/>
+    <use href="#sparkle" transform="translate(896 238) rotate(38.8) scale(0.93)" fill="#ffd9f0" opacity="0.69"/>
+    <use href="#sparkle" transform="translate(1384 178) rotate(41.2) scale(0.5)" fill="#ffffff" opacity="0.39"/>
+    <use href="#sparkle" transform="translate(1590 710) rotate(89.0) scale(0.25)" fill="#ffffff" opacity="0.67"/>
+    <use href="#sparkle" transform="translate(1579 570) rotate(51.7) scale(0.4)" fill="#ffffff" opacity="0.52"/>
+    <use href="#sparkle" transform="translate(78 418) rotate(14.4) scale(0.89)" fill="#ffffff" opacity="0.84"/>
+    <use href="#sparkle" transform="translate(346 689) rotate(47.1) scale(0.76)" fill="#ffffff" opacity="0.44"/>
+    <use href="#sparkle" transform="translate(680 869) rotate(55.1) scale(0.6)" fill="#ffd9f0" opacity="0.47"/>
+    <use href="#sparkle" transform="translate(889 840) rotate(46.0) scale(0.53)" fill="#ffd9f0" opacity="0.36"/>
+    <use href="#sparkle" transform="translate(33 590) rotate(19.5) scale(0.54)" fill="#ffffff" opacity="0.86"/>
+    <use href="#sparkle" transform="translate(349 24) rotate(83.3) scale(0.54)" fill="#ffd9f0" opacity="0.69"/>
+    <use href="#sparkle" transform="translate(693 170) rotate(19.5) scale(0.85)" fill="#ffffff" opacity="0.76"/>
+    <use href="#sparkle" transform="translate(932 217) rotate(80.2) scale(0.27)" fill="#ffffff" opacity="0.92"/>
+    <use href="#sparkle" transform="translate(539 162) rotate(0.0) scale(0.68)" fill="#ffffff" opacity="0.83"/>
+    <use href="#sparkle" transform="translate(218 485) rotate(84.1) scale(0.35)" fill="#ffd9f0" opacity="0.42"/>
+    <use href="#sparkle" transform="translate(123 348) rotate(12.8) scale(0.75)" fill="#ffffff" opacity="0.55"/>
+    <use href="#sparkle" transform="translate(189 640) rotate(34.3) scale(0.81)" fill="#ffffff" opacity="0.91"/>
+    <use href="#sparkle" transform="translate(466 878) rotate(70.6) scale(0.64)" fill="#ffd9f0" opacity="0.74"/>
+    <use href="#sparkle" transform="translate(178 827) rotate(68.5) scale(0.92)" fill="#ffffff" opacity="0.5"/>
+    <use href="#sparkle" transform="translate(252 643) rotate(87.9) scale(0.69)" fill="#ffffff" opacity="0.92"/>
+    <use href="#sparkle" transform="translate(1354 687) rotate(9.3) scale(0.51)" fill="#ffffff" opacity="0.89"/>
+    <use href="#sparkle" transform="translate(99 265) rotate(37.7) scale(0.87)" fill="#ffffff" opacity="0.9"/>
+    <use href="#sparkle" transform="translate(713 162) rotate(28.0) scale(0.8)" fill="#ffffff" opacity="0.76"/>
+    <use href="#sparkle" transform="translate(611 876) rotate(65.1) scale(0.87)" fill="#ffffff" opacity="0.42"/>
+    <use href="#sparkle" transform="translate(37 592) rotate(69.0) scale(0.68)" fill="#ffd9f0" opacity="0.5"/>
+    <use href="#sparkle" transform="translate(1584 704) rotate(50.1) scale(0.9)" fill="#ffffff" opacity="0.64"/>
+    <use href="#sparkle" transform="translate(1590 185) rotate(48.3) scale(0.26)" fill="#ffffff" opacity="0.63"/>
+  </g>
 
-  <text x="60" y="58" class="eyebrow">WORK MODE MATRIX</text>
-  <text x="60" y="106" class="title">Who acts, who advises</text>
-  <text x="60" y="142" class="subtitle">Three questions per partner. The mode is only a name for the answers.</text>
+  <text x="60" y="58" class="eyebrow on-art-soft">WORK MODE MATRIX</text>
+  <text x="60" y="106" class="title on-art">Who acts, who advises</text>
+  <text x="60" y="142" class="subtitle on-art-soft">Three questions per partner. The mode is only a name for the answers.</text>
 
   <!-- Column headers: the model -->
-  <text x="356" y="196" class="eyebrow">MODEL</text>
-  <text x="356" y="228" class="axis">here · executing</text>
-  <text x="356" y="250" class="axis-sub">inside a grant</text>
-  <text x="756" y="228" class="axis">here · advising</text>
-  <text x="756" y="250" class="axis-sub">proposing, not clicking</text>
-  <text x="1156" y="228" class="axis">standby or away</text>
-  <text x="1156" y="250" class="axis-sub">not working, or no seat</text>
+  <text x="356" y="196" class="eyebrow on-art-soft">MODEL</text>
+  <text x="356" y="228" class="axis on-art">here · executing</text>
+  <text x="356" y="250" class="axis-sub on-art-soft">inside a grant</text>
+  <text x="756" y="228" class="axis on-art">here · advising</text>
+  <text x="756" y="250" class="axis-sub on-art-soft">proposing, not clicking</text>
+  <text x="1156" y="228" class="axis on-art">standby or away</text>
+  <text x="1156" y="250" class="axis-sub on-art-soft">not working, or no seat</text>
 
   <!-- Row headers: the human -->
-  <text x="60" y="196" class="eyebrow">HUMAN</text>
-  <text x="60" y="306" class="axis">here · executing</text>
-  <text x="60" y="330" class="axis-sub">your hand on the mouse</text>
-  <text x="60" y="444" class="axis">here · advising</text>
-  <text x="60" y="468" class="axis-sub">watching, directing</text>
-  <text x="60" y="582" class="axis">standby or away</text>
-  <text x="60" y="606" class="axis-sub">stepped back or left</text>
+  <text x="60" y="196" class="eyebrow on-art-soft">HUMAN</text>
+  <text x="60" y="306" class="axis on-art">here · executing</text>
+  <text x="60" y="330" class="axis-sub on-art-soft">your hand on the mouse</text>
+  <text x="60" y="444" class="axis on-art">here · advising</text>
+  <text x="60" y="468" class="axis-sub on-art-soft">watching, directing</text>
+  <text x="60" y="582" class="axis on-art">standby or away</text>
+  <text x="60" y="606" class="axis-sub on-art-soft">stepped back or left</text>
 
   <!-- Row 1: human here, executing -->
   <rect x="356" y="264" width="384" height="124" rx="18" fill="#f4fbf9" stroke="#0a7a72" stroke-width="3"/>
@@ -101,7 +181,7 @@
   <text x="1180" y="638" class="cell-copy">nobody holds the click right</text>
 
   <!-- The journey -->
-  <text x="60" y="708" class="eyebrow">THE USUAL JOURNEY · NOTHING IS CONFIGURED, EACH STEP CHANGES ONE ANSWER</text>
+  <text x="60" y="708" class="eyebrow on-art-soft">THE USUAL JOURNEY · NOTHING IS CONFIGURED, EACH STEP CHANGES ONE ANSWER</text>
 
   <rect x="60" y="726" width="225" height="80" rx="16" fill="#fffefd" stroke="#d3c2ab" stroke-width="2"/>
   <text x="82" y="762" class="step-title">You type a job</text>
@@ -132,6 +212,6 @@
   <text x="1337" y="762" class="step-title">You execute again</text>
   <text x="1337" y="786" class="step-copy">the model advises</text>
 
-  <text x="60" y="848" class="rule">A model executes only inside a grant or lease — presence is never a substitute.</text>
-  <text x="60" y="876" class="footnote">Every cell resolved by resolveWorkMode() in packages/core · docs/work-modes.md · 2026-09-03</text>
+  <text x="60" y="848" class="rule on-art">A model executes only inside a grant or lease — presence is never a substitute.</text>
+  <text x="60" y="876" class="footnote on-art-soft">Every cell resolved by resolveWorkMode() in packages/core · docs/work-modes.md · 2026-09-03</text>
 </svg>

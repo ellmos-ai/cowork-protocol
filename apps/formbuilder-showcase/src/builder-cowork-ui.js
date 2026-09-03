@@ -7,7 +7,7 @@
 
 import { classificationDisplayName, classificationOf, createField, FIELD_TYPE_PALETTE } from "./form-builder.mjs";
 import { createBuilderModelSuggester } from "./builder-model-suggester.js";
-import { BUILDER_CANVAS_TARGET_ID, builderFieldTargetId, createBuilderCoworkBridge } from "./builder-cowork.js";
+import { addFieldSummary, BUILDER_CANVAS_TARGET_ID, builderFieldTargetId, createBuilderCoworkBridge } from "./builder-cowork.js";
 import { classifyBuilderDirective } from "./builder-directive-classifier.js";
 
 const SUGGESTABLE_FIELDS = [
@@ -158,7 +158,7 @@ export function initBuilderCowork({ root = document, controller, modelSeat = nul
       const suggestion =
         SUGGESTABLE_FIELDS.find((candidate) => !existingLabels.has(candidate.label)) ?? SUGGESTABLE_FIELDS[0];
       const field = createField(suggestion.paletteId, { label: suggestion.label });
-      const summary = `Add a "${field.label}" field`;
+      const summary = addFieldSummary(field.label);
       proposeField(field, summary);
       return summary;
     }
@@ -170,7 +170,7 @@ export function initBuilderCowork({ root = document, controller, modelSeat = nul
       presence: presenceFor("present")
     });
     const field = createField(suggestion.paletteId, { label: suggestion.label });
-    const summary = suggestion.summary || `Add a "${field.label}" field`;
+    const summary = suggestion.summary || addFieldSummary(field.label);
     proposeField(field, summary);
     return summary;
   }
