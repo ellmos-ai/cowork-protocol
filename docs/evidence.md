@@ -41,7 +41,7 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | A Fable-operator review batch is release-gated | commits `0dd7633`, `8b24ea8`, `549512d`, `10fd665`, `d21443b` (5 commits interleaved with a parallel README update) on `release/public-preview`; complete local gate on 2026-08-31 | 259/259 tests, 12/12 character evals, 8/8 proof steps, adapter demo, architecture validation, 0 high-confidence secret findings, 23-file Pages and 18-file browser-companion builds, plus the extended 390px accessibility smoke (25/25 named and keyboard-reachable controls, 0 document-level overflow, 0 page-wide overflowing text elements) all passed |
 | Local browser fallback is interactive | connected Edge extension plus isolated headless Edge smoke against the local showcase | Exact-value offer, real click, page-version change, verified receipt, Adjust feedback, brief/longer AFK fail-closed/delegated/return, visible lease expiry, agent pause/Human Solo, first 12 keyboard focus stops, and context-preview fail-closed/success states accepted; `document.modelContext` absent, so no WebMCP claim |
 | Audio controls fail safely under rapid activation | speech-controller tests plus isolated Chrome 152 SpeechRecognition/synthesis smoke | Two immediate activations produce no uncaught error; 22 synthesis voices and active synthesis observed; fake device returned `audio-capture`, so real microphone and audible output remain open |
-| Current interaction surface is keyboard, zoom and narrow-layout coherent | `npm run smoke:accessibility`; Chrome 152 accessibility tree, real Tab dispatch, 390×844 viewport and true 200% page-zoom pass | Current 25/25 browser AX controls are named, all 25 Tab stops are visible with focus, 390px overflow is 0, and all controls remain reachable at 200% with bounded layout rounding; screen-reader practice remains open |
+| Current interaction surface is keyboard, zoom and narrow-layout coherent | `npm run smoke:accessibility`; Chrome 152 accessibility tree, real Tab dispatch, 390×844 viewport and true 200% page-zoom pass | Current 41/41 browser AX controls are named, all 41 Tab stops are visible with focus, 390px overflow is 0, and all controls remain reachable at 200% with bounded layout rounding; screen-reader practice remains open |
 | Rendered text contrast covers the collaboration state matrix | `visual-theme.test.js`; `pixel-contrast-smoke.test.js`; `npm run smoke:contrast` | Chrome 152 audited 902 visible text items across 10 exact states: 0 unsupported, 0 failures, unrounded minimum 4.565644512773976:1; focused and working targets are labeled as well as colored; Listening is a visual fake-recognition boundary and makes no audio claim |
 | Showcase has an accepted light, premium visual direction | `visual-theme.test.js`; inspected Chrome 152 captures at 1440×1200 and 390×844; rendered contrast smoke | Opaque warm reading surface, restrained gold, blue and teal hierarchy, six protected source pairs and the 10-state rendered contrast matrix accepted |
 
@@ -327,13 +327,42 @@ change, and is not claimed as a definitive root-cause diagnosis of the
 underlying timing sensitivity - only as the fix that resolved the observed
 flakiness in this environment.
 
+An independent operator review on 2026-09-03 (second host, ASUS-GEI, Chrome
+152.0.7977.65) found that the live GitHub Pages showcase had been unable to
+start since the post-audit release: `apps/formbuilder-showcase/src/app.js`
+imports `packages/companion-link` and `packages/context-manager` statically,
+but `scripts/build-pages.mjs` never listed them, so both returned HTTP 404 and
+the whole ES module graph aborted - every local gate stayed green because
+`npm start` serves the repository without the allowlist. Commit `dd8019b`
+ships both modules (with test assertions) and the redeploy was read back live
+with HTTP 200 for both. The same run moved the browser smokes onto a shared
+`scripts/smoke-runtime.mjs` (`a35e666`): five green smokes had exited 1 on
+this host because Chrome's crashpad/SQLite handles outlived the process and
+the temporary profile could not be removed within 5x200 ms, and the native
+companion smoke had a Chrome for Testing path pinned to one host's exact
+version. All nine smokes exit 0 on the second host. The review batch that
+followed closed the remaining findings: the grant-minting Builder handlers and
+the demo's away buttons now check `event.isTrusted` like every other consent
+handler; the utterance path enforces the grant's `maxCalls` and `pageVersion`
+(previously decorative on that path); `readActiveGrant` reports an expired
+grant as gone and a directive releases its one-shot grant instead of leaving
+the UI in delegation mode; structural Builder edits (reorder, required, help
+text, options, heading level) bump the page version so stale offers fail
+closed; offers made for an earlier page version stop counting against the
+pending budget; `runSoloBatch` tracks the live page version; `MAX_RECEIPTS`
+exceeds the 12-call budget so the handover delta counts every call; the
+directive classifier no longer treats "later"/"earlier" without "move" as a
+move command; a filled-in response is invalidated when the form changes; and
+the `.fodt` writer drops XML-illegal control characters, renders line breaks
+and uses paragraph-family heading styles. Every DOM-free fix is covered by a new unit test (eleven in total,
+389 tests on the fixed tree).
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;
 - connected ChatGPT-agent WebMCP discovery and invocation beyond the accepted Chrome in-page client;
 - real microphone permission, captured speech and audibly confirmed spoken output;
 - remote preferred-model demonstration through the host transport; the local Qwen provider path is accepted;
-- final updated YouTube demo and final Devpost field readback. The Devpost project is already published and submitted to The WebMCP Challenge.
 - the reported 390px hero-lede/form-intro clipping regression: not reproduced under a genuinely fixed 390px CSS viewport in this environment (see the Fable-operator review batch note above); needs reproduction with a tool that reliably honors a true 390px viewport before it can be confirmed or fixed.
 - the FormBuilder Studio `.fodt` export was proven well-formed XML by a dependency-free tag-balance parser and inspected manually, but not opened in a real LibreOffice install in this environment; the OASIS Flat ODF template it fills in was written and reviewed by hand against the format's public specification, not verified by round-tripping it through LibreOffice.
 - sending a filled-in FormBuilder Studio form by mail and collecting responses back into one place (noted as a roadmap item, not a claim, in `apps/formbuilder-showcase/README.md`).

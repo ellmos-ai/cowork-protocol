@@ -129,8 +129,9 @@ budget for a real browser smoke, not just fixtures.
   the same bridge.
 - `npm run smoke:builder` — the real browser: propose a suggestion, confirm
   exactly one inert offer chip exists, click it, confirm the canvas changed
-  by exactly the offered amount, confirm the receipt says `Verified`, and
-  confirm the WebMCP tool count is still 9.
+  by exactly the offered amount and confirm the receipt says `Verified`.
+  The Studio smoke runs without WebMCP; that the tool count is still 9 is
+  confirmed by `npm run smoke:webmcp`.
 
 None of these needed a new test *framework* — they reuse `node:test`,
 `node:assert/strict` and the existing Chrome DevTools Protocol smoke pattern
