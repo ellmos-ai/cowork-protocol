@@ -1,4 +1,4 @@
-# Cowork Protocol Browser Companion
+# Cowork Protocol Bridge
 
 This optional Manifest V3 extension is a user-selected Cowork surface and
 precision bridge. It is disabled by default. When enabled, it consumes native
@@ -47,7 +47,7 @@ an actual trusted click on the extension surface reaches the existing Cowork
 authorization contract, and the result is reported only after the observed
 value matches.
 
-## Dialogue Relay cockpit
+## The Browser Bridge panel
 
 The Side Panel is a bright collaboration instrument rather than a generic chat
 sidebar. The human silhouette and friendly computer are the primary state

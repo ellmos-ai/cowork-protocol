@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Cowork Protocol Browser Companion",
-  "version": "0.3.0",
-  "description": "A toggleable, token-bounded Cowork fallback for pages without Cowork Protocol or WebMCP.",
+  "name": "Cowork Protocol Bridge",
+  "version": "0.3.1",
+  "description": "The Cowork Protocol bridge for pages that carry no Cowork panel: a bounded view of the page for a WebMCP agent, with the click staying yours.",
   "background": {
     "service_worker": "service-worker.js",
     "type": "module"
@@ -22,7 +22,7 @@
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_title": "Open Cowork Protocol",
+    "default_title": "Open the Cowork Protocol Bridge",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png",

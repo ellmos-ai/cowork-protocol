@@ -48,7 +48,7 @@ extension and in the Desktop Companion.
 | --- | --- | --- |
 | Solo | just this app | Fill in and export the form; no agent anywhere |
 | Embedded Cowork | nothing to install | The page voluntarily embeds the Cowork instrument beside the form |
-| Browser extension | the Cowork Browser Companion | The same session appears in Chrome's side panel, outside the page DOM |
+| Browser extension | the Cowork Protocol Bridge | The same session appears in Chrome's side panel, outside the page DOM |
 | Desktop Companion | the Cowork Desktop Companion | The session surfaces in a native window with presence in the tray |
 
 In every mode the contract is the same: the model sees one bounded focus

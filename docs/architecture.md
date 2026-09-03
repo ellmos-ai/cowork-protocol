@@ -362,7 +362,7 @@ sequenceDiagram
   Companion->>Host: executeAuthorizedAction(authorization)
 ```
 
-## Concrete no-WebMCP browser companion
+## Concrete no-WebMCP Browser Bridge
 
 ```mermaid
 sequenceDiagram

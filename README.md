@@ -251,7 +251,7 @@ interchangeable:
 | --- | --- | --- |
 | 1a | Protocol only | the packages, wired into your own app's own UI. No Cowork surface at all |
 | 1b | Embedded panel | the Cowork instrument the page itself renders, no install. This showcase runs at this level |
-| 2 | Browser extension | the Cowork Browser Companion, Chrome's side panel outside the page DOM, for pages that carry neither the protocol nor a panel |
+| 2 | Browser extension | the Cowork Protocol Bridge, Chrome's side panel outside the page DOM, for pages that carry neither the protocol nor a panel |
 | 3 | Desktop Companion | the loopback app window with a Windows tray icon, no extension; while connected it holds the session's model seat |
 
 ## Build the optional browser extension
@@ -322,7 +322,7 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 - `apps/formbuilder-showcase/src/builder-cowork.js`, `builder-model-suggester.js`, `builder-directive-classifier.js` — the layer on top of Cowork Protocol that knows what a form field is: three canvas capabilities (`form-add-field`, `form-update-field`, `form-move-field`) offered, clicked and verified through the same path as every other FormBuilder capability, plus grants, solo drafting and utterance-authorized directives. No new WebMCP tool.
 - `apps/formbuilder-showcase/src/builder-cowork-ui.js` — the headless adapter (`initBuilderCowork`) between that layer and the page. It owns the Studio canvas's attention target, offers, grant and directives and renders nothing: the page's one Cowork panel is the only Cowork surface and serves both the demo form and the Studio canvas. The Studio's own "Model suggestions", "Delegate to the model" and "Say what to do" sections were removed for that reason; see [`apps/formbuilder-showcase/INTEGRATION.md`](apps/formbuilder-showcase/INTEGRATION.md).
 
-See the [adapter runtime guide](packages/bridge/README.md), [browser companion guide](apps/browser-companion/README.md), [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), [docs/deployment.md](docs/deployment.md), [docs/evidence.md](docs/evidence.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
+See the [adapter runtime guide](packages/bridge/README.md), [Browser Bridge guide](apps/browser-companion/README.md), [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), [docs/deployment.md](docs/deployment.md), [docs/evidence.md](docs/evidence.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
 
 ## Evidence and boundaries
 
@@ -355,7 +355,7 @@ unsupported or failing range and the same 4.5656:1 minimum. Real microphone prac
 screen-reader practice and a connected ChatGPT-agent invocation remain open.
 
 A separate Chrome for Testing 152 acceptance explicitly disabled WebMCP and
-loaded the built Browser Companion extension. Before the trusted action
+loaded the built Browser Bridge extension. Before the trusted action
 shortcut, the page contained neither Cowork bridge nor extension execution
 world. Temporary `activeTab` access then injected the headless relay on demand;
 its extension-origin Side Panel

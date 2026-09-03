@@ -35,7 +35,7 @@ Requirements: Node.js 22 or newer; Chrome or Edge 150+ for the browser parts.
    model name). With Demo off and nothing connected the page proposes nothing.
 6. Optional browser extension (Cowork surface on any page):
      npm run build:companion
-   Expected: "Browser companion artifact: 21 files". Then open
+   Expected: "Browser companion artifact: 22 files". Then open
    chrome://extensions (or edge://extensions), enable Developer mode, choose
    "Load unpacked" and select the dist-browser-companion directory. Details:
    apps/browser-companion/INSTALL.md
