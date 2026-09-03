@@ -771,3 +771,33 @@ textarea { resize: vertical; }
 .ui-icon-slash { stroke: #c92f1f; stroke-width: 2.1; }
 /* A button that carries an icon puts it on the text baseline, not above it. */
 .audio-button, .quiet-button, .primary-small, .demo-button { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; }
+
+/* A section keeps its live line in the open and puts the words that explain it
+   one click away. Same mechanism as the WebMCP help above: a native
+   <details>, no script needed to fold it. */
+.section-detail { margin-top: .7rem; }
+.section-detail > summary {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  color: #6b5843;
+  font-size: .74rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.section-detail:not([open]) > :not(summary) { display: none; }
+.section-detail > summary::-webkit-details-marker { display: none; }
+/* One fold affordance for every disclosure in the panel, drawn rather than
+   asked of a marker that a flex summary does not render anyway. */
+.section-detail > summary::after,
+.webmcp-help > summary::after {
+  content: "";
+  width: .42rem;
+  height: .42rem;
+  margin-left: auto;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: translateY(-.1rem) rotate(45deg);
+}
+.section-detail[open] > summary::after,
+.webmcp-help[open] > summary::after { transform: translateY(.06rem) rotate(-135deg); }

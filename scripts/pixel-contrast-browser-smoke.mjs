@@ -588,6 +588,10 @@ try {
     `document.querySelectorAll(".form-field.has-error").length === 2`
   ));
 
+  // The demo control lives in the Role section's detail disclosure, which is
+  // closed on load. A trusted click needs the control visible, so the smoke
+  // opens the disclosure first - exactly what a reader does before using it.
+  await evaluateValue(call, `document.querySelector("#work-mode-detail").open = true`);
   await dispatchTrustedClick(call, 'document.querySelector("#demo-offer")', "Create local demo offer");
   states.push(await auditRenderedState(
     call,

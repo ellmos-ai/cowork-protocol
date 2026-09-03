@@ -323,18 +323,21 @@
             <select id="work-mode"></select>
           </label>
         </div>
-        <p class="microcopy" id="mode-detail"></p>
         <p class="microcopy" id="authority-label"></p>
-        <div class="section-row">
-          <p class="microcopy" id="role-detail"></p>
-          <span class="badge" id="role-badge"></span>
-        </div>
         <h4 class="offer-list-heading" id="offer-list-heading">Proposals — your click authorizes</h4>
         <div id="offer-list" class="offer-list" aria-labelledby="offer-list-heading" aria-live="polite">
           <p class="empty-state">Model proposals will appear here as clickable offers.</p>
         </div>
         <p class="microcopy offer-list-note">A proposal expires after 60 seconds, at most three wait at once, and your own change to a field clears the older ones. Nothing here needs dismissing.</p>
-        <button class="demo-button" id="demo-offer" type="button">Create local demo offer</button>
+        <details class="section-detail" id="work-mode-detail">
+          <summary><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8.9a3.1 3.1 0 1 1 0 6.2 3.1 3.1 0 0 1 0-6.2Z"/><path d="M12 3.6v2.1"/><path d="M12 18.3v2.1"/><path d="M3.6 12h2.1"/><path d="M18.3 12h2.1"/><path d="m6.1 6.1 1.5 1.5"/><path d="m16.4 16.4 1.5 1.5"/><path d="m17.9 6.1-1.5 1.5"/><path d="m7.6 16.4-1.5 1.5"/></svg><span>What this mode means</span></summary>
+          <p class="microcopy" id="mode-detail"></p>
+          <div class="section-row">
+            <p class="microcopy" id="role-detail"></p>
+            <span class="badge" id="role-badge"></span>
+          </div>
+          <button class="demo-button" id="demo-offer" type="button">Create local demo offer</button>
+        </details>
       </section>
 
       <section class="panel-section" aria-labelledby="audio-heading">

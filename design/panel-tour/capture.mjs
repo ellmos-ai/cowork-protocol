@@ -307,6 +307,9 @@ try {
   await click(call, "#builder-add-field");
   await waitFor(call, `document.querySelectorAll(".builder-field-row").length === 1`, "the first Studio field");
   await hover(call, ".builder-field-row");
+  // The demo control sits in the Role section's detail disclosure; the tour
+  // opens it the way a reader would, after the resting shot was taken.
+  await evaluate(call, `document.querySelector("#work-mode-detail").open = true`);
   await waitFor(
     call,
     `document.querySelector("#demo-offer").textContent === "Model suggests a field"`,
