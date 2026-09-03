@@ -302,7 +302,7 @@
       </div>
       <span class="page-version">Canvas v<span id="builder-page-version">1</span></span>
     </div>
-    <p class="form-intro">This part of the app is a complete product on its own: design a form from the palette below, fill it in and export it — no agent, no WebMCP and no browser extension required. The "Model suggestions" panel is the only part of this section that talks to Cowork Protocol; every suggestion still needs your real click.</p>
+    <p class="form-intro">This part of the app is a complete product on its own: design a form from the palette below, fill it in and export it — no agent, no WebMCP and no browser extension required. Point at a field here and the Cowork panel above follows it: the same offers, receipts, handover and conversation serve this canvas too, and every suggestion still needs your real click.</p>
 
     <div class="builder-tabs" role="tablist" aria-label="Builder mode">
       <button type="button" role="tab" id="builder-tab-build" aria-controls="builder-panel-build" aria-selected="true" class="builder-tab">Build</button>
@@ -324,7 +324,6 @@
         <button type="button" class="primary-small" id="builder-add-field">Add field</button>
       </div>
 
-      <p class="focus-target" id="builder-focus-label">Point to or select a builder field</p>
       <ol id="builder-field-list" class="builder-field-list" aria-label="Form fields"></ol>
       <p class="empty-state" id="builder-empty-state">No fields yet. Choose a type above and add your first field.</p>
 
@@ -341,70 +340,6 @@
         <input id="builder-load-file-input" type="file" accept="application/json" class="builder-file-input">
       </section>
 
-      <section class="panel-section builder-suggestions" aria-labelledby="builder-suggestions-heading">
-        <div class="section-row">
-          <h3 id="builder-suggestions-heading"><span class="section-icon" aria-hidden="true">◇</span>Model suggestions</h3>
-          <span class="surface-actions"><span class="badge" id="builder-seat-badge" data-tone="demo">Demo helper</span><button class="text-button" id="builder-clear-history" type="button">Clear</button></span>
-        </div>
-        <p class="microcopy" id="builder-seat-note" role="status"></p>
-        <div class="button-row">
-          <button type="button" class="quiet-button" id="builder-suggest-add">Model suggests a field</button>
-          <button type="button" class="quiet-button" id="builder-suggest-rename" hidden>Model suggests a rename</button>
-          <button type="button" class="quiet-button" id="builder-suggest-move" hidden>Model suggests reordering</button>
-        </div>
-        <div id="builder-offer-list" class="offer-list" aria-live="polite">
-          <p class="empty-state">Model proposals will appear here as clickable offers.</p>
-        </div>
-        <ol id="builder-receipt-list" class="receipt-list" aria-live="polite"></ol>
-      </section>
-
-      <section class="panel-section builder-delegation" aria-labelledby="builder-delegation-heading">
-        <div class="section-row">
-          <h3 id="builder-delegation-heading"><span class="section-icon" aria-hidden="true">↗</span>Delegate to the model</h3>
-        </div>
-        <p class="microcopy">Presence says who is here, not who may act: this grant works whether you stay and watch or step away, and only your goal, call budget and expiry decide what the model may do.</p>
-        <div class="field-grid">
-          <label>
-            <span>Goal</span>
-            <input id="builder-delegate-goal" value="Draft good follow-up questions" maxlength="200">
-          </label>
-          <label>
-            <span>How many actions</span>
-            <input id="builder-delegate-max-calls" type="number" min="1" max="12" value="6">
-          </label>
-          <label>
-            <span>For how long (seconds)</span>
-            <input id="builder-delegate-duration" type="number" min="10" max="600" value="120">
-          </label>
-        </div>
-        <div class="button-row">
-          <button type="button" class="demo-button" id="builder-start-delegation">Delegate</button>
-          <button type="button" class="quiet-button" id="builder-solo-step" hidden>Model drafts one</button>
-          <button type="button" class="quiet-button" id="builder-solo-batch" hidden>Model drafts them all</button>
-          <button type="button" class="primary-small" id="builder-end-delegation" hidden>I'm back</button>
-        </div>
-        <p class="system-status" id="builder-delegate-status" role="status">No delegation is active.</p>
-        <p class="microcopy builder-return-narration" id="builder-return-narration" hidden></p>
-        <div id="builder-return-feedback" class="feedback-controls" hidden>
-          <div class="feedback-buttons">
-            <button type="button" class="quiet-button" data-verdict="accepted">Good</button>
-            <button type="button" class="quiet-button" data-verdict="revise">Adjust</button>
-            <button type="button" class="quiet-button" data-verdict="rejected">Different</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel-section builder-directive" aria-labelledby="builder-directive-heading">
-        <div class="section-row">
-          <h3 id="builder-directive-heading"><span class="section-icon" aria-hidden="true">◉</span>Say what to do</h3>
-        </div>
-        <p class="microcopy">Point to or select a field above, then say what to do with it - recognized phrases apply directly, no second click, as long as a grant covers that field.</p>
-        <div class="button-row">
-          <input id="builder-directive-input" maxlength="120" placeholder="e.g. make this required">
-          <button type="button" class="primary-small" id="builder-directive-send">Send</button>
-        </div>
-        <p class="system-status" id="builder-directive-status" role="status">Point to a field to enable a directive.</p>
-      </section>
     </div>
 
     <div id="builder-panel-fill" role="tabpanel" aria-labelledby="builder-tab-fill" class="builder-panel" hidden>

@@ -10,8 +10,10 @@ supports, fill it in, and export it — as the real
 response, or a printable Flat ODF (`.fodt`) document. It works entirely
 without an agent, without WebMCP, and without any extension; see
 [`INTEGRATION.md`](INTEGRATION.md) for exactly how (and why in that order)
-Cowork Protocol was then connected on top, for a small "Model suggestions"
-panel that proposes a field/rename/reorder as an inert, click-gated offer.
+Cowork Protocol was then connected on top. That connection adds no controls
+to the Studio: the page's one Cowork panel serves the Studio canvas the same
+way it serves the demo form above it, and every suggestion still needs your
+real click.
 Its form-rendering engine is derived from the pre-existing MIT-licensed
 FormBuilder web companion (see [`FORMBUILDER-NOTICE.md`](FORMBUILDER-NOTICE.md)
 and the repository-level [`PREEXISTING-AND-NEW.md`](../../PREEXISTING-AND-NEW.md));
@@ -59,14 +61,46 @@ page's persistent storage.
 
 ## In the Builder
 
-**Clear** empties the visible receipt history and the return message. Pending
-offers and granted leases are untouched, so clearing the log never changes what
-the model is allowed to do.
+The FormBuilder Studio section has no Cowork controls of its own. It used to:
+a "Model suggestions" list, a "Delegate to the model" dialog and a "Say what to
+do" input sat in the Build tab and largely repeated what the Cowork panel above
+already did. One instrument is the point of the protocol, so those three
+sections are gone and the panel drives both canvases. What stayed is the part
+that was never a duplicate — the bridge, the suggester and the directive
+classifier that know what a form field is. [`INTEGRATION.md`](INTEGRATION.md)
+describes that layer and the seams the fold needed.
 
-After a delegated round, the "Welcome back" narration and the "new since
-handover" field highlights stay up only until you record a verdict. Once the
-feedback is in, that round is closed and both disappear, so the Build tab never
-keeps showing a finished handover.
+**How to work in the Studio with the panel:**
+
+1. **Point at a field** in the Build tab. The panel's attention lens switches to
+   `Pointing at: <label> (Studio canvas)`; the demo form's focus is released, so
+   only one target is ever lit. Pointing back at a demo form field returns it.
+2. **Ask for a field.** Type or speak into the panel's conversation box — or, in
+   Demo mode, press the panel's offer button, which relabels itself "Model
+   suggests a field" while the Studio canvas has the focus. The proposal arrives
+   as an inert chip in the panel's offer list, marked `Studio canvas`, and stays
+   inert until your real click.
+3. **Say what to do instead.** A recognized instruction about the pointed-at
+   field ("make it required", "move it up", "make this the first question")
+   applies directly — the words are the click — and then waits for your verdict.
+   Anything else falls back to step 2.
+4. **Hand the work over.** Put the job in the panel's "Job to hand over" box.
+   "Hand over, I'll watch" draws one draft per click; "I'm briefly away" and
+   "I'm away longer" let the model spend the whole budget. On the Studio canvas
+   those buttons mint a canvas-scoped grant with a fixed budget of 6 drafts and
+   the same two-minute expiry as the demo lease, and the grant becomes the
+   session's lease, so the panel's presence display and expiry clock describe it
+   too.
+5. **Come back.** "I'm back" ends the grant and writes what changed into the
+   panel's status line.
+
+Every applied change lands as a receipt in the panel's receipt list, newest
+first, and the receipt count covers both canvases.
+
+After a delegated round, the return message and the "new since handover" field
+highlights stay up only until you record a verdict on the panel's newest
+receipt. Once the feedback is in, that round is closed and both disappear, so
+the Build tab never keeps showing a finished handover.
 
 ## Run it locally
 

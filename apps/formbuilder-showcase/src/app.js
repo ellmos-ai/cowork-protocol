@@ -44,7 +44,7 @@ import {
   SHOWCASE_SCHEMA
 } from "./formbuilder-use-case.js";
 import { initBuilderStudio } from "./builder-view.js";
-import { initBuilderCoworkUi } from "./builder-cowork-ui.js";
+import { initBuilderCowork } from "./builder-cowork-ui.js";
 import {
   adoptSessionState,
   buildLeaseExpiryEffect,
@@ -81,6 +81,12 @@ const DETACHED_SURFACE_ID = "formbuilder:document-pip";
 // microcopy) can never drift from what it actually grants.
 const LEASE_MAX_CALLS = 2;
 const LEASE_DURATION_MS = 120_000;
+// The Studio canvas is a different job than one focused demo field:
+// drafting a set of questions needs a bigger call budget than the
+// two-attempt demo lease. Same clock, same handover buttons, same
+// receipts - only the budget differs, and the panel says which one is in
+// force.
+const BUILDER_GRANT_MAX_CALLS = 6;
 const integrationDeclaration = createProtocolHostDeclaration({
   hostId: "formbuilder-showcase",
   transports: ["webmcp"],
@@ -93,11 +99,15 @@ coworkPanel.before(panelHomeMarker);
 
 const $ = (selector) =>
   document.querySelector(selector) ?? coworkPanel.querySelector(selector);
-// GAP-04 microcopy: describe the real configured lease, not a string that
-// could silently drift from LEASE_MAX_CALLS/LEASE_DURATION_MS above.
-$("#lease-microcopy").textContent =
-  `This field-scoped demo lease lasts ${Math.round(LEASE_DURATION_MS / 60_000)} minutes, permits at most ${LEASE_MAX_CALLS} attempts, and ends after a verified page change. ` +
-  `The Builder's own delegation (Build tab) lets you set your own call budget and duration.`;
+// GAP-04 microcopy: describe the real configured grant, not a string that
+// could silently drift from the constants above. render() picks the line that
+// matches the canvas the human is actually on.
+const DEMO_LEASE_MICROCOPY =
+  `This field-scoped demo lease lasts ${Math.round(LEASE_DURATION_MS / 60_000)} minutes, permits at most ${LEASE_MAX_CALLS} attempts, and ends after a verified page change.`;
+const BUILDER_LEASE_MICROCOPY =
+  `On the Studio canvas the same buttons mint a canvas-scoped grant: ${Math.round(LEASE_DURATION_MS / 60_000)} minutes and at most ${BUILDER_GRANT_MAX_CALLS} drafts. ` +
+  `Handing over while you watch drafts one per click; stepping away lets the model spend the budget.`;
+$("#lease-microcopy").textContent = DEMO_LEASE_MICROCOPY;
 // Every visible word about presence, area, role and mode comes from
 // packages/reference-ui; this surface never writes its own status labels.
 $("#status-steps").replaceChildren(
@@ -345,7 +355,11 @@ const conversationClient = createConversationClient({
 const conversationInbox = createConversationInbox();
 let conversationTransportLabel = modelSeat.resolve().transportLabel;
 let extensionAttached = false;
-let builderCoworkUi = null;
+let builderCowork = null;
+// The Studio canvas is this panel's second attention target:
+// `{ fieldId, label }` while the human points at a Builder field, null
+// while they are on the demo form. Only one of the two is ever set.
+let builderFocus = null;
 const REPLY_STATUS_BY_TRANSPORT = Object.freeze({
   "Connected model bridge": "Connected model reply received through the bounded conversation bridge.",
   "Direct model": "Direct model reply received through the bounded conversation turn.",
@@ -392,7 +406,13 @@ function renderModelSeat() {
     if ($("#model-id").value.trim() === "") $("#model-id").value = direct.model;
   }
   $("#model-seat-help").textContent = describeModelSeatHelp(seat, companionConnected);
-  builderCoworkUi?.renderSeat?.();
+  // On the Studio canvas the demo button proposes a field instead of a value.
+  $("#demo-offer").textContent =
+    builderFocus === null ? "Create local demo offer" : "Model suggests a field";
+}
+
+function describeFailure(error) {
+  return error.code ? `${error.code}: ${error.message}` : error.message;
 }
 
 function setStatus(message) {
@@ -701,6 +721,9 @@ function requestRelatedContext({ reason }) {
 
 function setFocus(field) {
   if (session.attentionMode === "off") return;
+  // Two canvases, one lens: pointing at the demo form releases the Studio
+  // target so the area readout never names two places at once.
+  builderCowork?.clearFocus();
   const nextFocusPacket = buildFocus(field);
   if (nextFocusPacket === null) {
     focusedField = null;
@@ -732,7 +755,7 @@ function setFocus(field) {
 function renderOffers(view) {
   const list = $("#offer-list");
   list.textContent = "";
-  if (view.actionChips.length === 0) {
+  if (view.actionChips.length === 0 && (builderCowork?.pendingOffers().length ?? 0) === 0) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
     empty.textContent = "Agent proposals will appear here as clickable offers.";
@@ -756,11 +779,103 @@ function renderOffers(view) {
     button.addEventListener("click", (event) => executeOffer(event, offer));
     list.append(button);
   }
+
+  // The Studio canvas offers into the same list: one panel, one place where a
+  // model proposal waits for a real click, whichever canvas it came from.
+  for (const offer of builderCowork?.pendingOffers() ?? []) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "offer-chip";
+    const copy = document.createElement("span");
+    const strong = document.createElement("strong");
+    strong.textContent = offer.summary;
+    const detail = document.createElement("span");
+    detail.textContent = `Studio canvas \u00b7 ${builderCowork.describeOffer(offer)}`;
+    copy.append(strong, detail);
+    button.append(copy);
+    button.addEventListener("click", (event) => executeBuilderOffer(event, offer.offerId));
+    list.append(button);
+  }
+}
+
+function executeBuilderOffer(event, offerId) {
+  if (!event.isTrusted) {
+    setStatus("HUMAN_CONFIRMATION_REQUIRED: synthetic clicks are rejected.");
+    return;
+  }
+  try {
+    const receipt = builderCowork.applyOffer(offerId);
+    setStatus(
+      receipt.status === "verified"
+        ? `Model suggestion verified after your click: ${receipt.verificationSummary}`
+        : `VERIFICATION_FAILED: ${receipt.verificationSummary}`
+    );
+  } catch (error) {
+    setStatus(describeFailure(error));
+  }
+  render();
+}
+
+/** The Studio canvas writes into the same receipt list. Its newest entry
+ *  carries the verdict buttons while a return or a directive still owes one
+ *  (GAP-05) - the same Good/Adjust/Different the demo form's receipts use. */
+function renderBuilderReceipts(list) {
+  const builderReceipts = builderCowork?.readReceipts() ?? [];
+  const awaitsVerdict = (builderCowork?.readAwaitingFeedback() ?? null) !== null;
+  const newestFirst = builderReceipts.slice(-4).reverse();
+  newestFirst.forEach((receipt, index) => {
+    const item = document.createElement("li");
+    item.className = receipt.status === "failed" ? "receipt-failed" : "";
+    const status = document.createElement("strong");
+    status.textContent = receipt.status === "verified" ? "Verified: " : "Failed: ";
+    item.append(status, receipt.verificationSummary);
+    if (index === 0 && awaitsVerdict) item.append(buildBuilderFeedbackControls());
+    list.append(item);
+  });
+}
+
+function buildBuilderFeedbackControls() {
+  const controls = document.createElement("div");
+  controls.className = "feedback-controls";
+  controls.setAttribute("role", "group");
+  controls.setAttribute("aria-label", "Evaluate the Studio canvas result");
+  const buttons = document.createElement("div");
+  buttons.className = "feedback-buttons";
+  for (const [label, verdict] of [
+    ["Good", "accepted"],
+    ["Adjust", "revise"],
+    ["Different", "rejected"]
+  ]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.verdict = verdict;
+    button.textContent = label;
+    button.addEventListener("click", (event) => {
+      if (!event.isTrusted) {
+        setStatus("HUMAN_CONFIRMATION_REQUIRED: synthetic feedback clicks are rejected.");
+        return;
+      }
+      try {
+        builderCowork.recordFeedback(verdict);
+        // The return highlights were the stale state the human kept seeing:
+        // once the verdict is in, that round is over.
+        builderCowork.clearReturnHighlights();
+        setStatus("Feedback recorded for the Studio canvas.");
+      } catch (error) {
+        setStatus(describeFailure(error));
+      }
+      render();
+    });
+    buttons.append(button);
+  }
+  controls.append(buttons);
+  return controls;
 }
 
 function renderReceipts() {
   const list = $("#receipt-list");
   list.textContent = "";
+  renderBuilderReceipts(list);
   const views = buildReceiptViewModels({ receipts, feedbackEvents });
   for (const view of views) {
     const receipt = receipts.find((candidate) => candidate.offerId === view.offerId);
@@ -808,7 +923,9 @@ function renderReceipts() {
     }
     list.append(item);
   }
-  $("#receipt-count").textContent = String(receipts.length);
+  $("#receipt-count").textContent = String(
+    receipts.length + (builderCowork?.readReceipts().length ?? 0)
+  );
 }
 
 function recordReceiptFeedback(event, receipt, verdict, adjustmentInput) {
@@ -951,6 +1068,20 @@ function render() {
   $("#role-badge").textContent = view.roleLabel;
   $("#role-detail").textContent = view.roleDetail;
   $("#area-label").textContent = `${AREA_STEP.label}: ${view.areaLabel}`;
+  // The Studio canvas has no focus packet of its own - its capabilities are
+  // structural (add/update/move a field), not form.set_value - so the lens
+  // names its target here instead of through the shared view model.
+  if (builderFocus !== null) {
+    $("#focus-label").textContent = `Pointing at: ${builderFocus.label} (Studio canvas)`;
+    $("#area-label").textContent = `${AREA_STEP.label}: ${builderFocus.label} (Studio canvas)`;
+  }
+  const builderGrant = builderCowork?.readActiveGrant() ?? null;
+  $("#lease-microcopy").textContent =
+    builderGrant !== null
+      ? `Studio delegation running: "${builderGrant.goal}" - ${builderCowork.readCallsUsed()}/${builderGrant.maxCalls} draft(s) used. Press "I'm back" to end it and see what changed.`
+      : builderFocus !== null
+        ? BUILDER_LEASE_MICROCOPY
+        : DEMO_LEASE_MICROCOPY;
 
   const humanHere = view.humanState.startsWith("here");
   const modelHere = view.modelState.startsWith("here");
@@ -1043,6 +1174,10 @@ async function sendConversationTurn(transcriptInput) {
     $("#transcript").textContent = "Silence detected. No model turn created.";
     return;
   }
+  if (builderFocus !== null) {
+    await sendBuilderTurn(transcript, input);
+    return;
+  }
 
   conversationBusy = true;
   beginModelWorking();
@@ -1104,6 +1239,46 @@ async function sendConversationTurn(transcriptInput) {
     endModelWorking({ delay: 650 });
     sendButton.disabled = false;
     sendButton.setAttribute("aria-busy", "false");
+  }
+}
+
+/**
+ * A bounded turn about the pointed-at Studio field. A recognized instruction
+ * authorizes directly (GAP-02: the words are the click); anything else asks
+ * the seat for one proposed field, which lands in the panel's offer list and
+ * still needs a real click.
+ */
+async function sendBuilderTurn(transcript, input) {
+  if (!builderProposalsAllowed()) return;
+  const speaker = modelSeat.resolve().speaker;
+  try {
+    const receipt = builderCowork.directive(transcript);
+    if (receipt !== null) {
+      input.value = "";
+      $("#transcript").textContent = `You: ${transcript}\n${speaker}: ${receipt.verificationSummary}`;
+      setStatus(
+        receipt.status === "verified"
+          ? `Done: ${receipt.verificationSummary}. Waiting for your verdict below.`
+          : `VERIFICATION_FAILED: ${receipt.verificationSummary}`
+      );
+      render();
+      return;
+    }
+    conversationBusy = true;
+    beginModelWorking();
+    render();
+    $("#transcript").textContent = `You: ${transcript}\n${speaker}: Thinking with bounded context\u2026`;
+    const summary = await builderCowork.suggestField(transcript);
+    input.value = "";
+    $("#transcript").textContent = `You: ${transcript}\n${speaker}: ${summary}`;
+    setStatus("Model proposal added for the Studio canvas. Only a real click on the offer can authorize it.");
+  } catch (error) {
+    $("#transcript").textContent = `You: ${transcript}\n${speaker}: ${error.message}`;
+    setStatus(describeFailure(error));
+  } finally {
+    conversationBusy = false;
+    endModelWorking({ delay: 650 });
+    render();
   }
 }
 
@@ -1195,7 +1370,27 @@ function valueForDemo(control) {
   return "Lukas";
 }
 
+/** The same gate createVisibleOffer() applies to the demo form: a model on
+ *  standby proposes nothing, whichever canvas the human is pointing at. */
+function builderProposalsAllowed() {
+  if (session.workMode.model.canPropose) return true;
+  setStatus("SESSION_PAUSED: the model is not advising here, so it cannot propose an action.");
+  render();
+  return false;
+}
+
 function addDemoOffer() {
+  if (builderFocus !== null) {
+    if (!builderProposalsAllowed()) return;
+    builderCowork
+      .suggestField()
+      .then((summary) => {
+        setStatus(`${summary}. Only a real click on the offer can authorize it.`);
+        render();
+      })
+      .catch((error) => setStatus(describeFailure(error)));
+    return;
+  }
   if (!focusPacket) {
     setStatus("Choose a field before creating an offer.");
     return;
@@ -1328,7 +1523,88 @@ function mintDemoLease() {
   };
 }
 
+/** One grant, one session lease: the panel's presence machine sees the Studio
+ *  grant exactly as it sees the demo lease, so the area readout and the expiry
+ *  clock stay true for both canvases. */
+function adoptBuilderGrantAsLease(grant, humanPresence) {
+  const lease = { ...grant, leaseId: grant.grantId, maxContextLevel: 2 };
+  leaseCallsUsed = 0;
+  if (humanPresence === "present") {
+    const status = statusForWorkModeChoice("sparring-model", session);
+    commitSession(
+      "work-handed-over",
+      transitionShowcaseSession(
+        { ...session, lease, leaseCallsUsed: 0 },
+        { type: "SET_STATUS", human: status.human, model: status.model }
+      ),
+      { causeRefs: [`lease:${lease.leaseId}`] }
+    );
+    return;
+  }
+  const at = new Date().toISOString();
+  commitSession(
+    "human-away",
+    transitionShowcaseSession(session, {
+      type: "HUMAN_AWAY",
+      duration: humanPresence === "afk-long" ? "long" : "short",
+      lease,
+      area: lease.goal,
+      now: at
+    }),
+    { causeRefs: [`lease:${lease.leaseId}`], at }
+  );
+}
+
+/**
+ * The Studio canvas hands over through the very same buttons: the text in
+ * "Job to hand over" becomes the grant's goal. Staying and watching draws one
+ * draft per click; stepping away lets the model spend the whole budget. What
+ * the model may do is decided by the grant, never by who is present (GAP-01).
+ */
+async function builderHandover({ humanPresence, batch }) {
+  if (session.model.availability !== "here") {
+    setStatus("SESSION_PAUSED: bring the model back in before handing the work over.");
+    return;
+  }
+  const goal = $("#lease-goal").value.trim();
+  if (!goal) {
+    setStatus("A handed-over job needs a concrete task.");
+    return;
+  }
+  try {
+    let grant = builderCowork.readActiveGrant();
+    if (grant === null) {
+      grant = builderCowork.startGrant({
+        goal,
+        maxCalls: BUILDER_GRANT_MAX_CALLS,
+        durationMs: LEASE_DURATION_MS
+      });
+      adoptBuilderGrantAsLease(grant, humanPresence);
+    }
+    const drafted = batch
+      ? await builderCowork.draftBatch(humanPresence)
+      : (await builderCowork.draftOne(humanPresence))
+        ? 1
+        : 0;
+    setStatus(
+      drafted === 0
+        ? `Nothing was drafted under "${grant.goal}": the budget of ${grant.maxCalls} is spent or the grant has expired.`
+        : `The model drafted ${drafted} field${drafted === 1 ? "" : "s"} on the Studio canvas under your grant (${builderCowork.readCallsUsed()}/${grant.maxCalls} used).`
+    );
+  } catch (error) {
+    setStatus(describeFailure(error));
+  }
+  render();
+}
+
 function startAway(duration) {
+  if (builderFocus !== null || builderCowork?.readActiveGrant()) {
+    void builderHandover({
+      humanPresence: duration === "long" ? "afk-long" : "afk-short",
+      batch: true
+    });
+    return;
+  }
   const lease = mintDemoLease();
   if (lease === null) return;
   const at = new Date().toISOString();
@@ -1351,6 +1627,10 @@ function startAway(duration) {
 // Hand the job over and stay: the everyday case - you say what to do, the
 // model executes inside the grant, you watch and advise.
 function handOverWhileWatching() {
+  if (builderFocus !== null || builderCowork?.readActiveGrant()) {
+    void builderHandover({ humanPresence: "present", batch: false });
+    return;
+  }
   const lease = mintDemoLease();
   if (lease === null) return;
   const status = statusForWorkModeChoice("sparring-model", session);
@@ -1435,6 +1715,16 @@ function executeSoloAction({ capabilityId, targetId, value }) {
 }
 
 function returnHuman() {
+  // GAP-03: ending a Studio grant returns a bounded delta - what changed while
+  // the model worked - and highlights those fields on the canvas.
+  let builderDelta = null;
+  if (builderCowork?.readActiveGrant()) {
+    try {
+      builderDelta = builderCowork.endGrant();
+    } catch (error) {
+      setStatus(describeFailure(error));
+    }
+  }
   clearTimeout(leaseExpiryTimer);
   leaseExpiryTimer = null;
   offers = currentActionOffers({
@@ -1452,7 +1742,10 @@ function returnHuman() {
     })
   );
   const summary = session.returnSummary;
-  const message = `${summary.verified} verified, ${summary.failed} failed.`;
+  const message =
+    builderDelta !== null
+      ? `${builderDelta.summary} ${builderDelta.verifiedCount} verified, ${builderDelta.failedCount} failed.`
+      : `${summary.verified} verified, ${summary.failed} failed.`;
   setStatus(`Welcome back. ${message}`);
   speak(`Welcome back. ${message}`);
   render();
@@ -1922,7 +2215,23 @@ configureWebMcp();
 
 // FormBuilder Studio (Build/Fill/Export) is a separate, cowork-free product
 // surface (see builder-view.js); this is its only integration point with the
-// Cowork Protocol machinery above. See ../INTEGRATION.md.
+// Cowork Protocol machinery above, and it renders nothing of its own: the one
+// panel serves both canvases. See ../INTEGRATION.md.
 const builderController = initBuilderStudio(document);
-builderCoworkUi = initBuilderCoworkUi({ root: document, controller: builderController, modelSeat });
+builderCowork = initBuilderCowork({
+  root: document,
+  controller: builderController,
+  modelSeat,
+  onFocusChange(focus) {
+    builderFocus = focus;
+    if (focus !== null && focusedField !== null) {
+      // The lens points at one place at a time; releasing the demo field here
+      // (rather than through setFocus) keeps the two handlers from bouncing.
+      focusedField = null;
+      focusPacket = null;
+      fields.forEach((candidate) => candidate.classList.remove("is-focused"));
+    }
+    render();
+  }
+});
 renderModelSeat();

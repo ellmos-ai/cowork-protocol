@@ -251,8 +251,6 @@ export function initBuilderStudio(root = document) {
       list.append(renderFieldRow(element, index, state.elements.length));
     });
     $("#builder-empty-state").hidden = state.elements.length > 0;
-    $("#builder-suggest-rename").hidden = state.elements.length === 0;
-    $("#builder-suggest-move").hidden = state.elements.length < 2;
   }
 
   function renderFillField(element) {

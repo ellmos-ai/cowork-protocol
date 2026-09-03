@@ -1,7 +1,8 @@
 // Chrome acceptance for FormBuilder Studio (Build/Fill/Export): proves the
 // standalone Builder core actually works end to end in a real browser, and
-// that its one Cowork integration point (Model suggestions) is click-gated
-// exactly like the rest of the protocol. See apps/formbuilder-showcase/INTEGRATION.md.
+// that the Studio canvas is served by the one Cowork panel - offers, receipts,
+// handover and conversation - click-gated exactly like the rest of the
+// protocol. See apps/formbuilder-showcase/INTEGRATION.md.
 import { spawn } from "node:child_process";
 import { access, mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -137,6 +138,27 @@ function requireCondition(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+/** Moves the real pointer onto one Studio row and proves the panel's
+ *  attention lens actually took it - a silently missed row would otherwise
+ *  make every later assertion test the wrong field. */
+async function pointAtStudioRow(call, fieldId) {
+  const point = await evaluateValue(call, `(() => {
+    const row = document.querySelector('.builder-field-row[data-field-id="${fieldId}"]');
+    if (!row) return null;
+    const rect = row.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  })()`);
+  if (!point) throw new Error(`Studio row not found: ${fieldId}`);
+  await call("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y });
+  const focused = await evaluateValue(
+    call,
+    `document.querySelector("#builder-field-list .form-field.is-focused")?.dataset.fieldId ?? null`
+  );
+  if (focused !== fieldId) {
+    throw new Error(`Expected the panel lens on ${fieldId}, it is on ${focused}`);
+  }
+}
+
 try {
   const chromePath = await resolveChromePath();
   server = createStaticServer({ root: process.cwd() });
@@ -157,7 +179,7 @@ try {
       "--disable-gpu",
       "--force-device-scale-factor=1",
       "--remote-debugging-port=0",
-      "--window-size=1280,1400",
+      "--window-size=1280,3200",
       `--user-data-dir=${profilePath}`,
       showcaseUrl
     ],
@@ -214,42 +236,60 @@ try {
     helpInput.dispatchEvent(new Event("change", { bubbles: true }));
   })()`);
 
-  // --- GAP-00: one addressable builder field, not just the whole canvas. ---
+  // --- GAP-00: one addressable builder field, and the ONE Cowork panel's
+  // attention lens follows it - the Studio has no lens of its own any more. ---
   await evaluateValue(call, `document.querySelector("#builder-field-type").value = "text-short"`);
   await dispatchTrustedClick(call, "#builder-add-field");
   const rows = await evaluateValue(call, `[...document.querySelectorAll(".builder-field-row")].map((row) => row.dataset.fieldId)`);
   requireCondition(rows.length === 2, `Expected two field rows, got ${rows.length}`);
   const [firstFieldId] = rows;
 
-  const firstRowPoint = await evaluateValue(call, `(() => {
-    const row = document.querySelector('.builder-field-row[data-field-id="${firstFieldId}"]');
-    const rect = row.getBoundingClientRect();
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  })()`);
-  await call("Input.dispatchMouseEvent", { type: "mouseMoved", x: firstRowPoint.x, y: firstRowPoint.y });
-  const focusLabel = await evaluateValue(call, `document.querySelector("#builder-focus-label").textContent`);
+  // Bring the panel's conversation into view first: a later click must not
+  // scroll a different row under the resting pointer.
+  await evaluateValue(call, `document.querySelector("#send-conversation").scrollIntoView({ block: "center" })`);
+  await pointAtStudioRow(call, firstFieldId);
+  const focusLabel = await evaluateValue(call, `document.querySelector("#focus-label").textContent`);
   requireCondition(
-    focusLabel.startsWith("Pointing at:"),
-    `Expected pointing at the first field to update the focus label, got: ${focusLabel}`
+    focusLabel.startsWith("Pointing at:") && focusLabel.includes("Studio canvas"),
+    `Expected the panel's attention lens to name the Studio field, got: ${focusLabel}`
   );
-  const firstRowIsFocused = await evaluateValue(
-    call,
-    `document.querySelector('.builder-field-row[data-field-id="${firstFieldId}"]').classList.contains("is-focused")`
+  const areaLabel = await evaluateValue(call, `document.querySelector("#area-label").textContent`);
+  requireCondition(
+    areaLabel.includes("Studio canvas"),
+    `Expected the panel's area readout to name the Studio canvas, got: ${areaLabel}`
   );
-  requireCondition(firstRowIsFocused, "Expected the pointed-at row to carry the shared .is-focused style");
 
-  // The offer must target the *pointed-at* field, not merely the last one
-  // added: apply it and confirm the first field (not the second) changed.
-  await dispatchTrustedClick(call, "#builder-suggest-rename");
-  await dispatchTrustedClick(call, "#builder-offer-list .offer-chip");
-  const firstFieldRequired = await evaluateValue(call, `(() => {
+  // --- GAP-02: a recognized instruction typed into the panel's conversation
+  // applies to the pointed-at field directly - no offer chip, no second
+  // click - and then waits for a verdict (GAP-05). ---
+  await evaluateValue(call, `document.querySelector("#conversation-input").value = "make it required"`);
+  await dispatchTrustedClick(call, "#send-conversation");
+  const directiveRequired = await evaluateValue(call, `(() => {
     const checkbox = document.querySelector('.builder-field-row[data-field-id="${firstFieldId}"] input[type=checkbox]');
     return checkbox ? checkbox.checked : null;
   })()`);
   requireCondition(
-    firstFieldRequired === true,
-    `Expected the rename/require suggestion to target the pointed-at first field, got required=${firstFieldRequired}`
+    directiveRequired === true,
+    `Expected the instruction to apply to the pointed-at field, got required=${directiveRequired}`
   );
+  const noOfferForDirective = await evaluateValue(call, `document.querySelectorAll("#offer-list .offer-chip").length`);
+  requireCondition(noOfferForDirective === 0, "A directive must not create a clickable offer chip - the words are the click");
+  const directiveReceipt = await evaluateValue(call, `document.querySelector("#receipt-list li")?.textContent ?? ""`);
+  requireCondition(
+    directiveReceipt.startsWith("Verified"),
+    `Expected the directive to leave a verified receipt in the panel, got: ${directiveReceipt}`
+  );
+  const verdictOffered = await evaluateValue(
+    call,
+    `document.querySelectorAll('#receipt-list button[data-verdict]').length === 3`
+  );
+  requireCondition(verdictOffered, "Expected the panel receipt to wait for a Good/Adjust/Different verdict (GAP-05)");
+  await dispatchTrustedClick(call, '#receipt-list button[data-verdict="accepted"]');
+  const verdictResolved = await evaluateValue(
+    call,
+    `document.querySelectorAll('#receipt-list button[data-verdict]').length === 0`
+  );
+  requireCondition(verdictResolved, "Expected a real verdict click to resolve the awaiting-feedback state");
 
   await dispatchTrustedClick(call, "#builder-tab-fill");
   const fillFieldCount = await evaluateValue(call, `document.querySelectorAll(".builder-fill-field").length`);
@@ -291,83 +331,99 @@ try {
   await dispatchTrustedClick(call, "#builder-export-fodt");
   await dispatchTrustedClick(call, "#builder-export-response");
 
-  // --- Cowork integration: a model suggestion is inert until a real click. ---
+  // --- Cowork integration: a Studio proposal reaches the ONE panel's offer
+  // list and stays inert until a real click. ---
   await dispatchTrustedClick(call, "#builder-tab-build");
-  await dispatchTrustedClick(call, "#builder-suggest-add");
-  const offerChipsBeforeClick = await evaluateValue(call, `document.querySelectorAll("#builder-offer-list .offer-chip").length`);
-  requireCondition(offerChipsBeforeClick === 1, `Expected exactly one pending offer chip, got ${offerChipsBeforeClick}`);
-  const fieldCountBeforeClick = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
-  requireCondition(fieldCountBeforeClick === 2, "The canvas must be unchanged before the offer is clicked");
-
-  await dispatchTrustedClick(call, "#builder-offer-list .offer-chip");
-  const fieldCountAfterClick = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
-  requireCondition(fieldCountAfterClick === 3, `Expected the click to add exactly one field, got ${fieldCountAfterClick}`);
-  const receiptCount = await evaluateValue(call, `document.querySelectorAll("#builder-receipt-list li").length`);
-  requireCondition(receiptCount === 2, `Expected two verified receipts (the earlier rename plus this add), got ${receiptCount}`);
-  const receiptText = await evaluateValue(call, `document.querySelector("#builder-receipt-list li").textContent`);
-  requireCondition(receiptText.startsWith("Verified"), `Expected the latest receipt to be verified, got: ${receiptText}`);
-
-  const offerChipsAfterClick = await evaluateValue(call, `document.querySelectorAll("#builder-offer-list .offer-chip").length`);
-  requireCondition(offerChipsAfterClick === 0, "The applied offer must be resolved (removed), not still clickable");
-
-  // --- GAP-01/GAP-04: a presence-independent, container-scoped delegation
-  // that drafts several new fields in one grant - the old fixed two-call
-  // AFK-only lease could not do this at all. ---
-  const fieldsBeforeDelegation = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
-  await evaluateValue(call, `document.querySelector("#builder-delegate-max-calls").value = 3`);
-  await dispatchTrustedClick(call, "#builder-start-delegation");
-  const soloBatchHidden = await evaluateValue(call, `document.querySelector("#builder-solo-batch").hidden`);
-  requireCondition(soloBatchHidden === false, "Expected the solo-draft controls to appear once delegated");
-
-  await dispatchTrustedClick(call, "#builder-solo-batch");
+  await evaluateValue(call, `document.querySelector("#send-conversation").scrollIntoView({ block: "center" })`);
+  await pointAtStudioRow(call, firstFieldId);
+  const demoOfferLabel = await evaluateValue(call, `document.querySelector("#demo-offer").textContent`);
+  requireCondition(
+    demoOfferLabel === "Model suggests a field",
+    `Expected the panel's demo control to address the Studio canvas, got: ${demoOfferLabel}`
+  );
+  await dispatchTrustedClick(call, "#demo-offer");
   await waitForExpression(
     call,
-    `document.querySelectorAll(".builder-field-row").length === ${fieldsBeforeDelegation + 3}`,
-    "the solo batch to draft three fields"
+    `document.querySelectorAll("#offer-list .offer-chip").length === 1`,
+    "the Studio proposal to reach the panel offer list"
+  );
+  const fieldCountBeforeClick = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
+  requireCondition(fieldCountBeforeClick === 2, "The canvas must be unchanged before the offer is clicked");
+  const offerDetail = await evaluateValue(call, `document.querySelector("#offer-list .offer-chip").textContent`);
+  requireCondition(
+    offerDetail.includes("Studio canvas"),
+    `Expected the panel chip to say which canvas it belongs to, got: ${offerDetail}`
+  );
+
+  await dispatchTrustedClick(call, "#offer-list .offer-chip");
+  const fieldCountAfterClick = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
+  requireCondition(fieldCountAfterClick === 3, `Expected the click to add exactly one field, got ${fieldCountAfterClick}`);
+  const receiptText = await evaluateValue(call, `document.querySelector("#receipt-list li").textContent`);
+  requireCondition(receiptText.startsWith("Verified"), `Expected the latest panel receipt to be verified, got: ${receiptText}`);
+  const receiptCount = await evaluateValue(call, `document.querySelectorAll("#receipt-list li").length`);
+  requireCondition(receiptCount === 2, `Expected two receipts in the shared list (the directive plus this add), got ${receiptCount}`);
+
+  const offerChipsAfterClick = await evaluateValue(call, `document.querySelectorAll("#offer-list .offer-chip").length`);
+  requireCondition(offerChipsAfterClick === 0, "The applied offer must be resolved (removed), not still clickable");
+
+  // --- GAP-01/GAP-04: the panel's own handover buttons mint a canvas-scoped
+  // grant and the model drafts a whole set under it - the old fixed two-call
+  // AFK-only lease could not do this at all. Presence decides the pace here,
+  // never the right to act. ---
+  const fieldsBeforeDelegation = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
+  await evaluateValue(call, `document.querySelector("#lease-goal").value = "Draft good follow-up questions"`);
+  await dispatchTrustedClick(call, "#away-short");
+  await waitForExpression(
+    call,
+    `document.querySelectorAll(".builder-field-row").length === ${fieldsBeforeDelegation + 6}`,
+    "the model to spend its six-draft budget on the Studio canvas"
   );
   const fieldsAfterBatch = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
   requireCondition(
-    fieldsAfterBatch === fieldsBeforeDelegation + 3,
-    `Expected the solo batch to add exactly 3 fields under one grant, got ${fieldsBeforeDelegation} -> ${fieldsAfterBatch}`
+    fieldsAfterBatch === fieldsBeforeDelegation + 6,
+    `Expected the grant's whole budget to be spent, got ${fieldsBeforeDelegation} -> ${fieldsAfterBatch}`
   );
 
-  // --- GAP-03: a bounded return narration plus a multi-field highlight. ---
-  await dispatchTrustedClick(call, "#builder-end-delegation");
-  const narrationText = await evaluateValue(call, `document.querySelector("#builder-return-narration").textContent`);
+  // --- GAP-03: a bounded return summary in the panel status line plus a
+  // multi-field highlight on the canvas. ---
+  await dispatchTrustedClick(call, "#return-human");
+  const returnStatus = await evaluateValue(call, `document.querySelector("#system-status").textContent`);
   requireCondition(
-    narrationText.includes("3 fields added"),
-    `Expected the return narration to name the 3 added fields, got: ${narrationText}`
+    returnStatus.includes("6 fields added"),
+    `Expected the panel to report what changed while the model worked, got: ${returnStatus}`
   );
   const highlightedCount = await evaluateValue(call, `document.querySelectorAll(".is-new-since-handover").length`);
-  requireCondition(highlightedCount === 3, `Expected exactly 3 fields highlighted as new, got ${highlightedCount}`);
-  const returnFeedbackVisible = await evaluateValue(call, `document.querySelector("#builder-return-feedback").hidden === false`);
-  requireCondition(returnFeedbackVisible, "Expected the return moment to wait for a feedback verdict (GAP-05)");
-
-  await dispatchTrustedClick(call, '#builder-return-feedback button[data-verdict="accepted"]');
-  const returnFeedbackResolved = await evaluateValue(call, `document.querySelector("#builder-return-feedback").hidden === true`);
-  requireCondition(returnFeedbackResolved, "Expected a real feedback click to resolve the awaiting-feedback state");
-
-  // --- GAP-02: a recognized human utterance on the pointed-at field
-  // authorizes directly - no offer chip, no second click. ---
-  const targetFieldId = await evaluateValue(call, `document.querySelector(".builder-field-row").dataset.fieldId`);
-  const targetPoint = await evaluateValue(call, `(() => {
-    const row = document.querySelector('.builder-field-row[data-field-id="${targetFieldId}"]');
-    const rect = row.getBoundingClientRect();
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  })()`);
-  await call("Input.dispatchMouseEvent", { type: "mouseMoved", x: targetPoint.x, y: targetPoint.y });
-  await evaluateValue(call, `document.querySelector("#builder-directive-input").value = "make it required"`);
-  await dispatchTrustedClick(call, "#builder-directive-send");
-  const directiveRequired = await evaluateValue(
+  requireCondition(highlightedCount === 6, `Expected exactly 6 fields highlighted as new, got ${highlightedCount}`);
+  const returnVerdictOffered = await evaluateValue(
     call,
-    `document.querySelector('.builder-field-row[data-field-id="${targetFieldId}"] input[type=checkbox]').checked`
+    `document.querySelectorAll('#receipt-list button[data-verdict]').length === 3`
   );
-  requireCondition(directiveRequired, "Expected the spoken directive to apply with no offer and no second click");
-  const noOfferForDirective = await evaluateValue(call, `document.querySelectorAll("#builder-offer-list .offer-chip").length`);
-  requireCondition(noOfferForDirective === 0, "A directive must not create a clickable offer chip - the words are the click");
-  const awaitingFeedbackAfterDirective = await evaluateValue(call, `document.querySelector("#builder-return-feedback").hidden === false`);
-  requireCondition(awaitingFeedbackAfterDirective, "Expected the directive to also move the session into awaiting-feedback (GAP-05)");
-  await dispatchTrustedClick(call, '#builder-return-feedback button[data-verdict="accepted"]');
+  requireCondition(returnVerdictOffered, "Expected the return moment to wait for a feedback verdict (GAP-05)");
+
+  await dispatchTrustedClick(call, '#receipt-list button[data-verdict="accepted"]');
+  const returnVerdictResolved = await evaluateValue(
+    call,
+    `document.querySelectorAll('#receipt-list button[data-verdict]').length === 0 &&
+     document.querySelectorAll(".is-new-since-handover").length === 0`
+  );
+  requireCondition(returnVerdictResolved, "Expected a real feedback click to close the round and clear the highlights");
+
+  // --- The removed sections must be gone from the DOM, not merely hidden. ---
+  const foldedAway = await evaluateValue(call, `[
+    "#builder-suggest-add",
+    "#builder-offer-list",
+    "#builder-receipt-list",
+    "#builder-start-delegation",
+    "#builder-solo-batch",
+    "#builder-end-delegation",
+    "#builder-directive-input",
+    "#builder-directive-send",
+    "#builder-focus-label"
+  ].filter((selector) => document.querySelector(selector) !== null)`);
+  requireCondition(
+    foldedAway.length === 0,
+    `Expected the Builder's own Cowork sections to be gone, still present: ${foldedAway.join(", ")}`
+  );
 
   // --- Native WebMCP tool count is unchanged: no new tool was introduced. ---
   const toolCountUnchanged = await evaluateValue(call, `(() => {
@@ -383,6 +439,7 @@ try {
     builderSuggestionTargetsPointedAtFieldClaim: true,
     builderOfferInertBeforeClickClaim: true,
     builderReceiptVerifiedClaim: true,
+    onePanelServesBothCanvasesClaim: true,
     presentDelegationClaim: true,
     soloDraftBatchClaim: true,
     handoverReturnHighlightClaim: true,

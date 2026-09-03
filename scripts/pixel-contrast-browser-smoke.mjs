@@ -638,12 +638,22 @@ try {
     `document.querySelector("#talk")?.classList.contains("is-listening") === true && document.querySelector("#talk")?.textContent.trim() === "Listening…"`
   ));
 
+  // The Studio canvas offers through the one panel now: add a field, point at
+  // it, bring the model back in, and ask the seat for a proposal.
   await dispatchTrustedClick(call, 'document.querySelector("#builder-tab-build")', "FormBuilder Studio Build tab");
-  await dispatchTrustedClick(call, 'document.querySelector("#builder-suggest-add")', "Model suggests a field");
+  await dispatchTrustedClick(call, 'document.querySelector("#builder-add-field")', "Add a Studio field");
+  await dispatchTrustedClick(call, 'document.querySelector("#builder-field-list .form-field")', "Point at the Studio field");
+  await dispatchTrustedClick(call, 'document.querySelector("#toggle-agent")', "Resume model");
+  await dispatchTrustedClick(call, 'document.querySelector("#demo-offer")', "Model suggests a field");
+  await waitForExpression(
+    call,
+    `document.querySelectorAll("#offer-list .offer-chip").length === 1`,
+    "the Studio proposal to reach the panel offer list"
+  );
   states.push(await auditRenderedState(
     call,
     "builder-offer-visible",
-    `document.querySelectorAll("#builder-offer-list .offer-chip").length === 1`
+    `document.querySelectorAll("#offer-list .offer-chip").length === 1`
   ));
 
   const observation = {

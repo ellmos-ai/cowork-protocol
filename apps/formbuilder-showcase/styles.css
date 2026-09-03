@@ -122,7 +122,6 @@ h3 { margin-bottom: 0; font-size: .95rem; }
    layout so "counted control" and "reachable control" stay the same set. */
 .model-connect:not([open]) > :not(summary) { display: none; }
 .model-connect .field-grid { margin-top: .6rem; }
-.builder-suggestions .surface-actions { max-width: none; }
 .mode-badge { color: var(--ink); }
 
 .workspace {
@@ -389,7 +388,6 @@ textarea { resize: vertical; }
   color: #6b4e05;
   background: #fff5da;
 }
-.builder-return-narration { padding: .7rem; border-left: 2px solid var(--gold); background: rgba(228,189,80,.1); }
 
 .cowork-panel {
   position: sticky;

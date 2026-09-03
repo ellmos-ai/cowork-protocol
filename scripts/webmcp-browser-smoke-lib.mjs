@@ -14,11 +14,12 @@ function requireCondition(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-// FormBuilder Studio's Build/Fill/Export section added 10 controls on top of
-// the previous 25 (see apps/formbuilder-showcase/INTEGRATION.md and
-// docs/evidence.md); exported so scripts/test/webmcp-browser-smoke.test.js
-// does not hold its own copy of this number.
-export const CURRENT_INTERACTIVE_CONTROL_COUNT = 44;
+// Folding the Builder's own three Cowork sections into the one panel removed
+// 8 of the previous 44 controls: the page now asks for the same things in one
+// place (see apps/formbuilder-showcase/INTEGRATION.md and docs/evidence.md).
+// Exported so scripts/test/webmcp-browser-smoke.test.js does not hold its own
+// copy of this number.
+export const CURRENT_INTERACTIVE_CONTROL_COUNT = 36;
 
 function isNonNegativeInteger(value) {
   return Number.isInteger(value) && value >= 0;

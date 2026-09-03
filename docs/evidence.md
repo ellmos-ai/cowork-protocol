@@ -17,11 +17,11 @@ This public ledger distinguishes implemented contracts from live acceptance. Cou
 | FormBuilder web validation/export is retained | attributed engine, `formbuilder-use-case.test.js`; upstream Web Companion 48/48 tests; connected Edge fallback interaction | Web logic and click-gated field change proven; full visual/WebMCP flow open |
 | FormBuilder Studio designs, fills in and exports a form with zero Cowork dependency | `form-builder.mjs`/`fodt-export.mjs` tests incl. a source-scan solo-mode test; `npm run smoke:builder` | Chrome 152 added a field, filled it in, submitted a real `formularerstellen-response-v1` response and exercised all three export controls (schema JSON, response JSON, Flat ODF `.fodt`) with no agent; `buildFormSchema()` round-trips losslessly through `form-engine.mjs`'s `parseSchema()` |
 | Canvas-editing capabilities reuse the existing offer/click/receipt path with no new WebMCP tool | `packages/formbuilder-connector/test/builder-canvas.test.js`; `apps/formbuilder-showcase/test/builder-cowork.test.js`; `npm run smoke:builder`; `npm run smoke:webmcp` | `form-add-field`/`form-update-field`/`form-move-field` proven at the connector, bridge and Chrome levels: an unclicked offer leaves the canvas untouched, a stale page-version click and an expired offer both fail closed, and a real trusted click produces exactly one verified receipt; native tool count stays 9 in Chrome |
-| One builder field is individually addressable, not only the whole canvas (GAP-00) | `packages/formbuilder-connector/test/builder-canvas.test.js`; `apps/formbuilder-showcase/test/builder-cowork.test.js`; `npm run smoke:builder` | `buildFormBuilderFieldFocus()`/`builderFieldTargetId()` give one field a `form-field:<id>` target with exactly the two capabilities that make sense for an existing field; `form-update-field`/`form-move-field` reject a target that does not name the field their own arguments patch; Chrome pointed at a field, saw the shared `.is-focused` style and a live focus label, and a suggestion applied to exactly that field, not merely the last one added |
+| One builder field is individually addressable, not only the whole canvas (GAP-00) | `packages/formbuilder-connector/test/builder-canvas.test.js`; `apps/formbuilder-showcase/test/builder-cowork.test.js`; `npm run smoke:builder` | `buildFormBuilderFieldFocus()`/`builderFieldTargetId()` give one field a `form-field:<id>` target with exactly the two capabilities that make sense for an existing field; `form-update-field`/`form-move-field` reject a target that does not name the field their own arguments patch; Chrome pointed at a field, saw the shared `.is-focused` style and a live focus label, and a suggestion applied to exactly that field, not merely the last one added. Since the panel fold (below) that focus label is the one Cowork panel's own attention lens, which reads `Pointing at: <label> (Studio canvas)`; the Studio's local echo is gone |
 | A delegation grant authorizes solo work independent of presence (GAP-01) | `packages/core/test/delegation-grant.test.js`; `packages/core/test/solo-lease.test.js`; `packages/formbuilder-connector/test/builder-solo.test.js` | `createDelegationGrant()` requires a real human origin (click or utterance, never an agent) and a bounded goal; `authorizeSoloAction()` now succeeds with `humanPresence: "present"` where it previously threw `CANCELLED` - the exact regression-turned-feature the fix is about - while still rejecting a lease without a valid origin |
 | A human utterance under an active grant authorizes an action directly (GAP-02) | `packages/core/test/directive-authorization.test.js`; `apps/formbuilder-showcase/test/builder-delegation.test.js`; `npm run smoke:builder` | `authorizeActionOffer()` accepts `origin: "human-utterance"` only with a grant that covers the exact capability/target and has not expired; an agent can never claim this origin; Chrome proved a recognized spoken phrase ("make it required") applying with no offer chip and no second click |
-| A bounded return-from-handover summary and multi-field highlight exist (GAP-03) | `packages/core/test/handover-delta.test.js`; `apps/formbuilder-showcase/test/builder-delegation.test.js`; `npm run smoke:builder` | `createHandoverDeltaSummary()` caps target ids at 12 (de-duplicated) with a 350-character summary; `buildFocusSet()` highlights up to 12 targets at once, separate from the existing single-target focus lens; Chrome's "I'm back" click narrated "3 fields added" and highlighted exactly those 3 rows via a new `.is-new-since-handover` style |
-| The Builder canvas has a container-scoped solo/delegation path (GAP-04) | `packages/formbuilder-connector/test/builder-solo.test.js`; `apps/formbuilder-showcase/test/builder-delegation.test.js`; `npm run smoke:builder` | `planSoloBuilderFieldMutation()` plus a Delegate dialog (goal/call-budget/duration as human inputs, not fixed constants) let a grant add up to 12 fields in one window instead of the old fixed 2-call/120-second lease; Chrome added exactly 3 fields under a 3-call grant with 0 clicks |
+| A bounded return-from-handover summary and multi-field highlight exist (GAP-03) | `packages/core/test/handover-delta.test.js`; `apps/formbuilder-showcase/test/builder-delegation.test.js`; `npm run smoke:builder` | `createHandoverDeltaSummary()` caps target ids at 12 (de-duplicated) with a 350-character summary; `buildFocusSet()` highlights up to 12 targets at once, separate from the existing single-target focus lens; Chrome's "I'm back" click narrated the added fields and highlighted exactly those rows via a new `.is-new-since-handover` style. Since the panel fold (below) that narration is written to the panel's own status line `#system-status`, not to a Studio-local one; re-measured after the fold: the panel status line reported "6 fields added" and exactly 6 rows carried the highlight, which a real verdict click then cleared |
+| The Builder canvas has a container-scoped solo/delegation path (GAP-04) | `packages/formbuilder-connector/test/builder-solo.test.js`; `apps/formbuilder-showcase/test/builder-delegation.test.js`; `npm run smoke:builder` | `planSoloBuilderFieldMutation()` plus a canvas-scoped grant let one window add several fields instead of the old fixed 2-call/120-second field lease. Since the panel fold (below) the grant is minted by the panel's own handover buttons with a fixed budget (`BUILDER_GRANT_MAX_CALLS = 6` drafts, `LEASE_DURATION_MS`) instead of a Delegate dialog with typed goal/budget/duration inputs, and it is adopted as the session lease so presence and expiry are shared with the demo form; `createDelegationGrant()` still accepts any budget, the page stopped exposing it. Chrome added 6 fields with 0 per-field clicks under one grant minted by the panel's own "I'm briefly away" button |
 | The model watches and comments on a human's own change, only while advising (GAP-06) | `apps/formbuilder-showcase/test/advisor-comment.test.js`; `npm run smoke:webmcp` | `adviseCommentForHumanChange()` fires only for a human-sourced ChangeEvent in Explain mode with an active agent, never for an agent-caused change, never while paused, and never on silence/an unchanged value (`change` stays null); latest-only by construction (a single overwritten variable, not a list). No offer, no action - a silent, non-interactive panel line, so the interactive-control baseline is unaffected. Chrome confirmed the comment appears naming the changed field and hides live the moment Explain mode ends |
 | The session enters an explicit awaiting-feedback state after a directive or a returned batch (GAP-05) | `apps/formbuilder-showcase/test/builder-delegation.test.js`; `packages/evals/test/juror-proof.test.js`; `npm run smoke:builder` | A verified directive or a batch return with touched fields sets `awaitingFeedback`; only a real feedback click (`accepted\|rejected\|revise`, `packages/core`'s existing verdict vocabulary) clears it; Chrome proved both the single-directive and whole-batch cases resolving via a real click |
 | WebMCP Bridge is bounded and fail-closed | `packages/bridge/test/webmcp-bridge.test.js`; Chrome 152 browser-host fixture in `npm run smoke:webmcp` | Two host-supplied capabilities, two reads, 1,200-character preview and offer-only mutation proven in-browser; unrelated live-site discovery open |
@@ -481,6 +481,104 @@ show it on. The Pages artifact is 35 files and the extension artifact 21, and
 every relative import in both build outputs resolves against the artifact itself.
 
 
+### One Cowork surface (panel fold)
+
+Until this change the showcase carried **two** Cowork integrations: the
+page-level Cowork panel, and three sections of its own inside the FormBuilder
+Studio Build tab — "Model suggestions" (`#builder-suggest-add`,
+`#builder-offer-list`, `#builder-receipt-list`, `#builder-seat-badge`,
+`#builder-clear-history`), "Delegate to the model" (goal, call-budget and
+duration inputs plus `#builder-start-delegation`, `#builder-solo-step`,
+`#builder-solo-batch`, `#builder-end-delegation`, `#builder-delegate-status`,
+`#builder-return-narration`, `#builder-return-feedback`) and "Say what to do"
+(`#builder-directive-input`, `#builder-directive-send`,
+`#builder-directive-status`). The user's decision removed all three: the
+fields largely repeated what the panel already offered, and a protocol whose
+whole claim is that it is provider-agnostic and brings *one* instrument should
+not grow a second one per integrated region. The backend was explicitly kept,
+on the grounds that it is not the protocol but the layer sitting on top of it.
+
+Removed from the DOM: those three sections plus the Studio's local focus echo
+`#builder-focus-label`, since the panel's attention lens now follows Studio
+fields as well. Kept and untouched: `src/builder-cowork.js` (grants,
+`soloExecute`, `directiveFromUtterance`, `endDelegation`, awaiting-feedback),
+`src/builder-model-suggester.js` and `src/builder-directive-classifier.js`.
+Three files carry the fold itself — `apps/formbuilder-showcase/index.html`,
+`src/app.js` and `src/builder-cowork-ui.js` — which is this ledger's evidence
+that it was a surface change and not a rewrite of the integration. Four more
+files follow from it rather than adding to it: `src/builder-view.js` and
+`styles.css` each lost two lines that addressed removed elements, and
+`scripts/formbuilder-builder-browser-smoke.mjs` plus
+`scripts/pixel-contrast-browser-smoke.mjs` were repointed at the panel. No
+file under `packages/` was touched.
+
+`builder-cowork-ui.js` became a headless adapter, exporting
+`initBuilderCowork` where it previously exported `initBuilderCoworkUi`
+(177 lines added, 394 removed). It still owns the Studio's attention target,
+pending offers, active grant, drafts and directives, and touches the DOM only
+for the two canvas-row states no panel can own: `.is-focused` on the
+pointed-at row and `.is-new-since-handover` on the rows a returned delegation
+touched. `app.js` grew by 322 lines (13 removed) to serve the second canvas
+from the one panel: a second attention target, a second offer source
+(chips whose detail line begins `Studio canvas ·`), a merged receipt list and
+count, the Studio handover, and a conversation turn that tries a directive
+before it asks for a field. `index.html` lost 66 lines and gained 1.
+
+Two behaviour changes are recorded rather than absorbed silently:
+
+- **The Studio grant's budget stopped being a human input.** It is now
+  `BUILDER_GRANT_MAX_CALLS = 6` drafts and `LEASE_DURATION_MS`, both named
+  constants in `app.js`, with `#lease-microcopy` generated from them so the
+  sentence cannot drift from the grant. What the human still chooses is the
+  button: "Hand over, I'll watch" draws one draft per click, "I'm briefly
+  away"/"I'm away longer" spend the budget as a batch. A per-run configurable
+  budget is no longer reachable from the UI; `createDelegationGrant()` in
+  `packages/core` still accepts any budget.
+- **A paused model now proposes nothing on the Studio canvas either.** The
+  removed sections never consulted the session's work mode, so putting the
+  model on standby silenced the demo form but not the Builder. The panel
+  applies one gate to both canvases (`builderProposalsAllowed()` in `app.js`,
+  the same `workMode.model.canPropose` check `createVisibleOffer()` has always
+  made). This is a real behaviour change, not a refactor.
+- **The Studio grant is adopted as the session lease**
+  (`adoptBuilderGrantAsLease` in `app.js`). This closes the gap the GAP-01…05
+  batch above recorded honestly as open — "the Delegate dialog's *stay and
+  watch* vs. *step away* state is not connected to the main Cowork demo
+  panel's own human-seat presence indicator" — so the page now has one
+  presence readout and one expiry clock for both canvases instead of two.
+
+No new WebMCP tool: a surface change leaves the nine-tool contract untouched.
+No `<input type="number">` remains anywhere in
+`apps/formbuilder-showcase/index.html`, so the `spinbutton` AX role the
+GAP-01…05 batch added to `accessibility-browser-smoke.mjs`'s role allowlist no
+longer occurs on the page; the allowlist entry is harmless, the pinned control
+count is not. The unit tests needed no change:
+`test/builder-cowork.test.js` and `test/builder-delegation.test.js` import
+`src/builder-cowork.js` directly and never imported the UI module — keeping the
+DOM glue in a layer that owns no contract is what made the surface rewrite
+cheap.
+
+**Measured on this tree** (2026-09-03, after the fold; not carried over from
+the previous batch, where these numbers would be wrong):
+
+- Node tests: 445 of 445 passed, 0 failed
+- `npm run proof`: 10 passed, 0 failed
+- `npm run smoke:builder`: exit 0 on Chrome/152.0.7977.65; 6 fields drafted under the fixed budget, 6 highlighted on return, 0 offer chips created by the directive, and all nine removed selectors absent from the DOM
+- `npm run smoke:accessibility`: exit 0; 36 interactive controls, 36 named AX nodes, 36 unique Tab stops, 36 focus-visible stops, 0 px horizontal overflow (44 before the fold)
+- `npm run smoke:contrast`: exit 0; 1343 audited text items across 11 states, 0 unsupported ranges, minimum contrast 4.5656:1
+- the other six Chrome smokes (`webmcp`, `surface`, `model-host`, `companion`, `companion-native`, `companion-cockpit`): exit 0 each. The native tool count stays unread in headless Chrome without the WebMCP flag (`nativeToolCountUnchanged: null`), so no claim is made about it here
+- build artifacts: `build:pages` 35 files (25 modules reachable from `app.js`, no unresolved import), `build:companion` 21 files
+
+**Selectors repointed in the same change.** Two smokes drove ids that the
+fold removed and were rewritten to drive the panel instead:
+`scripts/formbuilder-builder-browser-smoke.mjs` (the whole Cowork half of its
+run) and `scripts/pixel-contrast-browser-smoke.mjs` (its eleventh state, which
+now adds a Studio field, points at it and asks the panel's demo control for a
+proposal). `apps/formbuilder-showcase/src/builder-view.js` also toggled two
+removed controls on every field-list render, which would have thrown; that
+line is gone. The builder smoke additionally asserts that all nine removed ids
+are absent from the DOM, so a partial fold cannot pass unnoticed.
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;
@@ -490,5 +588,5 @@ every relative import in both build outputs resolves against the artifact itself
 - the reported 390px hero-lede/form-intro clipping regression: not reproduced under a genuinely fixed 390px CSS viewport in this environment (see the Fable-operator review batch note above); needs reproduction with a tool that reliably honors a true 390px viewport before it can be confirmed or fixed.
 - the FormBuilder Studio `.fodt` export was proven well-formed XML by a dependency-free tag-balance parser and inspected manually, but not opened in a real LibreOffice install in this environment; the OASIS Flat ODF template it fills in was written and reviewed by hand against the format's public specification, not verified by round-tripping it through LibreOffice.
 - sending a filled-in FormBuilder Studio form by mail and collecting responses back into one place (noted as a roadmap item, not a claim, in `apps/formbuilder-showcase/README.md`).
-- the Delegate dialog's "stay and watch vs. step away" state is not connected to the main Cowork demo panel's own human-seat presence indicator; the two presence readouts remain separate.
+- the FormBuilder Studio's own three Cowork sections were removed and their behaviour folded into the one Cowork panel (see "One Cowork surface (panel fold)" above). The separate-presence-readout gap this list previously carried is closed by the grant being adopted as the session lease. The fold is measured: the gate numbers in that section are results, not placeholders.
 - `builder-directive-classifier.js`'s recognized phrases (required/optional/move up or down/"make this the first question") are a small, disclosed keyword heuristic, the same kind of scripted stand-in `local-conversation.js` already is - not a claim that the Builder understands natural language.

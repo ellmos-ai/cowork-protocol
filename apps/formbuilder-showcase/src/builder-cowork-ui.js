@@ -1,7 +1,9 @@
-// New Cowork Protocol challenge work: the DOM glue between the cowork-free
-// builder-view.js controller and the builder-cowork.js bridge. This is the
-// only file that renders builder offer chips and receipts; app.js just calls
-// initBuilderCoworkUi() once both pieces exist. See ../INTEGRATION.md.
+// New Cowork Protocol challenge work: the headless adapter between the
+// cowork-free builder-view.js controller and the builder-cowork.js bridge.
+// It owns the Builder's attention target, its offers, grants, drafts and
+// directives - but renders nothing of its own: the one Cowork panel in
+// index.html is the only surface, and app.js drives this from there.
+// See ../INTEGRATION.md.
 
 import { classificationDisplayName, classificationOf, createField, FIELD_TYPE_PALETTE } from "./form-builder.mjs";
 import { createBuilderModelSuggester } from "./builder-model-suggester.js";
@@ -27,7 +29,7 @@ const DRAFT_QUESTIONS = [
   "What would make your family time even better?"
 ];
 
-function describeBuilderOffer(offer) {
+export function describeBuilderOffer(offer) {
   const args = offer.proposedArguments;
   if (offer.capabilityId === "form-add-field") {
     // GAP-08: the kind badge, not the raw schema typeString.
@@ -40,14 +42,19 @@ function describeBuilderOffer(offer) {
   return `Move field ${args.direction}`;
 }
 
-function describeError(error) {
-  return `${error.code ?? "ERROR"}: ${error.message}`;
-}
-
-export function initBuilderCoworkUi({ root = document, controller, modelSeat = null }) {
-  const $ = (selector) => root.querySelector(selector);
+/**
+ * Wires the Builder canvas to the Cowork bridge without rendering anything:
+ * app.js reads offers, receipts, grants and focus from here and shows them in
+ * the one Cowork panel.
+ *
+ * @param onFocusChange called with `{ fieldId, label } | null` whenever the
+ *        pointed-at Builder field changes, so the panel's attention lens can
+ *        follow the Studio canvas the same way it follows the demo form.
+ */
+export function initBuilderCowork({ root = document, controller, modelSeat = null, onFocusChange = () => {} }) {
   const bridge = createBuilderCoworkBridge();
   let focusedFieldId = null;
+  let callsUsed = 0;
   // One seat for the whole Builder (see model-seat.js): Demo on -> the disclosed
   // fixed lists above; Demo off -> the page's connected model through
   // builder-model-suggester.js, or nothing at all. Never a silent mix of both.
@@ -56,12 +63,19 @@ export function initBuilderCoworkUi({ root = document, controller, modelSeat = n
     modelSeat === null
       ? null
       : createBuilderModelSuggester({ sendTurn: (turn) => modelSeat.sendTurn(turn), paletteIds });
-  let hiddenReceiptCount = 0;
 
   function seatState() {
-    if (modelSeat === null) return { kind: "demo", demo: true, label: "Demo helper", tone: "demo" };
+    if (modelSeat === null) return { kind: "demo", demo: true, label: "Demo helper" };
     const seat = modelSeat.resolve();
-    return { kind: seat.kind, demo: seat.kind === "demo", label: seat.label, tone: seat.tone };
+    return { kind: seat.kind, demo: seat.kind === "demo", label: seat.label };
+  }
+
+  function requireSeat() {
+    const seat = seatState();
+    if (!seat.demo && seat.kind === "none") {
+      throw new Error("NO_MODEL_CONNECTED: connect your model in the Model seat above, or switch Demo mode on.");
+    }
+    return seat;
   }
 
   function presenceFor(humanPresence) {
@@ -72,42 +86,16 @@ export function initBuilderCoworkUi({ root = document, controller, modelSeat = n
     };
   }
 
-  function renderSeat() {
-    const seat = seatState();
-    const modelless = !seat.demo && seat.kind === "none";
-    const badge = $("#builder-seat-badge");
-    if (badge) {
-      badge.textContent = seat.label;
-      badge.dataset.tone = seat.tone;
-    }
-    const note = $("#builder-seat-note");
-    if (note) {
-      note.textContent = seat.demo
-        ? "Demo mode: the proposals and drafts below come from a disclosed fixed list, not from a language model. The offer → click → receipt path is the real protocol."
-        : modelless
-          ? "No model is connected and Demo mode is off: the Builder proposes nothing. Connect your model in the Cowork panel's Model seat or switch Demo mode on."
-          : `${seat.label} proposes fields and drafts. Every proposal still needs your click; a failed model call is shown as an error, never replaced by the script.`;
-    }
-    for (const id of ["#builder-suggest-add", "#builder-start-delegation"]) {
-      const control = $(id);
-      if (control) control.disabled = modelless;
-    }
-  }
-
   // --- GAP-00: an attention lens for one addressable builder field, not just
   // the whole canvas. One delegated listener covers every row, including
   // ones added or removed after this runs. ---
   function setFocusedField(fieldId) {
+    const changed = focusedFieldId !== fieldId;
     focusedFieldId = fieldId;
     for (const row of root.querySelectorAll("#builder-field-list .form-field")) {
       row.classList.toggle("is-focused", row.dataset.fieldId === fieldId);
     }
-    const target = fieldId
-      ? root.querySelector(`#builder-field-list .form-field[data-field-id="${CSS.escape(fieldId)}"]`)
-      : null;
-    $("#builder-focus-label").textContent = target
-      ? `Pointing at: ${target.dataset.label}`
-      : "Point to or select a builder field";
+    if (changed) onFocusChange(readFocus());
   }
 
   function focusedElement() {
@@ -115,198 +103,137 @@ export function initBuilderCoworkUi({ root = document, controller, modelSeat = n
     return controller.getElements().find((element) => element.id === focusedFieldId) ?? null;
   }
 
-  function delegatedRowTarget(event) {
-    return event.target.closest(".form-field[data-field-id]");
+  function readFocus() {
+    const element = focusedElement();
+    return element === null ? null : { fieldId: element.id, label: element.label };
   }
+
   // pointerover bubbles (unlike pointerenter), so one listener on the list
   // container covers every row, including ones added or removed later.
   const focusFromEvent = (event) => {
-    const row = delegatedRowTarget(event);
+    const row = event.target.closest(".form-field[data-field-id]");
     if (row) setFocusedField(row.dataset.fieldId);
   };
   for (const type of ["pointerover", "focusin", "click"]) {
-    $("#builder-field-list").addEventListener(type, focusFromEvent);
+    root.querySelector("#builder-field-list").addEventListener(type, focusFromEvent);
   }
 
-  function renderOffers() {
-    const now = new Date().toISOString();
+  function pendingOffers() {
     const currentPageVersion = controller.getPageVersion();
-    const offers = bridge.pendingOffers(now).filter((offer) => offer.pageVersion === currentPageVersion);
-    const list = $("#builder-offer-list");
-    list.textContent = "";
-    if (offers.length === 0) {
-      const empty = document.createElement("p");
-      empty.className = "empty-state";
-      empty.textContent = "Model proposals will appear here as clickable offers.";
-      list.append(empty);
-      return;
-    }
-    for (const offer of offers) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "offer-chip";
-      const copy = document.createElement("span");
-      const strong = document.createElement("strong");
-      strong.textContent = offer.summary;
-      const detail = document.createElement("span");
-      detail.textContent = describeBuilderOffer(offer);
-      copy.append(strong, detail);
-      button.append(copy);
-      button.addEventListener("click", (event) => applyOffer(event, offer.offerId));
-      list.append(button);
-    }
+    return bridge
+      .pendingOffers(new Date().toISOString())
+      .filter((offer) => offer.pageVersion === currentPageVersion);
   }
 
-  function renderReceipts() {
-    const list = $("#builder-receipt-list");
-    list.textContent = "";
-    for (const receipt of bridge.readReceipts().slice(hiddenReceiptCount).slice(-4).reverse()) {
-      const item = document.createElement("li");
-      item.className = receipt.status === "failed" ? "receipt-failed" : "";
-      const status = document.createElement("strong");
-      status.textContent = receipt.status === "verified" ? "Verified: " : "Failed: ";
-      item.append(status, receipt.verificationSummary);
-      list.append(item);
-    }
+  function applyOffer(offerId) {
+    const result = bridge.authorizeAndApply({
+      offerId,
+      elements: controller.getElements(),
+      currentPageVersion: controller.getPageVersion(),
+      now: new Date().toISOString()
+    });
+    if (result.receipt.status === "verified") controller.applyElements(result.elements);
+    return result.receipt;
   }
 
-  function applyOffer(event, offerId) {
-    if (!event.isTrusted) {
-      $("#builder-status").textContent = "HUMAN_CONFIRMATION_REQUIRED: synthetic clicks are rejected.";
-      return;
-    }
-    try {
-      const result = bridge.authorizeAndApply({
-        offerId,
-        elements: controller.getElements(),
-        currentPageVersion: controller.getPageVersion(),
-        now: new Date().toISOString()
-      });
-      if (result.receipt.status === "verified") {
-        controller.applyElements(result.elements);
-      }
-      $("#builder-status").textContent =
-        result.receipt.status === "verified"
-          ? "Model suggestion verified after your click."
-          : `VERIFICATION_FAILED: ${result.receipt.verificationSummary}`;
-    } catch (error) {
-      $("#builder-status").textContent = describeError(error);
-    } finally {
-      renderOffers();
-      renderReceipts();
-    }
+  function proposeField(field, summary) {
+    bridge.proposeOffer({
+      capabilityId: "form-add-field",
+      targetId: BUILDER_CANVAS_TARGET_ID,
+      proposedArguments: { field },
+      summary,
+      pageVersion: controller.getPageVersion(),
+      now: new Date().toISOString()
+    });
   }
 
-  function proposeAndRender({ capabilityId, targetId, proposedArguments, summary }) {
-    try {
-      bridge.proposeOffer({
-        capabilityId,
-        targetId,
-        proposedArguments,
-        summary,
-        pageVersion: controller.getPageVersion(),
-        now: new Date().toISOString()
-      });
-      $("#builder-status").textContent = "Model proposal added. Only your real click can authorize it.";
-    } catch (error) {
-      $("#builder-status").textContent = describeError(error);
-    }
-    renderOffers();
-  }
-
-  /** The field the model would act on: whatever is currently pointed at
-   *  (GAP-00), falling back to the last field so the demo buttons still work
-   *  before anyone has pointed at anything. */
-  function targetFieldOrLast() {
-    return focusedElement() ?? controller.getElements().at(-1) ?? null;
-  }
-
-  $("#builder-suggest-add").addEventListener("click", async () => {
-    const seat = seatState();
+  /** The Builder's answer to a conversation turn: one proposed field, offered
+   *  into the panel's offer list and inert until a real click. `goal` carries
+   *  the human's own words when they typed or spoke them, empty for the
+   *  panel's demo button. */
+  async function suggestField(goal = "") {
+    const seat = requireSeat();
     if (seat.demo) {
       const existingLabels = new Set(controller.getElements().map((element) => element.label));
       const suggestion =
         SUGGESTABLE_FIELDS.find((candidate) => !existingLabels.has(candidate.label)) ?? SUGGESTABLE_FIELDS[0];
       const field = createField(suggestion.paletteId, { label: suggestion.label });
-      proposeAndRender({
-        capabilityId: "form-add-field",
-        targetId: BUILDER_CANVAS_TARGET_ID,
-        proposedArguments: { field },
-        summary: `Add a "${field.label}" field`
-      });
-      return;
+      const summary = `Add a "${field.label}" field`;
+      proposeField(field, summary);
+      return summary;
     }
-    if (suggester === null || seat.kind === "none") {
-      $("#builder-status").textContent =
-        "NO_MODEL_CONNECTED: connect your model in the Cowork panel's Model seat or switch Demo mode on.";
-      return;
-    }
-    const button = $("#builder-suggest-add");
-    button.disabled = true;
-    $("#builder-status").textContent = `Asking ${seat.label} for one field…`;
-    try {
+    const suggestion = await suggester.suggestField({
+      intent: "field",
+      formTitle: controller.getTitle(),
+      existingLabels: controller.getElements().map((element) => element.label),
+      ...(goal ? { goal } : {}),
+      presence: presenceFor("present")
+    });
+    const field = createField(suggestion.paletteId, { label: suggestion.label });
+    const summary = suggestion.summary || `Add a "${field.label}" field`;
+    proposeField(field, summary);
+    return summary;
+  }
+
+  // --- GAP-01/GAP-04: a presence-independent, canvas-scoped delegation that
+  // can draft several new fields, one call at a time or as a batch. ---
+  function startGrant({ goal, maxCalls, durationMs }) {
+    const grant = bridge.startDelegation({
+      origin: "human-click",
+      goal,
+      maxCalls,
+      durationMs,
+      pageVersion: controller.getPageVersion(),
+      now: new Date().toISOString()
+    });
+    callsUsed = 0;
+    return grant;
+  }
+
+  /** One drafted field under the active grant - no offer, no click. Identical
+   *  whether the human stays and watches or has stepped away: the grant, not
+   *  presence, is what authorizes it (GAP-01). */
+  async function draftOne(humanPresence) {
+    const grant = bridge.readActiveGrant();
+    if (!grant) return false;
+    const seat = requireSeat();
+    let field;
+    if (seat.demo) {
+      field = createField("text-short", { label: DRAFT_QUESTIONS[callsUsed % DRAFT_QUESTIONS.length] });
+    } else {
       const suggestion = await suggester.suggestField({
-        intent: "field",
+        intent: "question",
         formTitle: controller.getTitle(),
         existingLabels: controller.getElements().map((element) => element.label),
-        presence: presenceFor("present")
+        goal: grant.goal,
+        presence: presenceFor(humanPresence)
       });
-      const field = createField(suggestion.paletteId, { label: suggestion.label });
-      proposeAndRender({
-        capabilityId: "form-add-field",
-        targetId: BUILDER_CANVAS_TARGET_ID,
-        proposedArguments: { field },
-        summary: suggestion.summary || `Add a "${field.label}" field`
-      });
-    } catch (error) {
-      $("#builder-status").textContent = describeError(error);
-    } finally {
-      button.disabled = false;
-      renderSeat();
+      field = createField(suggestion.paletteId, { label: suggestion.label });
     }
-  });
-
-  $("#builder-suggest-rename").addEventListener("click", () => {
-    const target = targetFieldOrLast();
-    if (!target) return;
-    proposeAndRender({
-      capabilityId: "form-update-field",
-      targetId: builderFieldTargetId(target.id),
-      proposedArguments: { fieldId: target.id, patch: { required: !target.required } },
-      summary: `Mark "${target.label}" as ${target.required ? "optional" : "required"}`
+    const result = bridge.soloExecute({
+      field,
+      elements: controller.getElements(),
+      humanPresence,
+      currentPageVersion: controller.getPageVersion(),
+      now: new Date().toISOString()
     });
-  });
+    if (result.receipt.status !== "verified") return false;
+    controller.applyElements(result.elements);
+    callsUsed += 1;
+    return true;
+  }
 
-  $("#builder-suggest-move").addEventListener("click", () => {
-    const elements = controller.getElements();
-    const target = targetFieldOrLast();
-    if (!target || elements.length < 2) return;
-    proposeAndRender({
-      capabilityId: "form-move-field",
-      targetId: builderFieldTargetId(target.id),
-      proposedArguments: { fieldId: target.id, direction: "up" },
-      summary: `Move "${target.label}" earlier in the form`
-    });
-  });
-
-  // --- GAP-01/GAP-04: a presence-independent, container-scoped delegation
-  // that can draft several new fields, one call at a time or as a batch. ---
-  let soloCallsUsed = 0;
-
-  function renderDelegationState() {
-    const grant = bridge.readActiveGrant();
-    const active = grant !== null;
-    $("#builder-start-delegation").hidden = active;
-    $("#builder-solo-step").hidden = !active;
-    $("#builder-solo-batch").hidden = !active;
-    $("#builder-end-delegation").hidden = !active;
-    // Single-active-grant design: a directive needs its own field-scoped
-    // grant, so it is disabled while a canvas delegation is running.
-    $("#builder-directive-input").disabled = active;
-    $("#builder-directive-send").disabled = active;
-    $("#builder-delegate-status").textContent = active
-      ? `Delegated: "${grant.goal}" — ${soloCallsUsed}/${grant.maxCalls} action(s) used.`
-      : "No delegation is active.";
+  /** Drafts until the grant's budget is spent - what "the model works alone
+   *  while you are away" means in practice. Returns how many landed. */
+  async function draftBatch(humanPresence) {
+    let drafted = 0;
+    while (true) {
+      const grant = bridge.readActiveGrant();
+      if (!grant || callsUsed >= grant.maxCalls) break;
+      if (!(await draftOne(humanPresence))) break;
+      drafted += 1;
+    }
+    return drafted;
   }
 
   function highlightReturnedFields(focusSet) {
@@ -322,179 +249,34 @@ export function initBuilderCoworkUi({ root = document, controller, modelSeat = n
     }
   }
 
-  function renderAwaitingFeedback() {
-    $("#builder-return-feedback").hidden = bridge.readAwaitingFeedback() === null;
-  }
-
-  $("#builder-start-delegation").addEventListener("click", (event) => {
-    // Minting a grant is the highest-value consent in the Builder: only a
-    // real click may do it, exactly like applying an offer.
-    if (!event.isTrusted) {
-      $("#builder-delegate-status").textContent = "HUMAN_CONFIRMATION_REQUIRED: synthetic clicks are rejected.";
-      return;
-    }
-    const goal = $("#builder-delegate-goal").value.trim() || "Draft good follow-up questions";
-    const maxCalls = Math.max(1, Math.min(12, Number($("#builder-delegate-max-calls").value) || 6));
-    const durationSeconds = Math.max(10, Math.min(600, Number($("#builder-delegate-duration").value) || 120));
-    try {
-      bridge.startDelegation({
-        origin: "human-click",
-        goal,
-        maxCalls,
-        durationMs: durationSeconds * 1000,
-        pageVersion: controller.getPageVersion(),
-        now: new Date().toISOString()
-      });
-      soloCallsUsed = 0;
-      $("#builder-return-narration").hidden = true;
-    } catch (error) {
-      $("#builder-delegate-status").textContent = describeError(error);
-    }
-    renderDelegationState();
-  });
-
-  async function soloDraftOne(humanPresence) {
-    const grant = bridge.readActiveGrant();
-    if (!grant) return false;
-    const seat = seatState();
-    let field;
-    if (seat.demo) {
-      field = createField("text-short", { label: DRAFT_QUESTIONS[soloCallsUsed % DRAFT_QUESTIONS.length] });
-    } else {
-      if (suggester === null || seat.kind === "none") {
-        $("#builder-delegate-status").textContent =
-          "NO_MODEL_CONNECTED: connect your model or switch Demo mode on before the model drafts anything.";
-        return false;
-      }
-      $("#builder-delegate-status").textContent = `Asking ${seat.label} for the next question…`;
-      try {
-        const suggestion = await suggester.suggestField({
-          intent: "question",
-          formTitle: controller.getTitle(),
-          existingLabels: controller.getElements().map((element) => element.label),
-          goal: grant.goal,
-          presence: presenceFor(humanPresence)
-        });
-        field = createField(suggestion.paletteId, { label: suggestion.label });
-      } catch (error) {
-        $("#builder-delegate-status").textContent = describeError(error);
-        return false;
-      }
-    }
-    try {
-      const result = bridge.soloExecute({
-        field,
-        elements: controller.getElements(),
-        humanPresence,
-        currentPageVersion: controller.getPageVersion(),
-        now: new Date().toISOString()
-      });
-      if (result.receipt.status === "verified") {
-        controller.applyElements(result.elements);
-        soloCallsUsed += 1;
-      }
-      renderReceipts();
-      renderDelegationState();
-      return result.receipt.status === "verified";
-    } catch (error) {
-      $("#builder-delegate-status").textContent = describeError(error);
-      return false;
-    }
-  }
-
-  $("#builder-solo-step").addEventListener("click", () => {
-    // GAP-01: this authorizes exactly the same way whether the human is
-    // sitting right here watching or has stepped away - presence is not
-    // consulted by the grant this calls into.
-    soloDraftOne("present");
-  });
-
-  $("#builder-solo-batch").addEventListener("click", async () => {
-    const button = $("#builder-solo-batch");
-    button.disabled = true;
-    try {
-      while (true) {
-        const grant = bridge.readActiveGrant();
-        if (!grant || soloCallsUsed >= grant.maxCalls) break;
-        const ok = await soloDraftOne("afk-short");
-        if (!ok) break;
-        await new Promise((resolve) => setTimeout(resolve, 350));
-      }
-    } finally {
-      button.disabled = false;
-    }
-  });
-
-  $("#builder-end-delegation").addEventListener("click", () => {
-    try {
-      const { delta, focusSet } = bridge.endDelegation({
-        pageVersion: controller.getPageVersion(),
-        now: new Date().toISOString()
-      });
-      soloCallsUsed = 0;
-      const narration = $("#builder-return-narration");
-      narration.hidden = false;
-      narration.textContent = `Welcome back — ${delta.summary}`;
-      highlightReturnedFields(focusSet);
-      renderAwaitingFeedback();
-    } catch (error) {
-      $("#builder-delegate-status").textContent = describeError(error);
-    }
-    renderDelegationState();
-  });
-
-  for (const button of root.querySelectorAll("#builder-return-feedback button[data-verdict]")) {
-    button.addEventListener("click", (event) => {
-      if (!event.isTrusted) return;
-      try {
-        bridge.recordFeedback({
-          verdict: button.dataset.verdict,
-          pageVersion: controller.getPageVersion(),
-          now: new Date().toISOString()
-        });
-        renderAwaitingFeedback();
-        // The return message and the "new since handover" highlights were the
-        // stale interaction the human kept seeing under Build: once the verdict
-        // is in, that round is over.
-        $("#builder-return-narration").hidden = true;
-        highlightReturnedFields(null);
-        $("#builder-delegate-status").textContent = "Feedback recorded.";
-      } catch (error) {
-        $("#builder-delegate-status").textContent = describeError(error);
-      }
+  // --- GAP-03: a bounded return summary plus a multi-field highlight. ---
+  function endGrant() {
+    const { delta, focusSet } = bridge.endDelegation({
+      pageVersion: controller.getPageVersion(),
+      now: new Date().toISOString()
     });
+    callsUsed = 0;
+    highlightReturnedFields(focusSet);
+    return delta;
   }
 
   // --- GAP-02: a human utterance about the pointed-at field authorizes
   // directly - the words are the click - once it is recognized and a
-  // field-scoped grant is minted for exactly that instruction. ---
-  $("#builder-directive-send").addEventListener("click", (event) => {
-    // The Send click is the only trust anchor behind "human-utterance".
-    if (!event.isTrusted) {
-      $("#builder-directive-status").textContent = "HUMAN_CONFIRMATION_REQUIRED: synthetic clicks are rejected.";
-      return;
-    }
+  // field-scoped grant is minted for exactly that instruction. Returns null
+  // when nothing was recognized, so the caller can fall back to a normal
+  // conversation turn. ---
+  function directive(transcript) {
     const target = focusedElement();
-    if (!target) {
-      $("#builder-directive-status").textContent = "Point to a field first.";
-      return;
-    }
-    if (bridge.readActiveGrant()) {
-      $("#builder-directive-status").textContent = "End the current delegation before sending a directive.";
-      return;
-    }
-    const transcript = $("#builder-directive-input").value;
+    if (!target) return null;
     const elements = controller.getElements();
-    const fieldIndex = elements.findIndex((element) => element.id === target.id);
     const plan = classifyBuilderDirective(transcript, {
       fieldId: target.id,
-      fieldIndex,
+      fieldIndex: elements.findIndex((element) => element.id === target.id),
       required: target.required === true
     });
-    if (!plan) {
-      $("#builder-directive-status").textContent =
-        "Not recognized. Try: make it required / move it up / make this the first question.";
-      return;
+    if (!plan) return null;
+    if (bridge.readActiveGrant()) {
+      throw new Error("A delegation is running. Come back first, then give a direct instruction.");
     }
     try {
       bridge.startDelegation({
@@ -523,40 +305,41 @@ export function initBuilderCoworkUi({ root = document, controller, modelSeat = n
         currentElements = lastResult.elements;
       }
       controller.applyElements(currentElements);
-      $("#builder-directive-input").value = "";
-      $("#builder-directive-status").textContent =
-        lastResult?.receipt.status === "verified"
-          ? `Done: ${lastResult.receipt.verificationSummary}. Waiting for your feedback.`
-          : `VERIFICATION_FAILED: ${lastResult?.receipt.verificationSummary}`;
-      renderAwaitingFeedback();
-    } catch (error) {
-      $("#builder-directive-status").textContent = describeError(error);
+      return lastResult.receipt;
     } finally {
       // The directive's grant is one-shot: consumed by its own steps, never
-      // "returned from", so it is released here instead of via endDelegation
-      // - otherwise the UI stays in delegation mode with a spent grant.
+      // "returned from", so it is released here instead of via endGrant.
       bridge.releaseGrant();
-      renderReceipts();
     }
-    renderDelegationState();
-  });
+  }
 
   controller.onPageVersionChange(() => {
     if (focusedFieldId && !focusedElement()) setFocusedField(null);
-    renderOffers();
-  });
-  $("#builder-clear-history")?.addEventListener("click", () => {
-    hiddenReceiptCount = bridge.readReceipts().length;
-    $("#builder-return-narration").hidden = true;
-    highlightReturnedFields(null);
-    $("#builder-status").textContent = "History cleared. Pending offers and grants are untouched.";
-    renderReceipts();
   });
 
-  renderOffers();
-  renderReceipts();
-  renderDelegationState();
-  renderSeat();
-
-  return { bridge, renderSeat };
+  return {
+    bridge,
+    readFocus,
+    clearFocus: () => setFocusedField(null),
+    pendingOffers,
+    describeOffer: describeBuilderOffer,
+    applyOffer,
+    readReceipts: () => bridge.readReceipts(),
+    readAwaitingFeedback: () => bridge.readAwaitingFeedback(),
+    recordFeedback: (verdict) =>
+      bridge.recordFeedback({
+        verdict,
+        pageVersion: controller.getPageVersion(),
+        now: new Date().toISOString()
+      }),
+    clearReturnHighlights: () => highlightReturnedFields(null),
+    suggestField,
+    startGrant,
+    readActiveGrant: () => bridge.readActiveGrant(),
+    readCallsUsed: () => callsUsed,
+    draftOne,
+    draftBatch,
+    endGrant,
+    directive
+  };
 }
