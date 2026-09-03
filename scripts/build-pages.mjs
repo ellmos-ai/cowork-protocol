@@ -10,6 +10,8 @@ const PUBLIC_FILES = [
   "apps/formbuilder-showcase/styles.css",
   "apps/formbuilder-showcase/src/advisor-comment.js",
   "apps/formbuilder-showcase/src/app.js",
+  "apps/formbuilder-showcase/src/builder-model-suggester.js",
+  "apps/formbuilder-showcase/src/model-seat.js",
   "apps/formbuilder-showcase/src/builder-cowork.js",
   "apps/formbuilder-showcase/src/builder-cowork-ui.js",
   "apps/formbuilder-showcase/src/builder-directive-classifier.js",
