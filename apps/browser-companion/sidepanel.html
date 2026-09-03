@@ -15,20 +15,27 @@
       data-relay-state="dormant"
       data-route="off"
       data-execution-mode="structured"
+      data-bridge="resting"
     >
       <header class="cockpit-header">
         <img class="cowork-brand-mark" src="modules/packages/reference-ui/assets/cowork-dialogue-mark.svg" alt="">
         <div class="brand-copy">
           <p class="cowork-wordmark">Cowork <span>Protocol</span></p>
           <h1>Browser Bridge</h1>
-          <p id="surface-note" class="surface-note">Browser extension · no model seat of its own</p>
+          <p id="surface-note" class="surface-note">A bridge with a place · it carries no model of its own</p>
         </div>
         <span id="connection-lamp" class="connection-lamp" aria-label="Not attached"></span>
       </header>
 
+      <section id="bridge-state" class="bridge-state" role="status" aria-live="polite">
+        <span id="bridge-mark" class="bridge-mark" aria-hidden="true"></span>
+        <strong id="bridge-message">No model is crossing the bridge.</strong>
+        <span id="bridge-where" class="bridge-where"></span>
+      </section>
+
       <nav id="route-rail" class="route-rail" aria-label="Active connector route">
-        <span class="route-node" data-route="native"><i aria-hidden="true">✦</i>Native</span>
-        <span class="route-node" data-route="webmcp"><i aria-hidden="true">◇</i>WebMCP</span>
+        <span class="route-node" data-route="native"><i aria-hidden="true">✦</i>Page tools</span>
+        <span class="route-node" data-route="webmcp"><i aria-hidden="true">◇</i>Page WebMCP</span>
         <span class="route-node" data-route="bridge"><i aria-hidden="true">↝</i>Bridge</span>
       </nav>
 

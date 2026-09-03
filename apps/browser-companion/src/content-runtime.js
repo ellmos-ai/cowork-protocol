@@ -10,6 +10,13 @@ import { createNativePageClient } from "./native-page-client.js";
 import { nextAvailableStatus } from "./cockpit-presentation.js";
 
 const RESPONSE_SOURCE = "cowork-browser-companion";
+// How long an agent stays "on the bridge" after its last tool call. A slow
+// model turn plus a tool round trip runs tens of seconds, so anything much
+// shorter would keep throwing a working agent off mid-turn; anything much
+// longer leaves a full panel standing in front of a person whose agent
+// stopped answering. A standing offer holds the bridge open past this, because
+// an offer waiting for a click is an agent still waiting for an answer.
+export const AGENT_IDLE_TIMEOUT_MS = 90_000;
 const TARGET_SELECTOR = [
   "input",
   "textarea",
@@ -54,9 +61,18 @@ function accessibilityText(element, documentLike) {
     .join("\n");
 }
 
-export function installBrowserCompanion({ document, window, runtime }) {
+export function installBrowserCompanion({
+  document,
+  window,
+  runtime,
+  agentIdleTimeoutMs = AGENT_IDLE_TIMEOUT_MS,
+  now = () => Date.now()
+}) {
   if (!document || !window || !runtime) {
     throw new TypeError("Browser companion requires document, window and extension runtime");
+  }
+  if (!Number.isFinite(agentIdleTimeoutMs) || agentIdleTimeoutMs <= 0) {
+    throw new TypeError("Browser companion requires a positive agent idle timeout");
   }
 
   let enabled = false;
@@ -72,6 +88,9 @@ export function installBrowserCompanion({ document, window, runtime }) {
   let runtimeMode = "off";
   let nativeDiscovery = null;
   let toolsRegistered = false;
+  // When an agent last spoke to this bridge. Panel controls are the human's
+  // own hand and never count: an empty bridge must stay empty while you click.
+  let lastAgentActivityAt = null;
   // Three status variables per actor: who is here, what they are working on,
   // and whether they execute or advise. The work mode, the click right and
   // the 0.1 presence values on the wire are all derived from these.
@@ -377,6 +396,7 @@ export function installBrowserCompanion({ document, window, runtime }) {
     pendingOfferContract = null;
     nativeDiscovery = null;
     toolsRegistered = false;
+    lastAgentActivityAt = null;
     contextLevel = 0;
     focusLabel = "Point to a page control";
     focusDetail = "No page content requested yet";
@@ -445,10 +465,17 @@ export function installBrowserCompanion({ document, window, runtime }) {
       coworkProtocolAvailable: nativeDiscovery?.coworkProtocolAvailable === true,
       nativeToolCount: nativeDiscovery?.tools?.length ?? 0,
       toolsRegistered,
+      // The page draws its own Cowork panel, so this bridge steps aside.
+      pageOwnsBridge: nativeDiscovery?.pageOwnsBridge === true,
+      companionConnected: nativeDiscovery?.companionConnected === true,
+      agentLastSeenAt: lastAgentActivityAt,
+      agentIdleTimeoutMs,
       fallbackActive: runtimeMode === "legacy-host-companion",
       extensionTransport: true,
       browserWideAttachment: true,
       surfaceLocation: "browser-side-panel",
+      // Which page this bridge is looking at, for the line it shows at rest.
+      origin: window.location?.origin ?? null,
       inPageUi: false,
       statusText,
       ...actors(),
@@ -514,6 +541,9 @@ export function installBrowserCompanion({ document, window, runtime }) {
       }, "*");
       return;
     }
+    // A request that reaches this point comes from an agent, not from the
+    // panel: the panel talks over the extension runtime channel instead.
+    lastAgentActivityAt = now();
     try {
       // An advising model still proposes - the human clicks. Only a model on
       // standby proposes nothing.

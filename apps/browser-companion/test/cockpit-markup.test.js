@@ -43,6 +43,31 @@ test("cockpit state is not encoded by color alone and motion can be removed", as
   assert.match(css, /:focus-visible/);
 });
 
+test("an empty bridge shows the switch and nothing it cannot deliver", async () => {
+  const html = await readFile(htmlPath, "utf8");
+  const css = await readFile(cssPath, "utf8");
+  assert.match(html, /id="bridge-state"[\s\S]*role="status"/);
+  assert.match(html, /id="bridge-message"/);
+  assert.match(html, /id="bridge-where"/);
+  assert.match(html, /data-bridge="resting"/);
+  // The rest state is drawn by CSS from one attribute, so an unknown state can
+  // never leave the instruments half-open.
+  assert.match(css, /\[data-bridge="crossing"\]/);
+  assert.match(css, /:not\(\[data-bridge="crossing"\]\)[\s\S]*\.focus-instrument/);
+  assert.match(css, /\[data-bridge="page-owns"\]/);
+  assert.match(css, /\[data-bridge="companion"\]/);
+  assert.match(css, /\[data-bridge="arriving"\][\s\S]*bridge-cross/);
+  // The switch survives every fold; a panel you cannot turn off is a trap.
+  assert.match(css, /\.dock-key:not\(\.model-power\)/);
+});
+
+test("the bridge mark and its words come from the shared vocabulary", async () => {
+  const script = await readFile(new URL("../sidepanel.js", import.meta.url), "utf8");
+  assert.match(script, /BRIDGE_ICON/);
+  assert.match(script, /BRIDGE_COPY/);
+  assert.doesNotMatch(script, /No model is crossing the bridge/);
+});
+
 test("the side panel reads its status words from the shared vocabulary", async () => {
   const script = await readFile(new URL("../sidepanel.js", import.meta.url), "utf8");
   assert.match(script, /STATUS_STEPS/);

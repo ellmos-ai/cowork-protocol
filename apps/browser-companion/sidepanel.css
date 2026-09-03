@@ -218,6 +218,57 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.025em; }
   .context-gauge { min-width: 64px; }
 }
 
+/* --- The bridge: at rest, being crossed, or stepped aside -------------- *
+ * A bridge has a place, and only one thing is true of that place at a time.
+ * At rest it offers nothing but the switch and where it is looking: controls
+ * that cannot do anything without a model would be a promise this surface
+ * cannot keep. */
+.bridge-state { display: grid; justify-items: center; gap: 9px; padding: 26px 14px 20px; text-align: center; }
+.bridge-mark { position: relative; display: block; width: 62px; height: 62px; color: var(--accent-teal); }
+.bridge-mark svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+#bridge-message { max-width: 30ch; font-size: 15px; line-height: 1.35; }
+.bridge-where { max-width: 34ch; color: var(--ink-muted); font-size: 12px; line-height: 1.4; }
+
+.cowork-cockpit[data-bridge="crossing"] .bridge-state { display: none; }
+.cowork-cockpit:not([data-bridge="crossing"]) .collaboration-deck,
+.cowork-cockpit:not([data-bridge="crossing"]) .focus-instrument,
+.cowork-cockpit:not([data-bridge="crossing"]) .offer-card,
+.cowork-cockpit:not([data-bridge="crossing"]) .computer-use-indicator,
+.cowork-cockpit:not([data-bridge="crossing"]) .protocol-rhythm,
+.cowork-cockpit:not([data-bridge="crossing"]) .dock-key:not(.model-power) { display: none; }
+
+/* The page carries its own bridge, or the Companion holds the session: one
+ * line, plus the switch that got this panel here. */
+.cowork-cockpit[data-bridge="page-owns"] .route-rail,
+.cowork-cockpit[data-bridge="companion"] .route-rail,
+.cowork-cockpit[data-bridge="page-owns"] .route-explainer,
+.cowork-cockpit[data-bridge="companion"] .route-explainer,
+.cowork-cockpit[data-bridge="page-owns"] .bridge-where,
+.cowork-cockpit[data-bridge="companion"] .bridge-where { display: none; }
+
+/* Arrival: one mark travels the deck, then the instruments open. */
+.bridge-mark::after {
+  content: ""; position: absolute; left: 11%; top: 44%;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--line-gold); box-shadow: 0 0 9px rgba(214,169,79,.9); opacity: 0;
+}
+.cowork-cockpit[data-bridge="arriving"] .bridge-mark::after { animation: bridge-cross 1.4s ease-in-out both; }
+@keyframes bridge-cross {
+  0% { opacity: 0; transform: translateX(0); }
+  14% { opacity: 1; }
+  86% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(46px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No crossing, but the mark still says something is on the deck. */
+  .cowork-cockpit[data-bridge="arriving"] .bridge-mark::after { opacity: 1; transform: translateX(23px); }
+}
+
+/* A registered-tools bridge is still the Bridge node on the rail. */
+.cowork-cockpit[data-route="bridge-webmcp"] .route-node[data-route="bridge"] { color: var(--accent-teal); }
+.cowork-cockpit[data-route="bridge-webmcp"] .route-node[data-route="bridge"] i { color: white; border-color: #0c756e; background: var(--accent-teal); box-shadow: 0 0 0 3px #d8f4ed, 0 0 15px rgba(8,124,117,.35); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }

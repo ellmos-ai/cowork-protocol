@@ -1,7 +1,12 @@
 import {
   buildCockpitPresentation
 } from "./modules/apps/browser-companion/src/cockpit-presentation.js";
-import { createStepIcon, STATUS_STEPS } from "./modules/packages/reference-ui/src/index.js";
+import {
+  BRIDGE_COPY,
+  BRIDGE_ICON,
+  createStepIcon,
+  STATUS_STEPS
+} from "./modules/packages/reference-ui/src/index.js";
 
 const $ = (selector) => document.querySelector(selector);
 const root = $(".cowork-cockpit");
@@ -9,6 +14,16 @@ let currentState = null;
 let refreshBusy = false;
 let notice = null;
 let noticeUntil = 0;
+// Arrival and departure are transitions, so only this panel can see them: the
+// runtime knows whether an agent is on the bridge right now, not whether it
+// just got there. Opening the panel onto an agent already at work is not an
+// arrival and must not be animated as one, which is why the first render
+// starts from null and plays nothing.
+let bridgeState = null;
+let bridgeStage = null;
+let bridgeStageUntil = 0;
+const ARRIVAL_MS = 1400;
+const DEPARTURE_MS = 4000;
 
 const ERROR_MESSAGES = Object.freeze({
   SOLO_LEASE_REQUIRED: "Open the Desktop Companion and approve solo work before leaving.",
@@ -43,8 +58,48 @@ function presentationInput(state) {
     model: state?.model ?? { availability: "away", role: "advising", area: null },
     // The grant is the only authority record, so its absence is the default.
     modelAuthorityValid: state?.modelAuthorityValid === true,
-    contextLevel: Number.isInteger(state?.contextLevel) ? state.contextLevel : 0
+    contextLevel: Number.isInteger(state?.contextLevel) ? state.contextLevel : 0,
+    // Who is on the bridge, and who steps aside for whom.
+    pageOwnsBridge: state?.pageOwnsBridge === true,
+    companionConnected: state?.companionConnected === true,
+    agentLastSeenAt: state?.agentLastSeenAt ?? null,
+    agentIdleTimeoutMs: state?.agentIdleTimeoutMs,
+    // An offer waiting for a click is an agent still waiting for an answer.
+    offerPending: Boolean(state?.pendingOffer),
+    now: Date.now()
   };
+}
+
+function renderBridge(presentation, state) {
+  const next = presentation.bridgeState;
+  if (bridgeState !== next) {
+    if (bridgeState === "resting" && next === "crossing") {
+      bridgeStage = "arriving";
+      bridgeStageUntil = Date.now() + ARRIVAL_MS;
+    } else if (bridgeState === "crossing" && next === "resting") {
+      bridgeStage = "leaving";
+      bridgeStageUntil = Date.now() + DEPARTURE_MS;
+    } else {
+      bridgeStage = null;
+      bridgeStageUntil = 0;
+    }
+    bridgeState = next;
+    // The 600 ms poll would leave the panel closed for up to half a second
+    // after the crossing finishes; wake it exactly when the stage ends.
+    if (bridgeStage) setTimeout(refresh, bridgeStageUntil - Date.now() + 40);
+  }
+  const stage = Date.now() < bridgeStageUntil ? bridgeStage : bridgeState;
+  root.dataset.bridge = stage;
+  $("#bridge-message").textContent =
+    stage === "arriving"
+      ? BRIDGE_COPY.arriving
+      : stage === "leaving"
+        ? BRIDGE_COPY.left
+        : presentation.bridgeMessage;
+  const origin = state?.origin ?? null;
+  $("#bridge-where").textContent = origin
+    ? `${origin} · ${presentation.routeLabel}`
+    : presentation.routeExplainer;
 }
 
 function render(state) {
@@ -55,6 +110,7 @@ function render(state) {
   root.dataset.relayState = presentation.relayState;
   root.dataset.route = presentation.route;
   root.dataset.executionMode = presentation.executionMode;
+  renderBridge(presentation, state);
 
   const computerUseIndicator = $("#computer-use-indicator");
   computerUseIndicator.setAttribute(
@@ -145,6 +201,10 @@ async function refresh() {
     refreshBusy = false;
   }
 }
+
+// The bridge mark is drawn from the shared vocabulary too, so both bridges
+// show the same mark for the same emptiness.
+$("#bridge-mark").replaceChildren(createStepIcon(BRIDGE_ICON, document));
 
 // Every visible status word comes from packages/reference-ui.
 $("#status-steps").replaceChildren(

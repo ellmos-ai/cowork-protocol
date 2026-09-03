@@ -43,6 +43,18 @@
     const sessionAvailable =
       typeof sessionReader?.readCurrentSnapshot === "function" ||
       typeof sessionReader?.readSnapshot === "function";
+    // A page that exposes a session reader draws its own Cowork panel; a page
+    // with only cowork_ tools speaks the protocol and shows nothing. The
+    // extension bridge steps aside for the first and is the surface for the
+    // second, so the two cases must not stay merged into one flag.
+    let surfaceKind = null;
+    try {
+      surfaceKind =
+        (sessionReader?.readCurrentSnapshot ?? sessionReader?.readSnapshot)
+          ?.call(sessionReader)?.state?.surface?.kind ?? null;
+    } catch {
+      surfaceKind = null;
+    }
     return {
       protocolVersion: PROTOCOL_VERSION,
       type: "native-page-discovery",
@@ -54,6 +66,8 @@
             : "unavailable",
       webMcpAvailable: descriptors.length > 0,
       coworkProtocolAvailable: coworkToolCount > 0 || sessionAvailable,
+      pageOwnsBridge: sessionAvailable,
+      companionConnected: surfaceKind === "desktop",
       coworkToolCount,
       tools: descriptors
     };

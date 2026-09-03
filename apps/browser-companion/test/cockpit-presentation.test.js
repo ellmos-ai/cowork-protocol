@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   ACTOR_STATUS_CYCLE,
   buildCockpitPresentation,
+  resolveBridgeState,
   nextActorStatus,
   nextAvailableStatus
 } from "../src/cockpit-presentation.js";
@@ -30,7 +31,9 @@ function build(overrides = {}) {
 test("both here on one area, the human executing, means the human holds the click right", () => {
   assert.deepEqual(build(), {
     route: "native",
-    routeLabel: "Native Cowork",
+    routeLabel: "Page has its own tools (native WebMCP)",
+    bridgeState: "resting",
+    bridgeMessage: "No model is crossing the bridge.",
     executionMode: "structured",
     executionLabel: "Structured actions",
     computerUseActive: false,
@@ -55,8 +58,8 @@ test("both here on one area, the human executing, means the human holds the clic
     authorityLapsed: false,
     doublingAvailable: false,
     routeExplainer:
-      "Native — this page speaks Cowork Protocol. This panel relays the page's own tools; " +
-      "offers appear in the page's Cowork panel and are clicked there.",
+      "This page speaks Cowork Protocol itself, so this bridge only relays the " +
+      "page's own tools; offers appear in the page's own panel and are clicked there.",
     seatNote:
       "Model seat: the page's own (Desktop Companion, page host, direct model or demo helper). " +
       "This extension adds no model.",
@@ -104,12 +107,12 @@ test("a model set to execute without a current grant does not execute", () => {
 
 test("the panel never claims a model seat it does not have", () => {
   const webmcp = build({ mode: "native-webmcp" });
-  assert.match(webmcp.routeExplainer, /^WebMCP — the page exposes WebMCP tools/);
+  assert.match(webmcp.routeExplainer, /^The page exposes WebMCP tools but speaks no Cowork/);
   assert.match(webmcp.seatNote, /^Model seat: none\./);
   assert.match(webmcp.seatNote, /npm run start:companion-host/);
 
   const bridge = build({ mode: "legacy-host-companion" });
-  assert.match(bridge.routeExplainer, /^Bridge — no protocol on this page/);
+  assert.match(bridge.routeExplainer, /^No protocol on this page, and no WebMCP/);
   assert.equal(bridge.seatNote, webmcp.seatNote);
 });
 
@@ -121,7 +124,7 @@ test("an unattached panel explains how to attach instead of naming a seat", () =
   });
   assert.equal(
     presentation.routeExplainer,
-    "Not attached. Click the toolbar icon on a page to attach this panel."
+    "Not attached. Click the toolbar icon on a page to attach this bridge."
   );
   assert.equal(presentation.seatNote, "No page attached.");
   assert.equal(presentation.modelState, "away");
@@ -231,7 +234,7 @@ test("computer use is a separate expensive execution signal, never a connector a
     executionMode: "computer-use"
   });
   assert.equal(presentation.route, "bridge");
-  assert.equal(presentation.routeLabel, "Bounded Bridge");
+  assert.equal(presentation.routeLabel, "Bridge only (no WebMCP in this browser)");
   assert.equal(presentation.executionMode, "computer-use");
   assert.equal(presentation.executionLabel, "Computer use · higher token use");
   assert.equal(presentation.computerUseActive, true);
@@ -276,10 +279,84 @@ test("the cycle skips what this surface cannot grant instead of faking it", () =
 test("registered Cowork tools name their own route and seat", () => {
   const registered = build({ mode: "legacy-host-companion", toolsRegistered: true });
   assert.equal(registered.route, "bridge-webmcp");
-  assert.equal(registered.routeLabel, "Bridge + WebMCP");
-  assert.match(registered.routeExplainer, /registered Cowork tools here/);
-  assert.match(registered.routeExplainer, /your click stays in this panel/);
+  assert.equal(registered.routeLabel, "Bridge tools registered for this page");
+  assert.match(registered.routeExplainer, /this bridge registered them/);
+  assert.match(registered.routeExplainer, /your click stays here/);
   // The tools are the extension's; the model still is not.
   assert.match(registered.seatNote, /whichever WebMCP agent this browser attaches/);
   assert.equal(build({ mode: "legacy-host-companion" }).route, "bridge");
+});
+
+test("an empty bridge says so, and a human click never fills it", () => {
+  const now = 1_000_000;
+  assert.equal(resolveBridgeState({ now }), "resting");
+  assert.equal(
+    build({ mode: "legacy-host-companion", now }).bridgeMessage,
+    "No model is crossing the bridge."
+  );
+  // Reading focus and widening context are the person's own hand on the
+  // panel; only an agent's tool call moves agentLastSeenAt.
+  assert.equal(
+    build({ mode: "legacy-host-companion", contextLevel: 2, now }).bridgeState,
+    "resting"
+  );
+});
+
+test("an agent's tool call puts a model on the bridge until it goes quiet", () => {
+  const now = 1_000_000;
+  const timeout = 90_000;
+  const fresh = { agentLastSeenAt: now - 1_000, agentIdleTimeoutMs: timeout, now };
+  assert.equal(resolveBridgeState(fresh), "crossing");
+  assert.equal(build({ mode: "legacy-host-companion", ...fresh }).bridgeMessage,
+    "A model is on the bridge.");
+  assert.equal(
+    resolveBridgeState({ ...fresh, agentLastSeenAt: now - timeout }),
+    "resting"
+  );
+  assert.equal(
+    resolveBridgeState({ ...fresh, agentLastSeenAt: now - timeout + 1 }),
+    "crossing"
+  );
+});
+
+test("a standing offer holds the bridge open however long the human thinks", () => {
+  const now = 1_000_000;
+  assert.equal(
+    resolveBridgeState({
+      agentLastSeenAt: now - 10_000_000,
+      agentIdleTimeoutMs: 90_000,
+      offerPending: true,
+      now
+    }),
+    "crossing"
+  );
+});
+
+test("the Companion outranks the page, and the page outranks this bridge", () => {
+  const now = 1_000_000;
+  const crossing = { agentLastSeenAt: now, now };
+  assert.equal(
+    resolveBridgeState({ ...crossing, companionConnected: true, pageOwnsBridge: true }),
+    "companion"
+  );
+  assert.equal(resolveBridgeState({ ...crossing, pageOwnsBridge: true }), "page-owns");
+  assert.equal(
+    build({ mode: "native-cowork", pageOwnsBridge: true, now }).bridgeMessage,
+    "This page carries its own bridge; the panel on the page takes your clicks."
+  );
+  assert.equal(
+    build({ mode: "native-cowork", companionConnected: true, now }).bridgeMessage,
+    "Session lives in the Desktop Companion."
+  );
+});
+
+test("a page with Cowork tools but no panel of its own leaves this bridge in charge", () => {
+  const now = 1_000_000;
+  const protocolOnly = build({ mode: "native-cowork", pageOwnsBridge: false, now });
+  assert.equal(protocolOnly.bridgeState, "resting");
+  assert.equal(
+    build({ mode: "native-cowork", pageOwnsBridge: false, agentLastSeenAt: now, now })
+      .bridgeState,
+    "crossing"
+  );
 });

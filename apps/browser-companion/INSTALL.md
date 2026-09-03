@@ -82,21 +82,29 @@ unclear, ask me rather than guessing.
 
 - Open an ordinary web page that has a text input (a search box is enough).
 - Click the pinned toolbar icon, or press `Ctrl+Shift+Y`.
-- The toolbar icon shows an **ON** badge, and the Side Panel opens with the
-  **Browser Bridge** panel: the connector route rail (Native / WebMCP /
-  Bridge / Bridge + WebMCP), the "Who works now?" actor controls and the
-  **Current focus** lens.
-- The panel says in plain words what the current route means and where the model
-  sits: it has no model seat of its own, so on WebMCP and Bridge pages nothing is
-  proposed until a model client attaches, and voice and handoff need the Desktop
-  Companion (`npm run start:companion-host`, then `127.0.0.1:47831/cowork/v1/ui`).
-- On [the FormBuilder showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/)
-  the rail resolves to **Native**. On a page that carries no Cowork tools the
-  extension registers `cowork_read_focus`, `cowork_request_context`,
-  `cowork_offer_action` and `cowork_read_presence` itself, and the rail reads
-  **Bridge + WebMCP**: any WebMCP agent in the browser can then read focus and
-  propose there, while the click stays in this panel. Where that registration
-  does not succeed, the rail falls back to plain **Bridge**.
+- The toolbar icon shows an **ON** badge, and the Side Panel opens on a bridge
+  mark, the line **No model is crossing the bridge.**, the on/off switch, and
+  one line naming the page it is looking at and the route it found. That is the
+  whole panel at rest: this bridge carries no model, so instruments that cannot
+  do anything yet are not shown.
+- When a WebMCP agent in this browser makes its first Cowork tool call, a mark
+  travels the deck once and the panel opens: the "Who works now?" actor
+  controls, the **Current focus** lens, offers and the receipts strip. Let the
+  agent go quiet for 90 seconds and the panel folds back with **The model left
+  the bridge.** A standing offer keeps it open however long you take to decide.
+- On a page that carries its own Cowork panel — [the FormBuilder
+  showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/),
+  for example — this bridge steps aside to one line: the page's own panel takes
+  your clicks. If the session has moved to the Desktop Companion, the line says
+  that instead.
+- The route line names what the *page* offers, not what this bridge is:
+  **Page has its own tools (native WebMCP)**, **Page has WebMCP tools, no
+  Cowork**, **Bridge tools registered for this page** (this bridge registered
+  `cowork_read_focus`, `cowork_request_context`, `cowork_offer_action` and
+  `cowork_read_presence` where the page had none) or **Bridge only (no WebMCP
+  in this browser)**.
+- Voice and handoff need the Desktop Companion (`npm run start:companion-host`,
+  then `127.0.0.1:47831/cowork/v1/ui`); this bridge mints no grant and says so.
 - Focus a text field and use the focus lens: you get the semantic target and
   bounded nearby text, and the context gauge widens that context one level per
   explicit request.

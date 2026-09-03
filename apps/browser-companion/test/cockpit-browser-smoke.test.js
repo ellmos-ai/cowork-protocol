@@ -31,9 +31,32 @@ function validState(overrides = {}) {
   };
 }
 
+function bridgeStep(bridge, message, open) {
+  return {
+    bridge,
+    message,
+    where: "https://events.example · Bridge tools registered for this page",
+    markPaths: 4,
+    focusInstrumentVisible: open,
+    actorsVisible: open,
+    powerKeyVisible: true
+  };
+}
+
+function validJourney() {
+  return [
+    bridgeStep("resting", "No model is crossing the bridge.", false),
+    bridgeStep("arriving", "A model is coming across the bridge.", false),
+    bridgeStep("crossing", "A model is on the bridge.", true),
+    bridgeStep("leaving", "The model left the bridge.", false),
+    bridgeStep("resting", "No model is crossing the bridge.", false)
+  ];
+}
+
 test("cockpit browser evidence requires four truthful visual states in a narrow viewport", () => {
   const report = validateCockpitBrowserObservation({
     browser: "Chrome/152",
+    bridgeJourney: validJourney(),
     screenshots: ["sparring-model.png", "model-solo.png", "sparring-human.png", "human-solo.png"],
     focusLabel: "Selected: Registration title",
     contextLevel: "1",
@@ -62,9 +85,40 @@ test("cockpit browser evidence requires four truthful visual states in a narrow 
   });
 
   assert.equal(report.cockpitVisualClaim, true);
+  assert.equal(report.bridgeRestArriveDepartClaim, true);
   assert.equal(report.narrowViewportClaim, true);
   assert.equal(report.colorOnlyStatusClaim, false);
   assert.equal(report.states.length, 4);
+});
+
+test("an empty bridge that still offers instruments is rejected", () => {
+  const offering = validJourney();
+  offering[0] = bridgeStep("resting", "No model is crossing the bridge.", true);
+  const states = [
+    validState(),
+    validState({ humanState: "away", relayState: "to-model", modeLabel: "Model works alone" }),
+    validState({ humanState: "here-executing", modelState: "here-advising", relayState: "watching", modeLabel: "Sparring · you execute" }),
+    validState({ humanState: "here-executing", modelState: "standby", relayState: "dormant", modeLabel: "You work alone" })
+  ];
+  assert.throws(
+    () => validateCockpitBrowserObservation({
+      browser: "Chrome/152",
+      bridgeJourney: offering,
+      screenshots: ["a.png", "b.png", "c.png", "d.png"],
+      states
+    }),
+    /offers instruments with no model on the bridge/
+  );
+
+  assert.throws(
+    () => validateCockpitBrowserObservation({
+      browser: "Chrome/152",
+      bridgeJourney: validJourney().filter((step) => step.bridge !== "arriving"),
+      screenshots: ["a.png", "b.png", "c.png", "d.png"],
+      states
+    }),
+    /bridge journey/
+  );
 });
 
 test("cockpit browser evidence fails closed on overflow, clipping or missing labels", () => {
@@ -77,6 +131,7 @@ test("cockpit browser evidence fails closed on overflow, clipping or missing lab
     assert.throws(
       () => validateCockpitBrowserObservation({
         browser: "Chrome/152",
+        bridgeJourney: validJourney(),
         screenshots: ["a.png", "b.png", "c.png", "d.png"],
         states: [validState(), validState({ humanState: "away", relayState: "to-model", modeLabel: "Model works alone" }), validState({ humanState: "here-executing", modelState: "here-advising", relayState: "watching", modeLabel: "Sparring · you execute" }), broken]
       }),

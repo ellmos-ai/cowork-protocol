@@ -67,6 +67,34 @@ export function createStepIcon(paths, doc) {
   return svg;
 }
 
+/* ------------------------------------------------------------------ *
+ * Bridge vocabulary
+ *
+ * A bridge has a place; a vehicle carries a model across it. Both bridges -
+ * the one a page builds into itself and the one the extension carries onto a
+ * page that built none - say these words, so a person who learns the bridge
+ * once recognises it anywhere.
+ * ------------------------------------------------------------------ */
+
+/** The bridge mark, in the same monoline 24x24 language as STATUS_STEPS. */
+export const BRIDGE_ICON = Object.freeze([
+  "M2.5 13h19",
+  "M4.5 19a7.5 6 0 0 1 15 0",
+  "M4.5 13v6",
+  "M19.5 13v6"
+]);
+
+/** What a bridge says about itself. Never write these into a surface. */
+export const BRIDGE_COPY = Object.freeze({
+  resting: "No model is crossing the bridge.",
+  arriving: "A model is coming across the bridge.",
+  crossing: "A model is on the bridge.",
+  left: "The model left the bridge.",
+  pageOwnsBridge:
+    "This page carries its own bridge; the panel on the page takes your clicks.",
+  companion: "Session lives in the Desktop Companion."
+});
+
 const HUMAN_STATUS = Object.freeze({
   "here-executing": Object.freeze({ label: "You are executing", badge: "●", tone: "green" }),
   "here-advising": Object.freeze({ label: "You are advising", badge: "◉", tone: "green" }),
