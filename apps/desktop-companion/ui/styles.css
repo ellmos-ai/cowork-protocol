@@ -491,3 +491,18 @@ textarea { width: 100%; resize: vertical; padding: 11px; border: 1px solid #9283
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }
+
+/* Same drawn icon family as the embedded panel: monoline, inheriting colour
+   and size from the text beside it. */
+.ui-icon {
+  width: 1.05em;
+  height: 1.05em;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ui-icon-slash { stroke: #c92f1f; stroke-width: 2.1; }
+button:not(.actor-control) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }

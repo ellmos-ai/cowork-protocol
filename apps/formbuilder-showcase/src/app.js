@@ -1971,6 +1971,8 @@ function submitFormBuilderResponse() {
 function configureSpeech() {
   const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
   const talkButton = $("#talk");
+  // The button keeps its icon: only this label node ever changes.
+  const talkLabel = talkButton.querySelector(".button-label");
   if (!Recognition) {
     talkButton.disabled = true;
     $("#transcript").textContent = "Speech recognition is unavailable here. Text controls remain usable.";
@@ -1985,7 +1987,7 @@ function configureSpeech() {
     },
     onStart: () => {
       talkButton.classList.add("is-listening");
-      talkButton.textContent = "Listening…";
+      talkLabel.textContent = "Listening…";
       $("#transcript").textContent = "Listening. Pause naturally; silence will not create a turn.";
     },
     onResult: (event) => {
@@ -2001,7 +2003,7 @@ function configureSpeech() {
     },
     onEnd: () => {
       talkButton.classList.remove("is-listening");
-      talkButton.innerHTML = '<span aria-hidden="true">●</span> Push to talk';
+      talkLabel.textContent = "Push to talk";
     }
   });
   talkButton.addEventListener("click", () => recognitionSession.start());

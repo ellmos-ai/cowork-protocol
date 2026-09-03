@@ -750,3 +750,20 @@ textarea { resize: vertical; }
 /* Why no Dismiss button: a proposal that is ignored is already gone. Saying so
    is cheaper than a control that removes what would remove itself. */
 .offer-list-note { margin-top: .5rem; }
+
+/* One drawn family for the whole panel: monoline, 24-unit box, inheriting the
+   colour and the size of the text it sits next to. No font, no sprite, no
+   asset - an icon that cannot fail to load. */
+.ui-icon {
+  width: 1.05em;
+  height: 1.05em;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ui-icon-slash { stroke: #c92f1f; stroke-width: 2.1; }
+/* A button that carries an icon puts it on the text baseline, not above it. */
+.audio-button, .quiet-button, .primary-small, .demo-button { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; }
