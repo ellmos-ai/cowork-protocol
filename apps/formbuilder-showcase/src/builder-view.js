@@ -56,6 +56,10 @@ export function initBuilderStudio(root = document) {
   function bumpPageVersion() {
     pageVersion += 1;
     $("#builder-page-version").textContent = String(pageVersion);
+    // A filled-in response belongs to the form it was filled in on: once the
+    // form changes it must not stay exportable under the new form's name.
+    lastResponse = null;
+    $("#builder-export-response").disabled = true;
     for (const listener of pageVersionListeners) listener(pageVersion);
   }
 
@@ -136,6 +140,7 @@ export function initBuilderStudio(root = document) {
       levelSelect.value = classification === "heading-h1" ? "1" : "2";
       levelSelect.addEventListener("change", () => {
         state.elements = setHeadingLevel(state.elements, element.id, Number(levelSelect.value));
+        bumpPageVersion();
         renderFieldList();
         renderFillTab();
       });
@@ -152,6 +157,7 @@ export function initBuilderStudio(root = document) {
       requiredInput.setAttribute("aria-label", `Required for field ${index + 1}`);
       requiredInput.addEventListener("change", () => {
         state.elements = updateField(state.elements, element.id, { required: requiredInput.checked });
+        bumpPageVersion();
         renderFillTab();
       });
       requiredLabel.append(requiredInput, document.createTextNode(" Required"));
@@ -166,6 +172,7 @@ export function initBuilderStudio(root = document) {
       helpInput.setAttribute("aria-label", `Help text for field ${index + 1}`);
       helpInput.addEventListener("change", () => {
         state.elements = updateField(state.elements, element.id, { helpText: helpInput.value });
+        bumpPageVersion();
         renderFillTab();
       });
       helpField.append(helpText, helpInput);
@@ -187,6 +194,7 @@ export function initBuilderStudio(root = document) {
         state.elements = updateField(state.elements, element.id, {
           options: options.length > 0 ? options : ["Option 1"]
         });
+        bumpPageVersion();
         renderFillTab();
       });
       optionsField.append(optionsText, optionsInput);
@@ -202,6 +210,7 @@ export function initBuilderStudio(root = document) {
     up.disabled = index === 0;
     up.addEventListener("click", () => {
       state.elements = moveField(state.elements, element.id, "up");
+      bumpPageVersion();
       renderFieldList();
       renderFillTab();
     });
@@ -213,6 +222,7 @@ export function initBuilderStudio(root = document) {
     down.disabled = index === total - 1;
     down.addEventListener("click", () => {
       state.elements = moveField(state.elements, element.id, "down");
+      bumpPageVersion();
       renderFieldList();
       renderFillTab();
     });

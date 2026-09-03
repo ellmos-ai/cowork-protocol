@@ -38,13 +38,15 @@ export function classifyBuilderDirective(transcript, { fieldId, fieldIndex, requ
     }));
     return steps.length > 0 ? { capabilityId: "form-move-field", steps } : null;
   }
-  if (/\bmove.*up|earlier\b/.test(text)) {
+  // Both alternatives need the verb: "later"/"earlier" alone are small talk,
+  // and under GAP-02 a recognized phrase mutates without a second click.
+  if (/\bmove\b.*\b(up|earlier)\b/.test(text)) {
     return {
       capabilityId: "form-move-field",
       steps: [{ proposedArguments: { fieldId, direction: "up" } }]
     };
   }
-  if (/\bmove.*down|later\b/.test(text)) {
+  if (/\bmove\b.*\b(down|later)\b/.test(text)) {
     return {
       capabilityId: "form-move-field",
       steps: [{ proposedArguments: { fieldId, direction: "down" } }]

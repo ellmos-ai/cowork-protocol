@@ -21,7 +21,7 @@ test("startDelegation defaults to a canvas-scoped grant that authorizes solo add
   assert.deepEqual(grant.allowedCapabilityIds, ["form-add-field"]);
   assert.equal(grant.maxCalls, 6);
   assert.equal(bridge.hasActiveGrant("2026-09-01T10:00:01.000Z"), true);
-  assert.deepEqual(bridge.readActiveGrant(), grant);
+  assert.deepEqual(bridge.readActiveGrant("2026-09-01T10:00:01.000Z"), grant);
 });
 
 test("soloExecute adds a field with no offer and no click, and authorizes it even while the human is present (GAP-01)", () => {
@@ -363,4 +363,96 @@ test("a directive against a field that no longer exists fails closed before any 
     { name: "CoworkProtocolError", code: "STALE_FOCUS" }
   );
   assert.equal(bridge.readAwaitingFeedback(), null);
+});
+
+// --- Review fixes 2026-09-03: expiry, call budget, live page version, receipt counting ---
+
+test("readActiveGrant reports an expired grant as gone, so the UI cannot stay delegated forever", () => {
+  const bridge = createBuilderCoworkBridge();
+  bridge.startDelegation({
+    origin: "human-click",
+    goal: "Draft one question",
+    maxCalls: 1,
+    durationMs: 15_000,
+    pageVersion: 1,
+    now: "2026-09-01T10:00:00.000Z"
+  });
+  assert.notEqual(bridge.readActiveGrant("2026-09-01T10:00:10.000Z"), null);
+  assert.equal(bridge.readActiveGrant("2026-09-01T10:10:00.000Z"), null);
+});
+
+test("a directive consumes the grant's call budget, and releaseGrant keeps the pending verdict", () => {
+  const field = createField("text-short", { label: "Draft question" });
+  const bridge = fieldScopedBridge(field.id, { maxCalls: 1 });
+  const directive = {
+    capabilityId: "form-update-field",
+    targetId: builderFieldTargetId(field.id),
+    summary: "Make it required",
+    pageVersion: 1,
+    now: "2026-09-01T10:00:01.000Z"
+  };
+  const first = bridge.directiveFromUtterance({
+    ...directive,
+    proposedArguments: { fieldId: field.id, patch: { required: true } },
+    elements: [field]
+  });
+  assert.equal(first.receipt.status, "verified");
+  assert.throws(
+    () =>
+      bridge.directiveFromUtterance({
+        ...directive,
+        proposedArguments: { fieldId: field.id, patch: { required: false } },
+        elements: first.elements
+      }),
+    (error) => error.code === "LEASE_EXPIRED"
+  );
+  bridge.releaseGrant();
+  assert.equal(bridge.readActiveGrant("2026-09-01T10:00:02.000Z"), null);
+  assert.deepEqual(bridge.readAwaitingFeedback(), { offerId: first.receipt.offerId });
+});
+
+test("runSoloBatch with a live page version adds every field instead of failing on the second call", () => {
+  const bridge = createBuilderCoworkBridge();
+  bridge.startDelegation({
+    origin: "human-click",
+    goal: "Draft three questions",
+    maxCalls: 3,
+    durationMs: 120_000,
+    pageVersion: 7,
+    now: "2026-09-01T10:00:00.000Z"
+  });
+  const { elements, results } = bridge.runSoloBatch({
+    count: 3,
+    nextField: (index) => createField("text-short", { label: `Question ${index + 1}` }),
+    elements: [],
+    humanPresence: "afk-short",
+    currentPageVersion: 7,
+    now: "2026-09-01T10:00:01.000Z"
+  });
+  assert.equal(results.length, 3);
+  assert.ok(results.every((result) => result.receipt.status === "verified"));
+  assert.equal(elements.length, 3);
+});
+
+test("endDelegation counts every verified call of a twelve-call batch", () => {
+  const bridge = createBuilderCoworkBridge();
+  bridge.startDelegation({
+    origin: "human-click",
+    goal: "Draft twelve questions",
+    maxCalls: 12,
+    durationMs: 120_000,
+    pageVersion: 1,
+    now: "2026-09-01T10:00:00.000Z"
+  });
+  const { results } = bridge.runSoloBatch({
+    count: 12,
+    nextField: (index) => createField("text-short", { label: `Question ${index + 1}` }),
+    elements: [],
+    humanPresence: "afk-short",
+    now: "2026-09-01T10:00:01.000Z"
+  });
+  assert.equal(results.length, 12);
+  const { delta } = bridge.endDelegation({ pageVersion: 13, now: "2026-09-01T10:00:02.000Z" });
+  assert.equal(delta.verifiedCount, 12);
+  assert.equal(delta.targetIds.length, 12);
 });

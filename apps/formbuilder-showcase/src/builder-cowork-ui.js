@@ -39,6 +39,10 @@ function describeBuilderOffer(offer) {
   return `Move field ${args.direction}`;
 }
 
+function describeError(error) {
+  return `${error.code ?? "ERROR"}: ${error.message}`;
+}
+
 export function initBuilderCoworkUi({ root = document, controller }) {
   const $ = (selector) => root.querySelector(selector);
   const bridge = createBuilderCoworkBridge();
@@ -70,18 +74,13 @@ export function initBuilderCoworkUi({ root = document, controller }) {
   }
   // pointerover bubbles (unlike pointerenter), so one listener on the list
   // container covers every row, including ones added or removed later.
-  $("#builder-field-list").addEventListener("pointerover", (event) => {
+  const focusFromEvent = (event) => {
     const row = delegatedRowTarget(event);
     if (row) setFocusedField(row.dataset.fieldId);
-  });
-  $("#builder-field-list").addEventListener("focusin", (event) => {
-    const row = delegatedRowTarget(event);
-    if (row) setFocusedField(row.dataset.fieldId);
-  });
-  $("#builder-field-list").addEventListener("click", (event) => {
-    const row = delegatedRowTarget(event);
-    if (row) setFocusedField(row.dataset.fieldId);
-  });
+  };
+  for (const type of ["pointerover", "focusin", "click"]) {
+    $("#builder-field-list").addEventListener(type, focusFromEvent);
+  }
 
   function renderOffers() {
     const now = new Date().toISOString();
@@ -145,7 +144,7 @@ export function initBuilderCoworkUi({ root = document, controller }) {
           ? "Model suggestion verified after your click."
           : `VERIFICATION_FAILED: ${result.receipt.verificationSummary}`;
     } catch (error) {
-      $("#builder-status").textContent = `${error.code ?? "ERROR"}: ${error.message}`;
+      $("#builder-status").textContent = describeError(error);
     } finally {
       renderOffers();
       renderReceipts();
@@ -164,7 +163,7 @@ export function initBuilderCoworkUi({ root = document, controller }) {
       });
       $("#builder-status").textContent = "Model proposal added. Only your real click can authorize it.";
     } catch (error) {
-      $("#builder-status").textContent = `${error.code ?? "ERROR"}: ${error.message}`;
+      $("#builder-status").textContent = describeError(error);
     }
     renderOffers();
   }
@@ -249,7 +248,13 @@ export function initBuilderCoworkUi({ root = document, controller }) {
     $("#builder-return-feedback").hidden = bridge.readAwaitingFeedback() === null;
   }
 
-  $("#builder-start-delegation").addEventListener("click", () => {
+  $("#builder-start-delegation").addEventListener("click", (event) => {
+    // Minting a grant is the highest-value consent in the Builder: only a
+    // real click may do it, exactly like applying an offer.
+    if (!event.isTrusted) {
+      $("#builder-delegate-status").textContent = "HUMAN_CONFIRMATION_REQUIRED: synthetic clicks are rejected.";
+      return;
+    }
     const goal = $("#builder-delegate-goal").value.trim() || "Draft good follow-up questions";
     const maxCalls = Math.max(1, Math.min(12, Number($("#builder-delegate-max-calls").value) || 6));
     const durationSeconds = Math.max(10, Math.min(600, Number($("#builder-delegate-duration").value) || 120));
@@ -265,7 +270,7 @@ export function initBuilderCoworkUi({ root = document, controller }) {
       soloCallsUsed = 0;
       $("#builder-return-narration").hidden = true;
     } catch (error) {
-      $("#builder-delegate-status").textContent = `${error.code ?? "ERROR"}: ${error.message}`;
+      $("#builder-delegate-status").textContent = describeError(error);
     }
     renderDelegationState();
   });
@@ -285,10 +290,11 @@ export function initBuilderCoworkUi({ root = document, controller }) {
         controller.applyElements(result.elements);
         soloCallsUsed += 1;
       }
+      renderReceipts();
       renderDelegationState();
       return result.receipt.status === "verified";
     } catch (error) {
-      $("#builder-delegate-status").textContent = `${error.code ?? "ERROR"}: ${error.message}`;
+      $("#builder-delegate-status").textContent = describeError(error);
       return false;
     }
   }
@@ -329,7 +335,7 @@ export function initBuilderCoworkUi({ root = document, controller }) {
       highlightReturnedFields(focusSet);
       renderAwaitingFeedback();
     } catch (error) {
-      $("#builder-delegate-status").textContent = `${error.code ?? "ERROR"}: ${error.message}`;
+      $("#builder-delegate-status").textContent = describeError(error);
     }
     renderDelegationState();
   });
@@ -346,7 +352,7 @@ export function initBuilderCoworkUi({ root = document, controller }) {
         renderAwaitingFeedback();
         $("#builder-delegate-status").textContent = "Feedback recorded.";
       } catch (error) {
-        $("#builder-delegate-status").textContent = `${error.code ?? "ERROR"}: ${error.message}`;
+        $("#builder-delegate-status").textContent = describeError(error);
       }
     });
   }
@@ -354,7 +360,12 @@ export function initBuilderCoworkUi({ root = document, controller }) {
   // --- GAP-02: a human utterance about the pointed-at field authorizes
   // directly - the words are the click - once it is recognized and a
   // field-scoped grant is minted for exactly that instruction. ---
-  $("#builder-directive-send").addEventListener("click", () => {
+  $("#builder-directive-send").addEventListener("click", (event) => {
+    // The Send click is the only trust anchor behind "human-utterance".
+    if (!event.isTrusted) {
+      $("#builder-directive-status").textContent = "HUMAN_CONFIRMATION_REQUIRED: synthetic clicks are rejected.";
+      return;
+    }
     const target = focusedElement();
     if (!target) {
       $("#builder-directive-status").textContent = "Point to a field first.";
@@ -411,7 +422,13 @@ export function initBuilderCoworkUi({ root = document, controller }) {
           : `VERIFICATION_FAILED: ${lastResult?.receipt.verificationSummary}`;
       renderAwaitingFeedback();
     } catch (error) {
-      $("#builder-directive-status").textContent = `${error.code ?? "ERROR"}: ${error.message}`;
+      $("#builder-directive-status").textContent = describeError(error);
+    } finally {
+      // The directive's grant is one-shot: consumed by its own steps, never
+      // "returned from", so it is released here instead of via endDelegation
+      // - otherwise the UI stays in delegation mode with a spent grant.
+      bridge.releaseGrant();
+      renderReceipts();
     }
     renderDelegationState();
   });

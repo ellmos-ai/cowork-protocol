@@ -90,3 +90,10 @@ test("buildFocusSet fails closed on zero or too many targets", () => {
     { name: "CoworkProtocolError", code: "CONTEXT_BUDGET_EXCEEDED" }
   );
 });
+
+test("buildFocusSet rejects malformed target ids like its handover-delta sibling", () => {
+  assert.throws(
+    () => buildFocusSet({ sessionId: "s", pageVersion: 1, targetIds: [null, { id: 1 }], label: "New" }),
+    (error) => error instanceof CoworkProtocolError && error.code === "CONTEXT_BUDGET_EXCEEDED"
+  );
+});

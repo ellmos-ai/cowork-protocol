@@ -1176,8 +1176,8 @@ function startAway(duration, { authorizeDelegated = false } = {}) {
     leaseId: `lease-${now}`,
     // GAP-01: a lease is a delegation grant now, not merely a scoped
     // capability list - authorizeSoloAction() requires a real human origin.
-    // startAway() is reachable only from a real button/actor click, never
-    // synthetically, so "human-click" is accurate here.
+    // startAway() is reachable only from real button/actor clicks - their
+    // handlers check event.isTrusted - so "human-click" is accurate here.
     origin: "human-click",
     goal,
     allowedCapabilityIds: focusPacket.capabilityIds.filter((id) => id !== "form.explain_field"),
@@ -1522,7 +1522,9 @@ for (const field of fields) {
           candidate.id !== field.dataset.fieldId && candidate.required && !observedValues.get(candidate.id)
       ).length
     });
-    if (nextAdvisorComment) advisorComment = nextAdvisorComment;
+    // Latest-only in both directions: a later change that draws no comment
+    // also clears the earlier one, so a stale count never resurfaces.
+    advisorComment = nextAdvisorComment;
     commitSession("page-change-observed", session, {
       causeRefs: change?.causeRefs ?? [],
       payload: {
@@ -1604,8 +1606,12 @@ $("#conversation-form").addEventListener("submit", (event) => {
   event.preventDefault();
   void sendConversationTurn($("#conversation-input").value);
 });
-$("#away-short").addEventListener("click", () => startAway("short"));
-$("#away-long").addEventListener("click", () => startAway("long"));
+$("#away-short").addEventListener("click", (event) => {
+  if (event.isTrusted) startAway("short");
+});
+$("#away-long").addEventListener("click", (event) => {
+  if (event.isTrusted) startAway("long");
+});
 $("#return-human").addEventListener("click", returnHuman);
 $("#toggle-agent").addEventListener("click", toggleAgent);
 $("#human-seat").addEventListener("click", cycleHumanCockpit);

@@ -29,7 +29,7 @@ import { insertField, moveField, updateField } from "./form-builder.mjs";
 
 const OFFER_LIFETIME_MS = 60_000;
 const MAX_PENDING_OFFERS = 3;
-const MAX_RECEIPTS = 10;
+const MAX_RECEIPTS = 16; // above the 12-call budget the Delegate dialog allows, so endDelegation can count every call
 const MAX_TARGETS_TOUCHED_TRACKED = 20; // generous local buffer; the delta itself caps at 12
 
 export { BUILDER_CANVAS_TARGET_ID, builderFieldTargetId };
@@ -99,6 +99,10 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
   let grantPageVersion = null;
   let awaitingFeedback = null; // GAP-05: { offerId } once a directive is verified, until a feedback verdict is recorded
 
+  function pushReceipt(receipt) {
+    receipts = [...receipts, receipt].slice(-MAX_RECEIPTS);
+  }
+
   function focusFor({ pageVersion, fieldCount }) {
     return buildFormBuilderCanvasFocus({ sessionId, pageVersion, fieldCount });
   }
@@ -110,9 +114,17 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
     return buildFormBuilderFieldFocus({ sessionId, pageVersion, fieldId, label, focusKind });
   }
 
-  function expireOffers(nowIso) {
+  /** Drops offers that can no longer be authorized: expired ones and, when
+   *  the caller knows the current page version, ones made for an earlier
+   *  version - authorizeAndApply would reject those anyway, but they must
+   *  not keep counting against the pending-offer budget. */
+  function expireOffers(nowIso, currentPageVersion) {
     const nowMs = Date.parse(nowIso);
-    offers = offers.filter((offer) => Date.parse(offer.expiresAt) > nowMs);
+    offers = offers.filter(
+      (offer) =>
+        Date.parse(offer.expiresAt) > nowMs &&
+        (currentPageVersion === undefined || offer.pageVersion === currentPageVersion)
+    );
   }
 
   function pendingOffers(nowIso) {
@@ -126,7 +138,7 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
    *  bridge does not guess it from the capability id - the caller already
    *  knows which field (or the canvas) it is proposing a change for. */
   function proposeOffer({ capabilityId, targetId, proposedArguments, summary, pageVersion, now = new Date().toISOString() }) {
-    expireOffers(now);
+    expireOffers(now, pageVersion);
     if (offers.length >= MAX_PENDING_OFFERS) {
       throw new CoworkProtocolError(
         "CONTEXT_BUDGET_EXCEEDED",
@@ -186,7 +198,7 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
       pageVersion: offer.pageVersion
     });
     offers = offers.filter((candidate) => candidate.offerId !== offer.offerId);
-    receipts = [...receipts, receipt].slice(-MAX_RECEIPTS);
+    pushReceipt(receipt);
     return { elements: applied.elements, receipt };
   }
 
@@ -198,8 +210,20 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
     return activeGrant !== null && Date.parse(activeGrant.expiresAt) > Date.parse(now);
   }
 
-  function readActiveGrant() {
-    return activeGrant;
+  /** The grant the UI may still act on - an expired grant reads as none, so
+   *  no caller has to remember to check the clock separately. */
+  function readActiveGrant(now = new Date().toISOString()) {
+    return hasActiveGrant(now) ? activeGrant : null;
+  }
+
+  /** Ends a grant without a handover summary: a directive's one-shot,
+   *  field-scoped grant is consumed by its own steps, never "returned from".
+   *  Pending feedback (GAP-05) is left untouched. */
+  function releaseGrant() {
+    activeGrant = null;
+    callsUsedInGrant = 0;
+    targetsTouchedInGrant = [];
+    grantPageVersion = null;
   }
 
   /**
@@ -284,7 +308,7 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
         );
       }
     }
-    receipts = [...receipts, receipt].slice(-MAX_RECEIPTS);
+    pushReceipt(receipt);
     return { elements: applied.elements, receipt, remainingCalls: plan.authorization.remainingCalls };
   }
 
@@ -294,15 +318,20 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
    *  of stopping after the old fixed two-call lease. */
   function runSoloBatch({ count, nextField, elements, humanPresence, currentPageVersion, now = new Date().toISOString() }) {
     let currentElements = elements;
+    // The batch applies nothing to the page itself - the caller does, once,
+    // afterwards - so the expected page version has to advance here exactly
+    // as soloExecute advances it for the grant, or the second call is stale.
+    let livePageVersion = currentPageVersion;
     const results = [];
     for (let index = 0; index < count; index += 1) {
       if (!activeGrant || callsUsedInGrant >= activeGrant.maxCalls) break;
       const field = nextField(index, currentElements);
       if (!field) break;
-      const result = soloExecute({ field, elements: currentElements, humanPresence, currentPageVersion, now });
+      const result = soloExecute({ field, elements: currentElements, humanPresence, currentPageVersion: livePageVersion, now });
       currentElements = result.elements;
       results.push(result);
       if (!result.receipt || result.receipt.status !== "verified") break;
+      if (livePageVersion !== undefined) livePageVersion += 1;
     }
     return { elements: currentElements, results };
   }
@@ -342,18 +371,16 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
         ? buildFocusSet({
             sessionId,
             pageVersion,
-            targetIds: targetIds.slice(0, 12),
+            targetIds: delta.targetIds,
             label: "New since you were away",
             capabilityIds: ["form-update-field", "form-move-field"]
           })
         : null;
-    activeGrant = null;
-    callsUsedInGrant = 0;
-    targetsTouchedInGrant = [];
-    grantPageVersion = null;
+    releaseGrant();
     // GAP-05: a batch return also waits for a verdict, referenced by the
-    // grant/lease id since there is no single offer for a whole batch.
-    awaitingFeedback = targetIds.length > 0 ? { offerId: grant.grantId } : null;
+    // grant/lease id since there is no single offer for a whole batch. A
+    // verdict still owed for an earlier directive is never discarded here.
+    if (targetIds.length > 0) awaitingFeedback = { offerId: grant.grantId };
     return { delta, focusSet };
   }
 
@@ -364,7 +391,7 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
   // grant path instead of a rendered offer's human-click path).
 
   function directiveFromUtterance({ capabilityId, targetId, proposedArguments, summary, pageVersion, elements, now = new Date().toISOString() }) {
-    if (!activeGrant) {
+    if (!hasActiveGrant(now)) {
       throw new CoworkProtocolError("HUMAN_CONFIRMATION_REQUIRED", "A directive needs an active delegation grant");
     }
     offerCounter += 1;
@@ -389,8 +416,10 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
         arguments: proposedArguments
       },
       now,
-      grant: activeGrant
+      grant: activeGrant,
+      callsUsed: callsUsedInGrant
     });
+    callsUsedInGrant += 1;
     const plan = planAuthorizedBuilderFieldMutation({ offer, authorization, currentElements: elements });
     const applied = applyBuilderPlan(plan, elements);
     const receipt = createActionReceipt({
@@ -401,9 +430,9 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
       undoAvailable: plan.undoAvailable,
       pageVersion
     });
-    receipts = [...receipts, receipt].slice(-MAX_RECEIPTS);
+    pushReceipt(receipt);
     // GAP-05: the model now waits for a verdict instead of proceeding.
-    awaitingFeedback = applied.verified ? { offerId: offer.offerId } : null;
+    if (applied.verified) awaitingFeedback = { offerId: offer.offerId };
     return { elements: applied.elements, receipt, authorization };
   }
 
@@ -440,6 +469,7 @@ export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-bu
     hasActiveGrant,
     readActiveGrant,
     startDelegation,
+    releaseGrant,
     soloExecute,
     runSoloBatch,
     endDelegation,

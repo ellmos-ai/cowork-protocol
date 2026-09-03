@@ -15,7 +15,7 @@ const FEEDBACK_VERDICT_VALUES = new Set(["accepted", "rejected", "revise"]);
 // spoken/typed utterance (never an agent simulating either). See GAP-01/GAP-02.
 const GRANT_ORIGIN_VALUES = new Set(["human-click", "human-utterance"]);
 const GRANT_GOAL_LIMIT = 200;
-const HANDOVER_DELTA_TARGET_LIMIT = 12;
+export const HANDOVER_DELTA_TARGET_LIMIT = 12;
 const HANDOVER_DELTA_SUMMARY_LIMIT = 350;
 const SHA256_CONSTANTS = new Uint32Array([
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
@@ -256,6 +256,14 @@ export function buildFocusPacket(input) {
  * more than one id. Capped at the same 12 targets as the handover delta below
  * so the two stay consistent with each other.
  */
+function assertTargetIds(targetIds, label) {
+  for (const targetId of targetIds) {
+    if (typeof targetId !== "string" || targetId.length === 0 || targetId.length > 200) {
+      throw new CoworkProtocolError("CONTEXT_BUDGET_EXCEEDED", `${label} target ids are malformed`);
+    }
+  }
+}
+
 export function buildFocusSet(input) {
   if (!Array.isArray(input.targetIds) || input.targetIds.length === 0) {
     throw new CoworkProtocolError("STALE_FOCUS", "A focus set needs at least one target");
@@ -266,6 +274,7 @@ export function buildFocusSet(input) {
       `A focus set is capped at ${HANDOVER_DELTA_TARGET_LIMIT} targets`
     );
   }
+  assertTargetIds(input.targetIds, "Focus set");
   const label = truncateWithEllipsis(
     typeof input.label === "string" ? input.label : "",
     FOCUS_TEXT_LIMIT
@@ -298,12 +307,11 @@ export function createHandoverDeltaSummary(input) {
       "A handover delta requires the id of the grant/lease that ended"
     );
   }
+  const rawTargetIds = Array.isArray(input.targetIds) ? input.targetIds : [];
+  assertTargetIds(rawTargetIds, "Handover delta");
   const seen = new Set();
   const targetIds = [];
-  for (const targetId of Array.isArray(input.targetIds) ? input.targetIds : []) {
-    if (typeof targetId !== "string" || targetId.length === 0 || targetId.length > 200) {
-      throw new CoworkProtocolError("CONTEXT_BUDGET_EXCEEDED", "Handover delta target ids are malformed");
-    }
+  for (const targetId of rawTargetIds) {
     if (seen.has(targetId)) continue;
     seen.add(targetId);
     targetIds.push(targetId);
@@ -392,6 +400,8 @@ export function createDelegationGrant(input) {
     );
   }
   if (
+    typeof input.grantId !== "string" ||
+    input.grantId.length === 0 ||
     !Array.isArray(input.allowedCapabilityIds) ||
     input.allowedCapabilityIds.length === 0 ||
     !Array.isArray(input.allowedTargetIds) ||
@@ -404,7 +414,7 @@ export function createDelegationGrant(input) {
   ) {
     throw new CoworkProtocolError(
       "LEASE_SCOPE_VIOLATION",
-      "Delegation grant scope must contain capability/target arrays, a positive call budget, a page version and a valid expiry"
+      "Delegation grant scope must contain a grant id, capability/target arrays, a positive call budget, a page version and a valid expiry"
     );
   }
 
@@ -434,7 +444,7 @@ export function createDelegationGrant(input) {
   };
 }
 
-function assertGrantCoversOffer(grant, offer, now) {
+function assertGrantCoversOffer(grant, offer, now, callsUsed) {
   if (
     !grant ||
     typeof grant !== "object" ||
@@ -450,6 +460,29 @@ function assertGrantCoversOffer(grant, offer, now) {
   const grantExpiry = Date.parse(grant.expiresAt);
   if (!Number.isFinite(grantExpiry) || Date.parse(now) >= grantExpiry) {
     throw new CoworkProtocolError("LEASE_EXPIRED", "Delegation grant expired");
+  }
+  // The same three bindings authorizeSoloAction enforces for a lease: the
+  // grant is versioned, budgeted and scoped - an utterance path without them
+  // would leave maxCalls and pageVersion decorative on the grant object.
+  if (grant.pageVersion !== offer.pageVersion) {
+    throw new CoworkProtocolError(
+      "STALE_PAGE_VERSION",
+      "Delegation grant was issued for a different page version"
+    );
+  }
+  if (
+    !Number.isInteger(callsUsed) ||
+    callsUsed < 0 ||
+    !Number.isInteger(grant.maxCalls) ||
+    grant.maxCalls <= 0
+  ) {
+    throw new CoworkProtocolError(
+      "LEASE_SCOPE_VIOLATION",
+      "Delegation grant call counters must be non-negative integers with a positive limit"
+    );
+  }
+  if (callsUsed >= grant.maxCalls) {
+    throw new CoworkProtocolError("LEASE_EXPIRED", "Delegation grant call limit reached");
   }
   if (!grant.allowedCapabilityIds.includes(offer.capabilityId)) {
     throw new CoworkProtocolError(
@@ -705,7 +738,7 @@ export function createFeedbackEvent(input) {
  * `grant` is required and validated only for the utterance path; the click
  * path is completely unchanged from before this parameter existed.
  */
-export function authorizeActionOffer({ offer, event, now, grant = null }) {
+export function authorizeActionOffer({ offer, event, now, grant = null, callsUsed = 0 }) {
   const validOrigin =
     event.origin === "human-click" || (event.origin === "human-utterance" && grant !== null);
   if (!validOrigin) {
@@ -715,7 +748,7 @@ export function authorizeActionOffer({ offer, event, now, grant = null }) {
     );
   }
   if (event.origin === "human-utterance") {
-    assertGrantCoversOffer(grant, offer, now);
+    assertGrantCoversOffer(grant, offer, now, callsUsed);
   }
   const authorizationTime = Date.parse(now);
   const offerExpiry = Date.parse(offer.expiresAt);

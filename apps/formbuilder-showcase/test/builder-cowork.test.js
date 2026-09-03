@@ -224,3 +224,24 @@ test("at most three pending builder offers are allowed at once", () => {
     { name: "CoworkProtocolError", code: "CONTEXT_BUDGET_EXCEEDED" }
   );
 });
+
+test("offers made for an earlier page version stop counting against the pending-offer budget", () => {
+  const bridge = createBuilderCoworkBridge();
+  const now = "2026-09-01T10:00:00.000Z";
+  const propose = (label, pageVersion) =>
+    bridge.proposeOffer({
+      capabilityId: "form-add-field",
+      targetId: BUILDER_CANVAS_TARGET_ID,
+      proposedArguments: { field: createField("text-short", { label }) },
+      summary: `Add "${label}"`,
+      pageVersion,
+      now
+    });
+  propose("One", 1);
+  propose("Two", 1);
+  propose("Three", 1);
+  assert.throws(() => propose("Four", 1), (error) => error.code === "CONTEXT_BUDGET_EXCEEDED");
+  const fresh = propose("Five", 2);
+  assert.equal(fresh.pageVersion, 2);
+  assert.deepEqual(bridge.pendingOffers(now).map((offer) => offer.offerId), [fresh.offerId]);
+});

@@ -67,3 +67,11 @@ test("returns null for unrecognized or empty input", () => {
   assert.equal(classifyBuilderDirective("", { fieldId: "q3", fieldIndex: 2 }), null);
   assert.equal(classifyBuilderDirective(undefined, { fieldId: "q3", fieldIndex: 2 }), null);
 });
+
+test("'later' and 'earlier' without 'move' stay informational - no field moves on small talk", () => {
+  const context = { fieldId: "q3", fieldIndex: 3, required: false };
+  assert.equal(classifyBuilderDirective("I'll fill this in later", context), null);
+  assert.equal(classifyBuilderDirective("earlier today we discussed this", context), null);
+  assert.equal(classifyBuilderDirective("move it earlier", context).steps[0].proposedArguments.direction, "up");
+  assert.equal(classifyBuilderDirective("move this one later", context).steps[0].proposedArguments.direction, "down");
+});

@@ -320,7 +320,11 @@ try {
   requireCondition(soloBatchHidden === false, "Expected the solo-draft controls to appear once delegated");
 
   await dispatchTrustedClick(call, "#builder-solo-batch");
-  await new Promise((resolve) => setTimeout(resolve, 2200)); // 3 steps at ~350ms apart, plus margin
+  await waitForExpression(
+    call,
+    `document.querySelectorAll(".builder-field-row").length === ${fieldsBeforeDelegation + 3}`,
+    "the solo batch to draft three fields"
+  );
   const fieldsAfterBatch = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
   requireCondition(
     fieldsAfterBatch === fieldsBeforeDelegation + 3,

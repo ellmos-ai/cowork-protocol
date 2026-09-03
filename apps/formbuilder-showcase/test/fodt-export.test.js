@@ -120,3 +120,15 @@ test("a long text field gets more blank fill lines than a short one", () => {
   const shortFillLines = (fodt.match(/FBW-FillLine/g) ?? []).length;
   assert.ok(shortFillLines >= 4, "expected at least one short-field line plus three long-field lines");
 });
+
+test("control characters are dropped, line breaks are kept and headings use paragraph styles", () => {
+  const heading = createField("heading", { label: "Part\u0001 one" });
+  const description = createField("description", { label: "First line\nsecond line" });
+  const xml = buildFlatOdt({ title: "Survey", elements: [heading, description] });
+  assertWellFormedXml(xml);
+  assert.doesNotMatch(xml, /\u0001/);
+  assert.match(xml, /<text:h[^>]*>Part one<\/text:h>/);
+  assert.match(xml, /First line<text:line-break\/>second line/);
+  assert.match(xml, /style:name="FBW-H1" style:family="paragraph"/);
+  assert.match(xml, /style:name="FBW-H2" style:family="paragraph"/);
+});

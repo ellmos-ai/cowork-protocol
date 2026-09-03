@@ -171,3 +171,48 @@ test("the existing human-click path is completely unaffected by the grant parame
   assert.equal(authorization.authorizationSource, "human-click");
   assert.equal("grantId" in authorization, false);
 });
+
+// --- Review fixes 2026-09-03: the utterance path honors the grant's budget and version ---
+
+test("a grant's call budget bounds utterance authorizations", () => {
+  const grant = validGrant({ maxCalls: 1 });
+  const first = authorizeActionOffer({
+    offer: offer(),
+    event: utteranceEvent(),
+    now: "2026-09-01T10:00:30.000Z",
+    grant,
+    callsUsed: 0
+  });
+  assert.equal(first.authorizationSource, "human-utterance");
+  assert.throws(
+    () =>
+      authorizeActionOffer({
+        offer: offer(),
+        event: utteranceEvent(),
+        now: "2026-09-01T10:00:30.000Z",
+        grant,
+        callsUsed: 1
+      }),
+    (error) => error instanceof CoworkProtocolError && error.code === "LEASE_EXPIRED"
+  );
+});
+
+test("a grant issued for another page version cannot authorize an utterance", () => {
+  assert.throws(
+    () =>
+      authorizeActionOffer({
+        offer: offer(),
+        event: utteranceEvent(),
+        now: "2026-09-01T10:00:30.000Z",
+        grant: validGrant({ pageVersion: 3 })
+      }),
+    (error) => error instanceof CoworkProtocolError && error.code === "STALE_PAGE_VERSION"
+  );
+});
+
+test("createDelegationGrant rejects a missing grant id", () => {
+  assert.throws(
+    () => validGrant({ grantId: undefined }),
+    (error) => error instanceof CoworkProtocolError && error.code === "LEASE_SCOPE_VIOLATION"
+  );
+});
