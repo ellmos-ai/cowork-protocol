@@ -1,7 +1,9 @@
 # Panel tour
 
-Every control in the embedded Cowork panel, named and explained. The
-screenshots come from the live showcase
+Every control on the bridge a page builds into itself, named and explained.
+The browser extension carries the same deck onto pages that build none, so
+what you see here is what you see there. The screenshots come from the live
+showcase
 (<https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/>),
 captured in Chrome 152 with `--enable-features=WebMCP,WebMCPTesting` at a
 1440×1100 viewport. `node design/panel-tour/capture.mjs` regenerates all of

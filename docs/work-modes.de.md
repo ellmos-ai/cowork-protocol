@@ -68,14 +68,14 @@ Ablaufzeit wie beim Übergabeknopf der Fläche, sichtbar benannt. Ausgeführt wi
 in keinem Fall ohne Grant; die beiden Wege unterscheiden sich darin, wer die
 Geste gemacht hat.
 
-- **Eingebettetes Panel** — Mensch anwesend: übergeben und zusehen. Mensch
+- **Brücke, in die Seite eingebaut** — Mensch anwesend: übergeben und zusehen. Mensch
   abwesend: der Away-Pfad, Modell solo innerhalb der Lease. Der nächste Druck
   holt den Job zurück.
 - **Desktop Companion** — der Companion ist Session Authority und prägt den
   Grant selbst, statt zurück auf die Seite zu verweisen. Ohne verknüpfte Seite
   sagt er `PAGE_NOT_LINKED`, ohne fokussiertes Feld `NO_FOCUSED_TARGET`. Ein
   Grant handelt von etwas, und er erfindet nicht, wovon.
-- **Browser-Erweiterung** — prägt keinen Grant, überspringt darum `executing`
+- **Brücke als Erweiterung** — prägt keinen Grant, überspringt darum `executing`
   und sagt warum. Dieselbe Regel dort, wo kein Autoritätsnachweis entstehen
   kann.
 

@@ -1,10 +1,16 @@
 # Cowork Desktop Companion
 
-The Desktop Companion is the no-extension Cowork surface. A cooperating
-website sends one exact versioned snapshot plus its bounded Context Manager
-state over a loopback-only Companion Link. The Companion then becomes Session
-Authority, claims the single renewable model-seat lease and leaves the page as
-an application provider and synchronized UI replica.
+The Desktop Companion is the vehicle, not a bridge. A bridge has a place
+between one page and one model; the Companion has none of its own. What it has
+is the model seat and the authority to use it, and it drives that model over
+whichever bridge it is connected to.
+
+Concretely: a cooperating website sends one exact versioned snapshot plus its
+bounded Context Manager state over a loopback-only Companion Link. The
+Companion then becomes Session Authority, claims the single renewable
+model-seat lease and leaves the page as an application provider and
+synchronized UI replica. The page keeps the click; the Companion keeps the
+seat.
 
 The current Windows prototype includes:
 
