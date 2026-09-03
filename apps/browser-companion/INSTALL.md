@@ -85,6 +85,10 @@ unclear, ask me rather than guessing.
 - The toolbar icon shows an **ON** badge, and the Side Panel opens with the
   **Dialogue Relay Cockpit**: the connector route rail (Native / WebMCP /
   Bridge), the "Who works now?" actor controls and the **Current focus** lens.
+- The panel says in plain words what the current route means and where the model
+  sits: it has no model seat of its own, so on WebMCP and Bridge pages nothing is
+  proposed until a model client attaches, and voice and handoff need the Desktop
+  Companion (`npm run start:companion-host`, then `127.0.0.1:47831/cowork/v1/ui`).
 - On [the FormBuilder showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/)
   the rail resolves to **Native**; on a page without WebMCP it resolves to
   **Bridge**, which is the fallback this extension exists for.

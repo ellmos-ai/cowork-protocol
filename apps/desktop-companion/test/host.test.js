@@ -821,3 +821,122 @@ test("the local cockpit alone switches one session into verified profiled Comput
   }
   assert.equal(closed, 1);
 });
+
+test("the UI state names the page a session belongs to and when it last spoke", async () => {
+  const origin = "https://forms.example";
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "cowork-contact-store-"));
+  const sessionStorePath = path.join(tempRoot, "sessions.json");
+  const firstHost = createCompanionSessionHost({
+    allowedOrigins: [origin],
+    port: 0,
+    sessionStorePath,
+    createLinkSessionId: () => "contact-link"
+  });
+  try {
+    const address = await firstHost.listen();
+    const companionOrigin = `http://${address.hostname}:${address.port}`;
+    const authority = createCoworkSessionAuthority({
+      sessionId: "contact-session",
+      initialState: {
+        humanPresence: "present",
+        agentPresence: "active",
+        effectiveMode: "cowork"
+      },
+      primarySurface: { surfaceId: "formbuilder:embedded", kind: "embedded" }
+    });
+    const snapshot = authority.readSnapshot();
+    const link = createHttpCompanionLink({
+      endpoint: `${companionOrigin}/cowork/v1`,
+      fetchImpl: (url, init) => fetch(url, {
+        ...init,
+        headers: { ...init.headers, origin }
+      })
+    });
+    await link.join({
+      hello: createCompanionHello({
+        sessionId: snapshot.sessionId,
+        surfaceId: "formbuilder:embedded",
+        revision: snapshot.revision,
+        origin
+      }),
+      snapshot
+    });
+
+    const joinedState = await fetch(`${companionOrigin}/cowork/v1/ui/state`).then(
+      (response) => response.json()
+    );
+    assert.equal(joinedState.sessions[0].origin, origin);
+    assert.equal(joinedState.sessions[0].pageSurfaceId, "formbuilder:embedded");
+    assert.ok(
+      !Number.isNaN(Date.parse(joinedState.sessions[0].lastPageContactAt)),
+      "A joined page must leave a readable contact timestamp"
+    );
+    await firstHost.close();
+
+    const restartedHost = createCompanionSessionHost({
+      allowedOrigins: [origin],
+      port: 0,
+      sessionStorePath
+    });
+    try {
+      const restartedAddress = await restartedHost.listen();
+      const restoredState = await fetch(
+        `http://${restartedAddress.hostname}:${restartedAddress.port}/cowork/v1/ui/state`
+      ).then((response) => response.json());
+      assert.equal(restoredState.sessions[0].origin, origin);
+      assert.equal(restoredState.sessions[0].pageSurfaceId, "formbuilder:embedded");
+      assert.equal(
+        restoredState.sessions[0].lastPageContactAt,
+        null,
+        "A restored session holds no page, so the UI must not claim a live link"
+      );
+    } finally {
+      await restartedHost.close();
+    }
+  } finally {
+    await firstHost.close();
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("the UI state reports the Computer Use fallback before any page connects", async () => {
+  const withoutAdapter = createCompanionSessionHost({
+    allowedOrigins: ["https://forms.example"],
+    port: 0
+  });
+  try {
+    const address = await withoutAdapter.listen();
+    const state = await fetch(
+      `http://${address.hostname}:${address.port}/cowork/v1/ui/state`
+    ).then((response) => response.json());
+    assert.deepEqual(state.sessions, []);
+    assert.equal(
+      state.computerUseAvailable,
+      false,
+      "The cockpit must learn the fallback is missing without a session to read"
+    );
+  } finally {
+    await withoutAdapter.close();
+  }
+
+  const withAdapter = createCompanionSessionHost({
+    allowedOrigins: ["https://forms.example"],
+    port: 0,
+    computerUse: {
+      readStatus: () => null,
+      activate: async () => ({}),
+      deactivate: async () => ({}),
+      refreshStatus: async () => ({}),
+      close: async () => {}
+    }
+  });
+  try {
+    const address = await withAdapter.listen();
+    const state = await fetch(
+      `http://${address.hostname}:${address.port}/cowork/v1/ui/state`
+    ).then((response) => response.json());
+    assert.equal(state.computerUseAvailable, true);
+  } finally {
+    await withAdapter.close();
+  }
+});

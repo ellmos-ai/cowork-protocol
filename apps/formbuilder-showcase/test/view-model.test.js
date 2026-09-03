@@ -100,7 +100,7 @@ test("the panel view model exposes mode, token budget and at most three action c
         modeLabel: "Working together",
         relayState: "live"
       },
-      capabilityLabel: "WebMCP unavailable",
+      capabilityLabel: "WebMCP off in this browser",
       focusLabel: "Point to or select a form field",
       contextLabel: "No context sent",
       soloAllowed: false,

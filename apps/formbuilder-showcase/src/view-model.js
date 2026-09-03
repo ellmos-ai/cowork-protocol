@@ -9,7 +9,7 @@ const CAPABILITY_LABELS = {
   native: "Native WebMCP",
   "webmcp-bridge": "WebMCP bridge",
   legacy: "Legacy bridge",
-  unavailable: "WebMCP unavailable"
+  unavailable: "WebMCP off in this browser"
 };
 
 const MUTATING_FORM_CAPABILITIES = new Set(["form.set_value", "form.clear_value"]);

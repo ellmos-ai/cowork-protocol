@@ -8,6 +8,10 @@ const DEFAULT_COCKPIT_BACKGROUND = "#f8f1e4";
 let currentSession = null;
 let busy = false;
 let controlBusy = false;
+// Host-wide, not per session: with no session connected there is no session
+// object to read it from, and the button must still say why it cannot switch.
+let computerUseInstalled = false;
+let executionError = null;
 
 function speech(text) {
   if (!$("#speak").checked || !("speechSynthesis" in window)) return;
@@ -57,6 +61,14 @@ function setAppearancePanel(open) {
   $("#appearance-toggle").setAttribute("aria-expanded", String(open));
 }
 
+// The host stamps lastPageContactAt on every request a joined page makes. A
+// session restored from the store after a host restart has never been stamped,
+// so it is a session we hold while no page speaks to us.
+function formatContact(isoText) {
+  const at = new Date(isoText ?? "");
+  return Number.isNaN(at.getTime()) ? "unknown time" : at.toLocaleTimeString();
+}
+
 function relayDetail(presentation, connected) {
   if (!connected) return "Waiting for one shared session";
   if (presentation.relayState === "live") return "Both seats active";
@@ -78,9 +90,18 @@ function render(state) {
   });
   const cockpit = $(".companion-cockpit");
 
-  $("#connection").textContent = connected ? "Connected" : "Waiting";
-  $("#connection").classList.toggle("connected", connected);
+  const pageLinked = connected && Boolean(currentSession.lastPageContactAt);
+  $("#connection").textContent = !connected
+    ? "Waiting for a page"
+    : pageLinked
+      ? "Connected to page"
+      : "Restored session · page not linked";
+  $("#connection").classList.toggle("connected", pageLinked);
+  $("#connection").classList.toggle("restored", connected && !pageLinked);
   $("#session-heading").textContent = currentSession?.sessionId ?? "No page connected";
+  $("#session-source").textContent = connected
+    ? `${currentSession.pageSurfaceId ?? "unknown surface"} · ${currentSession.origin ?? "unknown origin"}`
+    : "No page linked";
   $("#mode").textContent = presentation.modeLabel;
   $("#mode").classList.toggle("active", presentation.relayState !== "dormant");
   cockpit.dataset.humanState = presentation.humanState;
@@ -89,15 +110,22 @@ function render(state) {
   const executionMode = currentSession?.executionMode ?? "structured";
   const computerUseActive = executionMode === "computer-use";
   cockpit.dataset.executionMode = executionMode;
+  if (typeof state.computerUseAvailable === "boolean") {
+    computerUseInstalled = state.computerUseAvailable;
+  }
   $("#execution-control").setAttribute("aria-pressed", String(computerUseActive));
+  $("#execution-control").dataset.unavailable = String(!computerUseInstalled);
   $("#execution-label").textContent = computerUseActive
-    ? "Computer Use active"
-    : "Structured actions";
-  $("#execution-detail").textContent = computerUseActive
-    ? "Filtered Open Compute · red pointer visible"
-    : currentSession?.computerUseAvailable
-      ? "WebMCP first · click for filtered fallback"
-      : "WebMCP first · fallback unavailable";
+    ? "Execution: Computer Use (filtered Open Compute, red pointer)"
+    : "Execution: structured (WebMCP tools)";
+  $("#execution-detail").textContent = executionError
+    ?? (computerUseActive
+      ? "Click to hand execution back to WebMCP tools."
+      : !computerUseInstalled
+        ? "Computer Use fallback is off on this host (COWORK_COMPUTER_USE=0). See the Desktop Companion README."
+        : !connected
+          ? "Connect a page before switching execution."
+          : "Click to switch to filtered Open Compute.");
   $("#computer-use-indicator").setAttribute(
     "aria-hidden",
     String(!currentSession?.computerUseIndicatorVisible)
@@ -143,9 +171,11 @@ function render(state) {
       ? "Page hidden"
       : "Page unknown";
   $("#page-availability").dataset.visibility = pageVisibility;
-  $("#revision").textContent = connected
-    ? `Revision ${currentSession.revision} · ${currentSession.surfaceKind} authority`
-    : "The Companion stays ready on loopback.";
+  $("#revision").textContent = !connected
+    ? "Open FormBuilder Studio and click Desktop Companion in its Cowork panel."
+    : pageLinked
+      ? `Revision ${currentSession.revision} · ${currentSession.surfaceKind} authority · last contact ${formatContact(currentSession.lastPageContactAt)}`
+      : `Revision ${currentSession.revision} · restored from the session store. Reopen the page and click Desktop Companion to link it again.`;
 
   const turns = currentSession?.context?.recentTurns ?? [];
   $("#context-budget").textContent = `${turns.length} recent turn${turns.length === 1 ? "" : "s"}`;
@@ -165,8 +195,7 @@ function render(state) {
   );
   $("#human-control").disabled = !connected || controlBusy;
   $("#model-control").disabled = !currentSession?.modelAvailable || controlBusy;
-  $("#execution-control").disabled =
-    !connected || !currentSession?.computerUseAvailable || controlBusy;
+  $("#execution-control").disabled = !connected || !computerUseInstalled || controlBusy;
   $("#conversation-input").disabled = !modelInputEnabled;
   $("#send").disabled = !modelInputEnabled || busy;
   $("#talk").disabled = !modelInputEnabled;
@@ -220,12 +249,15 @@ function cycleModelEngagement() {
   });
 }
 
-function toggleComputerUse(event) {
-  if (!event.isTrusted || !currentSession?.computerUseAvailable) return;
-  return postControl("computer-use", {
-    enabled: currentSession.executionMode !== "computer-use",
-    humanGesture: true
-  });
+async function toggleComputerUse(event) {
+  if (!event.isTrusted || !computerUseInstalled || !currentSession) return;
+  executionError = null;
+  const wanted = currentSession.executionMode !== "computer-use";
+  await postControl("computer-use", { enabled: wanted, humanGesture: true });
+  if (currentSession?.executionMode !== (wanted ? "computer-use" : "structured")) {
+    executionError = `Execution did not switch: ${$("#status").textContent}`;
+    render({ sessions: currentSession === null ? [] : [currentSession] });
+  }
 }
 
 $("#human-control").addEventListener("click", cycleHumanPresence);

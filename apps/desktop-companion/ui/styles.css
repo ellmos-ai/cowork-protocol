@@ -150,6 +150,9 @@ h2 { margin: 0; font-size: 17px; letter-spacing: -.025em; }
   font-weight: 900;
 }
 .connection.connected, .mode.active { color: #075a45; border-color: rgba(7,139,103,.2); background: #e4f8f0; }
+/* A session we hold without a page speaking to us: not an error, not "connected". */
+.connection.restored { color: #7a4c05; border-color: rgba(176,125,30,.34); background: #fff3d9; }
+.session-source { margin: 3px 0 0; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
 
 .companion-cockpit {
   position: relative;
@@ -370,13 +373,18 @@ h2 { margin: 0; font-size: 17px; letter-spacing: -.025em; }
   transition: transform .2s ease, background .2s ease;
 }
 .execution-copy { display: grid; min-width: 0; }
-.execution-copy strong, .execution-copy small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.execution-copy strong, .execution-copy small { min-width: 0; overflow-wrap: anywhere; }
 .execution-copy strong { font-size: 11px; }
-.execution-copy small { color: #4f718c; font-size: 8px; }
+.execution-copy small { margin-top: 2px; color: #4f718c; font-size: 10px; line-height: 1.35; }
+/* No Open Compute adapter on this host: a status chip, not a button that does nothing. */
+.execution-control[data-unavailable="true"] {
+  border-color: var(--line) !important;
+  background: #f2ede4 !important;
+  color: var(--muted) !important;
+  cursor: default;
+  opacity: 1;
+}
+.execution-control[data-unavailable="true"] .execution-glyph { opacity: .4; }
 .computer-use-indicator {
   position: relative;
   min-height: 52px;

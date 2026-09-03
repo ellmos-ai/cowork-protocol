@@ -313,7 +313,7 @@ export function installBrowserCompanion({ document, window, runtime }) {
     if (next !== "present" && !soloLeaseValid) {
       throw new CoworkProtocolError(
         "SOLO_LEASE_REQUIRED",
-        "Connect the Session Companion and approve a solo lease before leaving"
+        "Connect the Desktop Companion and approve a solo lease before leaving"
       );
     }
     humanPresence = next;

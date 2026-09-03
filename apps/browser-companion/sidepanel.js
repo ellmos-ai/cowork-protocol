@@ -10,7 +10,7 @@ let notice = null;
 let noticeUntil = 0;
 
 const ERROR_MESSAGES = Object.freeze({
-  SOLO_LEASE_REQUIRED: "Open the Session Companion and approve solo work before leaving.",
+  SOLO_LEASE_REQUIRED: "Open the Desktop Companion and approve solo work before leaving.",
   COMPANION_DISABLED: "Start Cowork before using this instrument.",
   CONTEXT_LIMIT_REACHED: "The one-shot visual context level is already reached.",
   LEGACY_TARGET_REQUIRED: "Point at or focus a page control first.",
@@ -43,14 +43,6 @@ function presentationInput(state) {
   };
 }
 
-function relayDetail(presentation) {
-  if (presentation.relayState === "live") return "Ideas and actions relay both ways";
-  if (presentation.relayState === "watching") return "Model reads and explains only";
-  if (presentation.relayState === "to-model") return "Scoped solo work is flowing to the model";
-  if (presentation.effectiveMode === "human-solo") return "Model is paused";
-  return "No collaboration turn is active";
-}
-
 function render(state) {
   currentState = state;
   const presentation = buildCockpitPresentation(presentationInput(state));
@@ -80,7 +72,10 @@ function render(state) {
   $("#mode").textContent = presentation.modeLabel;
   $("#relay-core").setAttribute("aria-label", presentation.modeLabel);
   $("#relay-label").textContent = presentation.modeLabel;
-  $("#relay-detail").textContent = relayDetail(presentation);
+  $("#relay-detail").textContent = presentation.relayDetail;
+  $("#relay-detail").title = presentation.relayDetail;
+  $("#route-explainer").textContent = presentation.routeExplainer;
+  $("#seat-note").textContent = presentation.seatNote;
 
   if (!notice || Date.now() >= noticeUntil) {
     notice = null;
@@ -173,7 +168,9 @@ $("#handoff-action").addEventListener("click", async (event) => {
 });
 
 $("#voice-action").addEventListener("click", (event) => {
-  if (event.isTrusted) setNotice("Connect the shared Model Gateway before starting voice.");
+  if (event.isTrusted) {
+    setNotice("Voice needs the Desktop Companion's model seat; this extension has none.");
+  }
 });
 
 $("#offer-action").addEventListener("click", async (event) => {

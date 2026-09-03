@@ -65,3 +65,38 @@ test("actor states use pose, symbols and reduced-motion fallbacks in addition to
   assert.match(css, /\[data-execution-mode="structured"\][\s\S]*\.computer-use-indicator/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
+
+test("the connection chip names what the Companion is connected to", async () => {
+  const [html, app] = await Promise.all([
+    readFile(htmlPath, "utf8"),
+    readFile(appPath, "utf8")
+  ]);
+
+  assert.match(html, /<h1>Desktop Companion<\/h1>/);
+  assert.match(html, /id="session-source"/);
+  assert.match(app, /"Connected to page"/);
+  assert.match(app, /"Restored session · page not linked"/);
+  assert.match(app, /"Waiting for a page"/);
+  assert.match(app, /pageSurfaceId/);
+  assert.match(app, /currentSession\.origin/);
+  assert.match(app, /last contact \$\{formatContact/);
+  assert.match(app, /Open FormBuilder Studio and click Desktop Companion/);
+});
+
+test("the execution switch names itself and never offers a dead click", async () => {
+  const [html, css, app] = await Promise.all([
+    readFile(htmlPath, "utf8"),
+    readFile(cssPath, "utf8"),
+    readFile(appPath, "utf8")
+  ]);
+
+  assert.match(html, /Execution: structured \(WebMCP tools\)/);
+  assert.match(app, /"Execution: Computer Use \(filtered Open Compute, red pointer\)"/);
+  assert.match(app, /COWORK_COMPUTER_USE=0/);
+  assert.match(app, /"Connect a page before switching execution\."/);
+  // Disabled and the reason shown, rather than a button that swallows the click.
+  assert.match(app, /dataset\.unavailable = String\(!computerUseInstalled\)/);
+  assert.match(app, /disabled = !connected \|\| !computerUseInstalled/);
+  assert.match(app, /executionError/);
+  assert.match(css, /\.execution-control\[data-unavailable="true"\]/);
+});

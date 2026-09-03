@@ -3,7 +3,8 @@
 // only file that renders builder offer chips and receipts; app.js just calls
 // initBuilderCoworkUi() once both pieces exist. See ../INTEGRATION.md.
 
-import { classificationDisplayName, classificationOf, createField } from "./form-builder.mjs";
+import { classificationDisplayName, classificationOf, createField, FIELD_TYPE_PALETTE } from "./form-builder.mjs";
+import { createBuilderModelSuggester } from "./builder-model-suggester.js";
 import { BUILDER_CANVAS_TARGET_ID, builderFieldTargetId, createBuilderCoworkBridge } from "./builder-cowork.js";
 import { classifyBuilderDirective } from "./builder-directive-classifier.js";
 
@@ -43,10 +44,55 @@ function describeError(error) {
   return `${error.code ?? "ERROR"}: ${error.message}`;
 }
 
-export function initBuilderCoworkUi({ root = document, controller }) {
+export function initBuilderCoworkUi({ root = document, controller, modelSeat = null }) {
   const $ = (selector) => root.querySelector(selector);
   const bridge = createBuilderCoworkBridge();
   let focusedFieldId = null;
+  // One seat for the whole Builder (see model-seat.js): Demo on -> the disclosed
+  // fixed lists above; Demo off -> the page's connected model through
+  // builder-model-suggester.js, or nothing at all. Never a silent mix of both.
+  const paletteIds = FIELD_TYPE_PALETTE.map((entry) => entry.paletteId);
+  const suggester =
+    modelSeat === null
+      ? null
+      : createBuilderModelSuggester({ sendTurn: (turn) => modelSeat.sendTurn(turn), paletteIds });
+  let hiddenReceiptCount = 0;
+
+  function seatState() {
+    if (modelSeat === null) return { kind: "demo", demo: true, label: "Demo helper", tone: "demo" };
+    const seat = modelSeat.resolve();
+    return { kind: seat.kind, demo: seat.kind === "demo", label: seat.label, tone: seat.tone };
+  }
+
+  function presenceFor(humanPresence) {
+    return {
+      humanPresence,
+      agentPresence: "active",
+      mode: humanPresence === "present" ? "cowork" : "agent-solo"
+    };
+  }
+
+  function renderSeat() {
+    const seat = seatState();
+    const modelless = !seat.demo && seat.kind === "none";
+    const badge = $("#builder-seat-badge");
+    if (badge) {
+      badge.textContent = seat.label;
+      badge.dataset.tone = seat.tone;
+    }
+    const note = $("#builder-seat-note");
+    if (note) {
+      note.textContent = seat.demo
+        ? "Demo mode: the proposals and drafts below come from a disclosed fixed list, not from a language model. The offer → click → receipt path is the real protocol."
+        : modelless
+          ? "No model is connected and Demo mode is off: the Builder proposes nothing. Connect your model in the Cowork panel's Model seat or switch Demo mode on."
+          : `${seat.label} proposes fields and drafts. Every proposal still needs your click; a failed model call is shown as an error, never replaced by the script.`;
+    }
+    for (const id of ["#builder-suggest-add", "#builder-start-delegation"]) {
+      const control = $(id);
+      if (control) control.disabled = modelless;
+    }
+  }
 
   // --- GAP-00: an attention lens for one addressable builder field, not just
   // the whole canvas. One delegated listener covers every row, including
@@ -114,7 +160,7 @@ export function initBuilderCoworkUi({ root = document, controller }) {
   function renderReceipts() {
     const list = $("#builder-receipt-list");
     list.textContent = "";
-    for (const receipt of bridge.readReceipts().slice(-4).reverse()) {
+    for (const receipt of bridge.readReceipts().slice(hiddenReceiptCount).slice(-4).reverse()) {
       const item = document.createElement("li");
       item.className = receipt.status === "failed" ? "receipt-failed" : "";
       const status = document.createElement("strong");
@@ -175,17 +221,49 @@ export function initBuilderCoworkUi({ root = document, controller }) {
     return focusedElement() ?? controller.getElements().at(-1) ?? null;
   }
 
-  $("#builder-suggest-add").addEventListener("click", () => {
-    const existingLabels = new Set(controller.getElements().map((element) => element.label));
-    const suggestion =
-      SUGGESTABLE_FIELDS.find((candidate) => !existingLabels.has(candidate.label)) ?? SUGGESTABLE_FIELDS[0];
-    const field = createField(suggestion.paletteId, { label: suggestion.label });
-    proposeAndRender({
-      capabilityId: "form-add-field",
-      targetId: BUILDER_CANVAS_TARGET_ID,
-      proposedArguments: { field },
-      summary: `Add a "${field.label}" field`
-    });
+  $("#builder-suggest-add").addEventListener("click", async () => {
+    const seat = seatState();
+    if (seat.demo) {
+      const existingLabels = new Set(controller.getElements().map((element) => element.label));
+      const suggestion =
+        SUGGESTABLE_FIELDS.find((candidate) => !existingLabels.has(candidate.label)) ?? SUGGESTABLE_FIELDS[0];
+      const field = createField(suggestion.paletteId, { label: suggestion.label });
+      proposeAndRender({
+        capabilityId: "form-add-field",
+        targetId: BUILDER_CANVAS_TARGET_ID,
+        proposedArguments: { field },
+        summary: `Add a "${field.label}" field`
+      });
+      return;
+    }
+    if (suggester === null || seat.kind === "none") {
+      $("#builder-status").textContent =
+        "NO_MODEL_CONNECTED: connect your model in the Cowork panel's Model seat or switch Demo mode on.";
+      return;
+    }
+    const button = $("#builder-suggest-add");
+    button.disabled = true;
+    $("#builder-status").textContent = `Asking ${seat.label} for one field…`;
+    try {
+      const suggestion = await suggester.suggestField({
+        intent: "field",
+        formTitle: controller.getTitle(),
+        existingLabels: controller.getElements().map((element) => element.label),
+        presence: presenceFor("present")
+      });
+      const field = createField(suggestion.paletteId, { label: suggestion.label });
+      proposeAndRender({
+        capabilityId: "form-add-field",
+        targetId: BUILDER_CANVAS_TARGET_ID,
+        proposedArguments: { field },
+        summary: suggestion.summary || `Add a "${field.label}" field`
+      });
+    } catch (error) {
+      $("#builder-status").textContent = describeError(error);
+    } finally {
+      button.disabled = false;
+      renderSeat();
+    }
   });
 
   $("#builder-suggest-rename").addEventListener("click", () => {
@@ -275,9 +353,34 @@ export function initBuilderCoworkUi({ root = document, controller }) {
     renderDelegationState();
   });
 
-  function soloDraftOne(humanPresence) {
-    if (!bridge.readActiveGrant()) return false;
-    const field = createField("text-short", { label: DRAFT_QUESTIONS[soloCallsUsed % DRAFT_QUESTIONS.length] });
+  async function soloDraftOne(humanPresence) {
+    const grant = bridge.readActiveGrant();
+    if (!grant) return false;
+    const seat = seatState();
+    let field;
+    if (seat.demo) {
+      field = createField("text-short", { label: DRAFT_QUESTIONS[soloCallsUsed % DRAFT_QUESTIONS.length] });
+    } else {
+      if (suggester === null || seat.kind === "none") {
+        $("#builder-delegate-status").textContent =
+          "NO_MODEL_CONNECTED: connect your model or switch Demo mode on before the model drafts anything.";
+        return false;
+      }
+      $("#builder-delegate-status").textContent = `Asking ${seat.label} for the next question…`;
+      try {
+        const suggestion = await suggester.suggestField({
+          intent: "question",
+          formTitle: controller.getTitle(),
+          existingLabels: controller.getElements().map((element) => element.label),
+          goal: grant.goal,
+          presence: presenceFor(humanPresence)
+        });
+        field = createField(suggestion.paletteId, { label: suggestion.label });
+      } catch (error) {
+        $("#builder-delegate-status").textContent = describeError(error);
+        return false;
+      }
+    }
     try {
       const result = bridge.soloExecute({
         field,
@@ -313,7 +416,7 @@ export function initBuilderCoworkUi({ root = document, controller }) {
       while (true) {
         const grant = bridge.readActiveGrant();
         if (!grant || soloCallsUsed >= grant.maxCalls) break;
-        const ok = soloDraftOne("afk-short");
+        const ok = await soloDraftOne("afk-short");
         if (!ok) break;
         await new Promise((resolve) => setTimeout(resolve, 350));
       }
@@ -350,6 +453,11 @@ export function initBuilderCoworkUi({ root = document, controller }) {
           now: new Date().toISOString()
         });
         renderAwaitingFeedback();
+        // The return message and the "new since handover" highlights were the
+        // stale interaction the human kept seeing under Build: once the verdict
+        // is in, that round is over.
+        $("#builder-return-narration").hidden = true;
+        highlightReturnedFields(null);
         $("#builder-delegate-status").textContent = "Feedback recorded.";
       } catch (error) {
         $("#builder-delegate-status").textContent = describeError(error);
@@ -437,9 +545,18 @@ export function initBuilderCoworkUi({ root = document, controller }) {
     if (focusedFieldId && !focusedElement()) setFocusedField(null);
     renderOffers();
   });
+  $("#builder-clear-history")?.addEventListener("click", () => {
+    hiddenReceiptCount = bridge.readReceipts().length;
+    $("#builder-return-narration").hidden = true;
+    highlightReturnedFields(null);
+    $("#builder-status").textContent = "History cleared. Pending offers and grants are untouched.";
+    renderReceipts();
+  });
+
   renderOffers();
   renderReceipts();
   renderDelegationState();
+  renderSeat();
 
-  return { bridge };
+  return { bridge, renderSeat };
 }

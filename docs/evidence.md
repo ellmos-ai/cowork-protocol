@@ -357,6 +357,45 @@ the `.fodt` writer drops XML-illegal control characters, renders line breaks
 and uses paragraph-family heading styles. Every DOM-free fix is covered by a new unit test (eleven in total,
 389 tests on the fixed tree).
 
+Commit `<commit>` gave the showcase a visible model seat and made the direct
+model connection reachable from the page itself. `apps/formbuilder-showcase/src/model-seat.js`
+resolves one of four seats in a fixed order - an injected transport, a direct
+OpenAI-compatible endpoint entered in the page, the same-origin model host, or
+the scripted demo helper - and each seat carries its own badge tone and speaker
+name, so a reply is never attributed to a model that is not there. The
+none-state is honest rather than silent: with nothing connected the seat reads
+"No model connected", the speaker is `System`, and the reply says so instead of
+pretending to think. The `#demo-mode` switch is on by default and discloses in
+the panel that a scripted helper, not a language model, is answering. The
+`<details id="model-connect">` disclosure holds the endpoint, model id and
+optional API key, which stay in the tab. `apps/formbuilder-showcase/src/builder-model-suggester.js`
+routes a Builder field suggestion through the same seat and rejects a reply
+that does not name a field type the palette actually offers. The browser
+extension gained the matching route and seat notes in
+`apps/browser-companion/sidepanel.*` and `src/cockpit-presentation.js`, and the
+Desktop Companion says which page it is bound to and why an execution mode is
+unavailable (`apps/desktop-companion/ui/`). Two smoke regressions introduced by
+the new section were traced to their causes rather than to the new markup: a
+closed `<details>` still lays its content out in Chrome 152, so four collapsed
+fields were counted as visible controls while being unfocusable and absent from
+the accessibility tree, and inserting the model seat as a sibling `<section>`
+flipped `.focus-readout` from an even to an odd `nth-of-type` position, which
+let a translucent gradient rule win that Chrome cannot resolve into an opaque
+contrast range. Both were fixed in `apps/formbuilder-showcase/styles.css`, and
+the pinned control count in `scripts/webmcp-browser-smoke-lib.mjs` moved from 41
+to the measured 43. Spoken replies now prefer the Windows Natural voice used in
+the project's videos (Andrew, then Ava/Emma/Aria, then any en-US Natural or
+Neural voice, then the browser default) through `selectSpeechVoice` in
+`apps/formbuilder-showcase/src/speech-controller.js`, without naming the voice
+in the transcript or the console. Measured on this tree with Chrome
+152.0.7977.65: 417 unit tests pass; the showcase exposes 43 interactive
+controls, 43 uniquely named AX nodes, 43 tab stops and 43 focus-visible controls
+(21 buttons, 9 textboxes, 4 comboboxes, 3 checkboxes, 3 tabs, 2 spinbuttons, 1
+link); the pixel-contrast audit resolves 1556 visible text items across 11
+rendered states with 0 unsupported backgrounds, 0 failures and a minimum
+contrast of 4.57; the native companion smoke still reports 9 WebMCP tools; the
+Pages artifact is 32 files and the extension artifact 21.
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;

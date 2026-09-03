@@ -144,6 +144,43 @@ to the non-executing `confirm` safety ceiling; see
 [apps/desktop-companion/README.md](apps/desktop-companion/README.md) for the
 explicit operator override and the bundled token-filter profile.
 
+## Model seat
+
+One switch decides who answers in the showcase, instead of demo behaviour spread
+over several buttons. `apps/formbuilder-showcase/src/model-seat.js` resolves it
+in a fixed order and labels the result honestly:
+
+- **Demo mode on** — a disclosed scripted helper answers and proposes fixed
+  values. It is labeled `Demo helper (scripted)`; nothing there comes from a
+  language model.
+- **Demo mode off** — an injected model transport wins first, then a direct
+  browser connection to an OpenAI-compatible endpoint (a local Ollama or LM
+  Studio from a locally served copy; on the HTTPS Pages deployment the endpoint
+  must itself be `https://`), then a same-origin model host started with
+  `npm run start:model`.
+- **Nothing connected** — the seat says so and proposes nothing. The turn is
+  still published for a WebMCP agent, which answers it through `cowork_read_turn`
+  and `cowork_reply_turn`. There is no silent fallback to the script: outside
+  demo mode `builder-model-suggester.js` raises on a missing, malformed or
+  duplicate model answer rather than displaying a suggestion that only looks
+  like the model worked.
+
+While the Desktop Companion is connected it holds the session's model seat and
+answers for the whole session. The switch and its endpoint fields live in the
+page's **Model seat** panel (`apps/formbuilder-showcase/index.html`); the API key
+is kept in the tab only, never in the page's persistent storage.
+
+### The three Cowork surfaces
+
+The same versioned session is reachable from three places, and the names are not
+interchangeable:
+
+| Surface | What it is |
+| --- | --- |
+| Embedded panel | the Cowork instrument the page itself renders, no install |
+| Browser extension | the Cowork Browser Companion, Chrome's side panel outside the page DOM |
+| Desktop Companion | the loopback app window with a Windows tray icon, no extension |
+
 ## Build the optional browser extension
 
 ```powershell

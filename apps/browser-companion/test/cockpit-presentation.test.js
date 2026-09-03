@@ -34,9 +34,55 @@ test("the cockpit turns live when human and model collaborate", () => {
     effectiveMode: "cowork",
     modeLabel: "Working together",
     relayState: "live",
+    relayDetail: "Ideas and actions relay through the page",
+    routeExplainer:
+      "Native — this page speaks Cowork Protocol. This panel relays the page's own tools; " +
+      "offers appear in the page's Cowork panel and are clicked there.",
+    seatNote:
+      "Model seat: the page's own (Desktop Companion, page host, direct model or demo helper). " +
+      "This extension adds no model.",
     contextLevel: 0,
     contextLabel: "Focus only"
   });
+});
+
+test("the panel never claims a model seat it does not have", () => {
+  const webmcp = build({ mode: "native-webmcp" });
+  assert.match(webmcp.routeExplainer, /^WebMCP — the page exposes WebMCP tools/);
+  assert.match(webmcp.seatNote, /^Model seat: none\./);
+  assert.match(webmcp.seatNote, /npm run start:companion-host/);
+  assert.equal(webmcp.relayState, "live");
+  assert.equal(webmcp.relayDetail, "Ready to relay — no model connected in this extension");
+
+  const bridge = build({ mode: "legacy-host-companion" });
+  assert.match(bridge.routeExplainer, /^Bridge — no protocol on this page/);
+  assert.equal(bridge.seatNote, webmcp.seatNote);
+  assert.equal(bridge.relayDetail, "Ready to relay — no model connected in this extension");
+});
+
+test("an unattached panel explains how to attach instead of naming a seat", () => {
+  const presentation = build({ enabled: false, mode: "off", agentEngagement: "paused" });
+  assert.equal(
+    presentation.routeExplainer,
+    "Not attached. Click the toolbar icon on a page to attach this panel."
+  );
+  assert.equal(presentation.seatNote, "No page attached.");
+  assert.equal(presentation.relayDetail, "Model is paused");
+});
+
+test("the relay detail follows the relay state, not the route, once work is scoped", () => {
+  assert.equal(
+    build({ agentEngagement: "observing" }).relayDetail,
+    "Model reads and explains only"
+  );
+  assert.equal(
+    build({ humanPresence: "afk-short", soloLeaseValid: true }).relayDetail,
+    "Scoped solo work is flowing to the model"
+  );
+  assert.equal(
+    build({ mode: "legacy-host-companion", humanPresence: "afk-short" }).relayDetail,
+    "No collaboration turn is active"
+  );
 });
 
 test("observing is an explain-only engagement, not a second presence value", () => {

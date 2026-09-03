@@ -15,12 +15,10 @@ import {
 import { registerNativeCoworkTools } from "../../../packages/native-webmcp/src/index.js";
 import {
   createConversationClient,
-  createConversationInbox
+  createConversationInbox,
+  createConversationTurn
 } from "../../../packages/conversation/src/index.js";
-import {
-  discoverHttpModelTransport,
-  selectModelTransport
-} from "../../../packages/model-transport/src/browser.js";
+import { discoverHttpModelTransport } from "../../../packages/model-transport/src/browser.js";
 import {
   applySessionDeltaBatch,
   createCoworkSessionAuthority,
@@ -61,8 +59,9 @@ import {
   nextActionOfferExpiry,
   prepareVisibleActionOffer
 } from "./view-model.js";
-import { createRecognitionSession } from "./speech-controller.js";
+import { createRecognitionSession, selectSpeechVoice } from "./speech-controller.js";
 import { replyToShowcaseTurn } from "./local-conversation.js";
+import { createModelSeat } from "./model-seat.js";
 import { adviseCommentForHumanChange } from "./advisor-comment.js";
 
 const SESSION_ID = "formbuilder-showcase";
@@ -263,20 +262,74 @@ const discoveredHostModelTransport =
   typeof injectedHostModelTransport?.sendTurn === "function"
     ? null
     : await discoverHttpModelTransport();
-const hostModelTransport = selectModelTransport({
-  injected: injectedHostModelTransport,
-  discovered: discoveredHostModelTransport
+// One Demo switch, one seat: who answers here is decided in model-seat.js and
+// shown in the panel's "Model seat" section. Demo off + nothing connected
+// means nothing is proposed - the seat never falls back to the script silently.
+const modelSeat = createModelSeat({
+  injected:
+    typeof injectedHostModelTransport?.sendTurn === "function"
+      ? injectedHostModelTransport
+      : null,
+  discovered: discoveredHostModelTransport,
+  demoReply: replyToShowcaseTurn,
+  storage: { local: window.localStorage, session: window.sessionStorage },
+  pageProtocol: window.location.protocol
 });
-const hasHostModelTransport = typeof hostModelTransport?.sendTurn === "function";
 const conversationClient = createConversationClient({
-  sendTurn: hasHostModelTransport
-    ? hostModelTransport.sendTurn.bind(hostModelTransport)
-    : replyToShowcaseTurn
+  sendTurn: (turn) => modelSeat.sendTurn(turn)
 });
 const conversationInbox = createConversationInbox();
-let conversationTransportLabel = hasHostModelTransport
-  ? hostModelTransport.label ?? "Connected model bridge"
-  : "Local demo helper";
+let conversationTransportLabel = modelSeat.resolve().transportLabel;
+let extensionAttached = false;
+let builderCoworkUi = null;
+const REPLY_STATUS_BY_TRANSPORT = Object.freeze({
+  "Connected model bridge": "Connected model reply received through the bounded conversation bridge.",
+  "Direct model": "Direct model reply received through the bounded conversation turn.",
+  "WebMCP agent reply": "WebMCP agent reply received for the latest bounded human turn.",
+  "Local demo helper": "Local demo reply created from the bounded conversation turn.",
+  "No model connected": "No model is connected: the turn was published for a WebMCP agent only, nothing was proposed."
+});
+const MODEL_SEAT_HELP = Object.freeze({
+  demo: "Demo mode is on: a disclosed scripted helper answers and proposes fixed values. Nothing here comes from a language model. Switch it off to use your own model.",
+  host: "A same-origin model host answers (npm run start:model). Endpoint, model ID and key stay in that server process.",
+  injected: "An injected page transport answers.",
+  none: "No model is connected and Demo mode is off. Nothing will be proposed and conversation turns get a plain system reply. Connect your model below, open the Desktop Companion, or switch Demo mode on.",
+  companion: "The Desktop Companion owns the model seat for this session; continue in its window."
+});
+
+function describeModelSeatHelp(seat, companionConnected) {
+  if (companionConnected) return MODEL_SEAT_HELP.companion;
+  if (seat.kind === "direct") {
+    return `Direct browser connection to ${seat.model} at ${new URL(seat.endpoint).host}. Replies are real model output; a failed call is shown as an error and never replaced by the script.`;
+  }
+  return MODEL_SEAT_HELP[seat.kind] ?? "";
+}
+
+function renderModelSeat() {
+  const seat = modelSeat.resolve();
+  const companionConnected = session.surface?.kind === "desktop";
+  const badgeLabel = companionConnected ? "Desktop Companion" : seat.label;
+  const tone = companionConnected ? "live" : seat.tone;
+  const headerBadge = $("#model-badge");
+  headerBadge.textContent = `Model: ${badgeLabel}`;
+  headerBadge.dataset.tone = tone;
+  const seatBadge = $("#model-seat-badge");
+  seatBadge.textContent = badgeLabel;
+  seatBadge.dataset.tone = tone;
+  $("#demo-mode").checked = seat.kind === "demo";
+  $("#demo-mode").disabled = companionConnected;
+  $("#demo-offer").hidden = seat.kind !== "demo";
+  const direct = modelSeat.directConfig();
+  $("#model-disconnect-button").hidden = direct === null;
+  $("#model-test-button").disabled = companionConnected || seat.kind === "demo" || seat.kind === "none";
+  $("#model-connect-button").textContent = direct === null ? "Use this model" : "Update";
+  if (direct !== null) {
+    if ($("#model-endpoint").value.trim() === "") $("#model-endpoint").value = direct.endpoint;
+    if ($("#model-id").value.trim() === "") $("#model-id").value = direct.model;
+  }
+  $("#model-seat-help").textContent = describeModelSeatHelp(seat, companionConnected);
+  builderCoworkUi?.renderSeat?.();
+}
 
 function setStatus(message) {
   $("#system-status").textContent = message;
@@ -353,14 +406,16 @@ async function openInCompanion() {
     button.textContent = "Connected";
     setStatus(
       visibilityWarning ??
-        "Companion connected. This page is now a synchronized protocol replica."
+        "Desktop Companion connected. This page is now a synchronized protocol replica."
     );
     render();
     return companionConnection;
   } catch (error) {
     button.disabled = false;
-    button.textContent = "Open Companion";
-    setStatus(`${error.code ?? "COMPANION_UNAVAILABLE"}: ${error.message}`);
+    button.textContent = "Desktop Companion";
+    setStatus(
+      `${error.code ?? "COMPANION_UNAVAILABLE"}: ${error.message} — start it with "npm run start:companion-host" (surface http://127.0.0.1:47831/cowork/v1/ui), then try again.`
+    );
     return null;
   }
 }
@@ -467,12 +522,25 @@ function scheduleLeaseExpiry(nowMilliseconds) {
   }, delay);
 }
 
+let preferredVoice = null;
+
+function refreshPreferredVoice() {
+  preferredVoice = selectSpeechVoice(window.speechSynthesis?.getVoices() ?? []) ?? preferredVoice;
+}
+
+// Chrome fills the voice list asynchronously, so resolve once now and again when the
+// list arrives. The chosen voice is never announced in the transcript or the console.
+window.speechSynthesis?.addEventListener?.("voiceschanged", refreshPreferredVoice);
+refreshPreferredVoice();
+
 function speak(message) {
   if (!$("#speak-output").checked || !("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(message);
   utterance.lang = "en-US";
   utterance.rate = 1.02;
+  if (!preferredVoice) refreshPreferredVoice();
+  if (preferredVoice) utterance.voice = preferredVoice;
   window.speechSynthesis.speak(utterance);
 }
 
@@ -786,7 +854,13 @@ function render() {
   $("#focus-label").textContent = view.focusLabel;
   $("#context-label").textContent = view.contextLabel;
   $("#capability-badge").textContent = view.capabilityLabel;
+  $("#capability-badge").dataset.tone = capabilityLevel === "native" ? "live" : "off";
+  $("#capability-badge").title =
+    capabilityLevel === "native"
+      ? "This browser exposes document.modelContext; the page registered its nine native Cowork tools."
+      : "This browser does not expose document.modelContext (chrome://flags → WebMCP). The page still works; only in-browser agent discovery is off.";
   $("#model-transport-badge").textContent = conversationTransportLabel;
+  renderModelSeat();
   $("#page-version").textContent = String(pageVersion);
   $("#session-revision").textContent = String(readCurrentSessionSnapshot().revision);
   const companionConnected = session.surface?.kind === "desktop";
@@ -798,14 +872,17 @@ function render() {
     String(session.surface?.kind === "document-pip")
   );
   $("#surface-label").textContent = companionConnected
-    ? "Companion"
+    ? "Desktop Companion"
     : session.surface?.kind === "document-pip"
       ? "Detached"
-      : "Embedded";
+      : extensionAttached
+        ? "Embedded · Extension attached"
+        : "Embedded";
   $("#open-companion").disabled = companionConnected;
   $("#open-companion").textContent = companionConnected
     ? "Connected"
-    : "Open Companion";
+    : "Desktop Companion";
+  $("#extension-note").hidden = !extensionAttached;
   $("#conversation-input").disabled = companionConnected;
   $("#send-conversation").disabled = companionConnected || conversationBusy;
   $("#talk").disabled = companionConnected;
@@ -818,10 +895,10 @@ function render() {
   humanSeat.classList.toggle("is-away", session.humanPresence !== "present");
   humanSeat.dataset.presenceTone = view.humanTone;
   humanSeat.setAttribute("aria-pressed", String(collaboration.humanState === "present"));
-  const modelSeat = $("#model-seat");
-  modelSeat.classList.toggle("is-active", session.agentPresence !== "paused");
-  modelSeat.classList.toggle("is-paused", session.agentPresence === "paused");
-  modelSeat.setAttribute(
+  const modelSeatButton = $("#model-seat");
+  modelSeatButton.classList.toggle("is-active", session.agentPresence !== "paused");
+  modelSeatButton.classList.toggle("is-paused", session.agentPresence === "paused");
+  modelSeatButton.setAttribute(
     "aria-pressed",
     String(collaboration.modelState === "collaborating")
   );
@@ -878,17 +955,15 @@ function presentConversationReply({ turn, reply, transportLabel, contextHumanTur
       rejectedOffers += 1;
     }
   }
-  $("#transcript").textContent = `You: ${turn.transcript}\nHelper: ${reply.message}`;
+  const speaker = transportLabel === "WebMCP agent reply" ? "Agent" : modelSeat.resolve().speaker;
+  $("#transcript").textContent = `You: ${turn.transcript}\n${speaker}: ${reply.message}`;
   setStatus(
     createdOffers > 0
       ? `${createdOffers} model suggestion${createdOffers === 1 ? "" : "s"} added as click-gated offer${createdOffers === 1 ? "" : "s"}.`
       : rejectedOffers > 0
         ? "The reply was shown, but its action offer was outside the current focus or action rights."
-        : transportLabel === "Connected model bridge"
-          ? "Connected model reply received through the bounded conversation bridge."
-          : transportLabel === "WebMCP agent reply"
-            ? "WebMCP agent reply received for the latest bounded human turn."
-            : "Local demo reply created from the bounded conversation turn."
+        : REPLY_STATUS_BY_TRANSPORT[transportLabel] ??
+          "Reply received for the bounded conversation turn."
   );
   speak(reply.speak || reply.message);
   render();
@@ -898,7 +973,7 @@ function presentConversationReply({ turn, reply, transportLabel, contextHumanTur
 async function sendConversationTurn(transcriptInput) {
   if (conversationBusy) return;
   if (companionConnection !== null) {
-    setStatus("The Companion owns the shared model seat. Continue in its movable window.");
+    setStatus("The Desktop Companion owns the shared model seat. Continue in its movable window.");
     return;
   }
   const input = $("#conversation-input");
@@ -913,7 +988,7 @@ async function sendConversationTurn(transcriptInput) {
   beginModelWorking();
   sendButton.disabled = true;
   sendButton.setAttribute("aria-busy", "true");
-  $("#transcript").textContent = `You: ${transcript}\nHelper: Thinking with bounded context…`;
+  $("#transcript").textContent = `You: ${transcript}\n${modelSeat.resolve().speaker}: Thinking with bounded context…`;
   commitSession("conversation-turn-submitted", {
     ...session,
     modelSeat: { owner: "cowork", contextAuthority: "cowork-session" },
@@ -943,7 +1018,8 @@ async function sendConversationTurn(transcriptInput) {
       return;
     }
 
-    if (!hasHostModelTransport) {
+    const activeSeat = modelSeat.resolve();
+    if (activeSeat.publishesToInbox) {
       conversationInbox.publish(result.turn);
     }
     const contextHumanTurnId = nextContextTurnId("human");
@@ -957,9 +1033,7 @@ async function sendConversationTurn(transcriptInput) {
     presentConversationReply({
       turn: result.turn,
       reply: result.reply,
-      transportLabel: hasHostModelTransport
-        ? "Connected model bridge"
-        : "Local demo helper",
+      transportLabel: activeSeat.transportLabel,
       contextHumanTurnId
     });
   } catch (error) {
@@ -1596,6 +1670,84 @@ $("#expand-context").addEventListener("click", () => {
 });
 
 $("#demo-offer").addEventListener("click", addDemoOffer);
+$("#demo-mode").addEventListener("change", (event) => {
+  const seat = modelSeat.setDemo(event.target.checked);
+  conversationTransportLabel = seat.transportLabel;
+  setStatus(
+    seat.kind === "demo"
+      ? "Demo mode on: the scripted helper answers. No model is involved."
+      : seat.kind === "none"
+        ? "Demo mode off and no model connected: nothing will be proposed until you connect one."
+        : `Demo mode off: ${seat.label} answers.`
+  );
+  render();
+});
+$("#model-connect-button").addEventListener("click", () => {
+  try {
+    const seat = modelSeat.connectDirect({
+      endpoint: $("#model-endpoint").value,
+      model: $("#model-id").value,
+      apiKey: $("#model-key").value
+    });
+    conversationTransportLabel = seat.transportLabel;
+    setStatus(
+      `Direct model configured: ${seat.model} at ${new URL(seat.endpoint).host}. Not verified yet — use Test or send a turn; failures are shown as errors.`
+    );
+  } catch (error) {
+    setStatus(`${error.code ?? "MODEL_SEAT_ERROR"}: ${error.message}`);
+  }
+  render();
+});
+$("#model-test-button").addEventListener("click", async () => {
+  const button = $("#model-test-button");
+  button.disabled = true;
+  setStatus("Testing the connected model with one bounded turn…");
+  try {
+    const reply = await modelSeat.probe(
+      createConversationTurn({
+        transcript:
+          "Reply with one short sentence confirming you received this bounded Cowork turn. Propose no offers.",
+        focusPacket: null,
+        presence: {
+          humanPresence: session.humanPresence,
+          agentPresence: session.agentPresence,
+          mode: session.effectiveMode
+        }
+      })
+    );
+    setStatus(`Model test succeeded: ${String(reply?.message ?? "").slice(0, 160)}`);
+  } catch (error) {
+    setStatus(`Model test failed — ${error.code ?? "MODEL_ERROR"}: ${error.message}`);
+  } finally {
+    button.disabled = false;
+    render();
+  }
+});
+$("#model-disconnect-button").addEventListener("click", () => {
+  const seat = modelSeat.disconnectDirect();
+  conversationTransportLabel = seat.transportLabel;
+  $("#model-key").value = "";
+  setStatus(
+    seat.kind === "none"
+      ? "Direct model disconnected. No model is connected now."
+      : `Direct model disconnected. ${seat.label} answers.`
+  );
+  render();
+});
+window.addEventListener("message", (event) => {
+  if (
+    event.source !== window ||
+    event.data?.source !== "cowork-extension-native-request" ||
+    extensionAttached
+  ) {
+    return;
+  }
+  extensionAttached = true;
+  $("#extension-note").textContent =
+    "Browser extension attached (Native route): it reads focus here and proposes into this panel; your clicks stay here. The side panel mirrors this panel, it does not replace it.";
+  setStatus("Browser extension attached through the native page bridge.");
+  render();
+});
 $("#detach-cowork").addEventListener("click", () => {
   void detachCoworkSurface();
 });
@@ -1663,4 +1815,5 @@ configureWebMcp();
 // surface (see builder-view.js); this is its only integration point with the
 // Cowork Protocol machinery above. See ../INTEGRATION.md.
 const builderController = initBuilderStudio(document);
-initBuilderCoworkUi({ root: document, controller: builderController });
+builderCoworkUi = initBuilderCoworkUi({ root: document, controller: builderController, modelSeat });
+renderModelSeat();

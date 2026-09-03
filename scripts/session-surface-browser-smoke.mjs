@@ -593,7 +593,7 @@ try {
     companionSnapshot?.revision !== resumed.snapshot.revision ||
     companionSnapshot?.state?.surface?.kind !== "desktop" ||
     visibleCompanion.providerId !== "cowork-reference-ui" ||
-    visibleCompanion.title !== "Companion" ||
+    visibleCompanion.title !== "Desktop Companion" ||
     visibleCompanion.mode !== "Working together" ||
     visibleCompanion.applicationSurface !== "Page active" ||
     visibleCompanion.humanState !== "present" ||

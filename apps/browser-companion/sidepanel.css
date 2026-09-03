@@ -49,6 +49,10 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.025em; }
 .connection-lamp { width: 15px; height: 15px; border: 2px solid white; border-radius: 50%; background: #9b948a; box-shadow: 0 0 0 2px var(--line-gold); }
 .cowork-cockpit:not([data-route="off"]) .connection-lamp { background: var(--state-active); box-shadow: 0 0 0 2px var(--line-gold), 0 0 13px var(--state-active-soft); }
 
+.surface-note { margin: 3px 0 0; overflow: hidden; color: var(--ink-muted); font-size: 9px; font-weight: 800; letter-spacing: .02em; text-overflow: ellipsis; white-space: nowrap; }
+.route-explainer { margin: -6px 0 0; padding: 8px 10px; border: 1px dashed var(--line-soft); border-radius: 12px; color: var(--ink-muted); background: rgba(255,255,255,.5); font-size: 10px; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+.seat-note { margin: 9px 0 0; color: var(--ink-muted); font-size: 10px; font-weight: 650; line-height: 1.35; text-align: center; overflow-wrap: anywhere; }
+
 .route-rail { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 12px 0; padding: 8px; border: 1px solid var(--line-soft); border-radius: 14px; background: rgba(255,255,255,.68); }
 .route-rail::before { position: absolute; top: 25px; right: 15%; left: 15%; z-index: 0; height: 2px; content: ""; background: linear-gradient(90deg, var(--line-gold), var(--accent-teal), var(--line-gold)); opacity: .55; }
 .route-node { z-index: 1; display: grid; place-items: center; gap: 2px; color: #776c60; font-size: 9px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }

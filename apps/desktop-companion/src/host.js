@@ -259,7 +259,8 @@ export function createCompanionSessionHost({
     hello,
     snapshot,
     context,
-    authority
+    authority,
+    lastPageContactAt = null
   }) {
     const contextManager = context === null
       ? createCoworkContextManager({ sessionId: snapshot.sessionId })
@@ -282,7 +283,8 @@ export function createCompanionSessionHost({
       authority,
       gateway,
       submittedTurns: new Map(),
-      linkSessionId
+      linkSessionId,
+      lastPageContactAt
     };
   }
 
@@ -380,11 +382,16 @@ export function createCompanionSessionHost({
     return {
       protocolVersion: PROTOCOL_VERSION,
       type: "companion-ui-state",
+      // Host-wide: the cockpit needs it before any page has connected.
+      computerUseAvailable: computerUse !== null,
       sessions: [...sessions].map(([linkSessionId, value]) => {
         const snapshot = value.authority.readSnapshot();
         return {
           linkSessionId,
           sessionId: snapshot.sessionId,
+          origin: value.origin,
+          pageSurfaceId: value.hello?.surfaceId ?? null,
+          lastPageContactAt: value.lastPageContactAt,
           revision: snapshot.revision,
           humanPresence: snapshot.state.humanPresence,
           agentPresence: snapshot.state.agentPresence,
@@ -604,6 +611,22 @@ export function createCompanionSessionHost({
     linkSession.snapshot = linkSession.authority.readSnapshot();
     await persistSessions();
     return result;
+  }
+
+  // Every request a joined page makes routes through here, so this is the one
+  // place that records that the page is really talking to us. A session that
+  // was only restored from the store has never been stamped and stays null.
+  function touchPageSession(linkSessionId, origin) {
+    const linkSession = sessions.get(linkSessionId);
+    if (!linkSession || linkSession.origin !== origin) {
+      throw new CompanionHostError(
+        "LINK_SESSION_NOT_FOUND",
+        "Companion link session is unavailable",
+        404
+      );
+    }
+    linkSession.lastPageContactAt = now();
+    return linkSession;
   }
 
   async function reportSurface(linkSessionId, event) {
@@ -858,7 +881,8 @@ export function createCompanionSessionHost({
           hello: joined.hello,
           snapshot: authoritySnapshot,
           context: joined.context,
-          authority
+          authority,
+          lastPageContactAt: claimedAt
         }));
         await persistSessions();
         writeJson(response, 200, {
@@ -884,14 +908,7 @@ export function createCompanionSessionHost({
       );
       if (request.method === "POST" && surfaceMatch) {
         const linkSessionId = decodeURIComponent(surfaceMatch[1]);
-        const linkSession = sessions.get(linkSessionId);
-        if (!linkSession || linkSession.origin !== origin) {
-          throw new CompanionHostError(
-            "LINK_SESSION_NOT_FOUND",
-            "Companion link session is unavailable",
-            404
-          );
-        }
+        touchPageSession(linkSessionId, origin);
         const acknowledgement = await reportSurface(
           linkSessionId,
           (await readJson(request)).event
@@ -901,14 +918,7 @@ export function createCompanionSessionHost({
       }
       if (request.method === "POST" && readMatch) {
         const linkSessionId = decodeURIComponent(readMatch[1]);
-        const linkSession = sessions.get(linkSessionId);
-        if (!linkSession || linkSession.origin !== origin) {
-          throw new CompanionHostError(
-            "LINK_SESSION_NOT_FOUND",
-            "Companion link session is unavailable",
-            404
-          );
-        }
+        const linkSession = touchPageSession(linkSessionId, origin);
         const { afterRevision, limit } = await readJson(request);
         const batch = linkSession.authority.readDeltas({ afterRevision, limit });
         writeJson(response, 200, batch, origin);
@@ -916,14 +926,7 @@ export function createCompanionSessionHost({
       }
       if (request.method === "POST" && match) {
         const linkSessionId = decodeURIComponent(match[1]);
-        const linkSession = sessions.get(linkSessionId);
-        if (!linkSession || linkSession.origin !== origin) {
-          throw new CompanionHostError(
-            "LINK_SESSION_NOT_FOUND",
-            "Companion link session is unavailable",
-            404
-          );
-        }
+        touchPageSession(linkSessionId, origin);
         throw new CompanionHostError(
           "COMPANION_IS_SESSION_AUTHORITY",
           "Page replicas must pull Companion-authored deltas after joining",

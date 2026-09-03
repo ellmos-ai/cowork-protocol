@@ -21,6 +21,7 @@
     <div class="header-badges" aria-label="Prototype status">
       <span class="badge badge-accent">Local prototype</span>
       <span class="badge" id="capability-badge">Detecting WebMCP…</span>
+      <span class="badge" id="model-badge" data-tone="demo">Model: detecting…</span>
     </div>
   </header>
 
@@ -91,13 +92,14 @@
           <span class="metric"><span id="surface-label">Embedded</span> · S<span id="session-revision">0</span></span>
           <span class="mode-badge" id="mode-badge">Cowork</span>
           <button class="surface-button" id="detach-cowork" type="button" aria-label="Detach Cowork panel" aria-pressed="false"><span aria-hidden="true">↗</span><span>Pop out</span></button>
-          <button class="surface-button" id="open-companion" type="button" aria-label="Open Cowork Companion"><span aria-hidden="true">◇</span><span>Companion</span></button>
+          <button class="surface-button" id="open-companion" type="button" aria-label="Open the Cowork Desktop Companion"><span aria-hidden="true">◇</span><span>Desktop Companion</span></button>
         </div>
       </div>
 
       <div class="protocol-rhythm" aria-label="Cowork interaction rhythm">
         <span><i aria-hidden="true"></i>Point</span><span><i aria-hidden="true"></i>Offer</span><span><i aria-hidden="true"></i>Click</span><span><i aria-hidden="true"></i>Verify</span>
       </div>
+      <p class="microcopy extension-note" id="extension-note" role="status" hidden></p>
 
       <section class="embedded-collaboration-deck" aria-labelledby="embedded-collaboration-title">
         <div class="embedded-instrument-heading">
@@ -159,6 +161,41 @@
             <span class="actor-copy"><small>Model</small><strong id="agent-label">Model collaborating</strong></span>
           </button>
         </div>
+      </section>
+
+      <section class="panel-section model-seat" aria-labelledby="model-seat-heading">
+        <div class="section-row">
+          <h3 id="model-seat-heading"><span class="section-icon" aria-hidden="true">◆</span>Model seat</h3>
+          <span class="badge" id="model-seat-badge" data-tone="demo">Demo helper (scripted)</span>
+        </div>
+        <label class="check-row">
+          <input id="demo-mode" type="checkbox" checked>
+          <span>Demo mode — scripted helper, no model involved</span>
+        </label>
+        <p class="microcopy" id="model-seat-help">Demo mode is on: a disclosed scripted helper answers and proposes fixed values. Nothing here comes from a language model.</p>
+        <details class="model-connect" id="model-connect">
+          <summary>Connect your own model (OpenAI-compatible endpoint)</summary>
+          <div class="field-grid">
+            <label>
+              <span>Endpoint</span>
+              <input id="model-endpoint" autocomplete="off" spellcheck="false" value="http://127.0.0.1:11434/v1/chat/completions">
+            </label>
+            <label>
+              <span>Model ID</span>
+              <input id="model-id" autocomplete="off" spellcheck="false" placeholder="e.g. qwen3:4b">
+            </label>
+            <label>
+              <span>API key (optional, kept only in this tab)</span>
+              <input id="model-key" type="password" autocomplete="off">
+            </label>
+          </div>
+          <div class="button-row">
+            <button class="primary-small" id="model-connect-button" type="button">Use this model</button>
+            <button class="quiet-button" id="model-test-button" type="button" disabled>Test</button>
+            <button class="quiet-button" id="model-disconnect-button" type="button" hidden>Disconnect</button>
+          </div>
+          <p class="microcopy">Local Ollama or LM Studio work from a locally served copy (npm start, then http://127.0.0.1:4173); on an HTTPS page the endpoint must be https:// too. Alternatives: the Desktop Companion (button above) carries the model seat for the whole session, a same-origin model host (npm run start:model) keeps the key server-side, and a WebMCP-capable browser agent can answer turns through cowork_read_turn / cowork_reply_turn.</p>
+        </details>
       </section>
 
       <section class="panel-section focus-readout" aria-labelledby="focus-heading">
@@ -228,7 +265,7 @@
           <span class="badge" id="model-transport-badge">Local demo helper</span>
         </div>
         <form id="conversation-form" class="conversation-form">
-          <label for="conversation-input">Talk or type to the helper</label>
+          <label for="conversation-input">Talk or type to the model seat</label>
           <input id="conversation-input" maxlength="350" autocomplete="off" placeholder="Ask about the focused field">
           <div class="button-row">
             <button class="primary-small" id="send-conversation" type="submit">Send bounded turn</button>
@@ -306,7 +343,9 @@
       <section class="panel-section builder-suggestions" aria-labelledby="builder-suggestions-heading">
         <div class="section-row">
           <h3 id="builder-suggestions-heading"><span class="section-icon" aria-hidden="true">◇</span>Model suggestions</h3>
+          <span class="surface-actions"><span class="badge" id="builder-seat-badge" data-tone="demo">Demo helper</span><button class="text-button" id="builder-clear-history" type="button">Clear</button></span>
         </div>
+        <p class="microcopy" id="builder-seat-note" role="status"></p>
         <div class="button-row">
           <button type="button" class="quiet-button" id="builder-suggest-add">Model suggests a field</button>
           <button type="button" class="quiet-button" id="builder-suggest-rename" hidden>Model suggests a rename</button>
