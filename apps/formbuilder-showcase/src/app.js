@@ -589,11 +589,17 @@ Object.defineProperty(window, "coworkSession", {
   })
 });
 
+/** A button that carries an icon has its words in a label node; writing the
+ *  button's own textContent would take the icon with them. */
+function setButtonLabel(selector, text) {
+  $(selector).querySelector(".button-label").textContent = text;
+}
+
 async function openInCompanion() {
   if (companionConnection) return companionConnection;
   const button = $("#open-companion");
   button.disabled = true;
-  button.textContent = "Connecting…";
+  setButtonLabel("#open-companion", "Connecting…");
   const endpoint =
     new URLSearchParams(window.location.search).get("companionEndpoint") ??
     "http://127.0.0.1:47831/cowork/v1";
@@ -635,7 +641,7 @@ async function openInCompanion() {
         `${error.code ?? "COMPANION_SYNC_ERROR"}: initial page visibility is unknown`;
     }
     coworkPanel.classList.add("is-companion-connected");
-    button.textContent = "Connected";
+    setButtonLabel("#open-companion", "Connected");
     setStatus(
       visibilityWarning ??
         "Desktop Companion connected. This page is now a synchronized protocol replica."
@@ -644,7 +650,7 @@ async function openInCompanion() {
     return companionConnection;
   } catch (error) {
     button.disabled = false;
-    button.textContent = "Desktop Companion";
+    setButtonLabel("#open-companion", "Desktop Companion");
     setStatus(
       `${error.code ?? "COMPANION_UNAVAILABLE"}: ${error.message} — start it with "npm run start:companion-host" (surface http://127.0.0.1:47831/cowork/v1/ui), then try again.`
     );
@@ -1209,8 +1215,12 @@ function render() {
   $("#page-version").textContent = String(pageVersion);
   $("#session-revision").textContent = String(readCurrentSessionSnapshot().revision);
   const companionConnected = session.surface?.kind === "desktop";
-  $("#detach-cowork").textContent =
-    session.surface?.kind === "document-pip" ? "Dock in page" : "Detach";
+  // Both surface buttons keep their icon: only the label node changes, and
+  // the button's textContent stays the label alone, as the smokes read it.
+  setButtonLabel(
+    "#detach-cowork",
+    session.surface?.kind === "document-pip" ? "Dock in page" : "Detach"
+  );
   $("#detach-cowork").disabled = companionConnected;
   $("#detach-cowork").setAttribute(
     "aria-pressed",
@@ -1224,9 +1234,7 @@ function render() {
         ? "Embedded · Extension attached"
         : "Embedded";
   $("#open-companion").disabled = companionConnected;
-  $("#open-companion").textContent = companionConnected
-    ? "Connected"
-    : "Desktop Companion";
+  setButtonLabel("#open-companion", companionConnected ? "Connected" : "Desktop Companion");
   $("#extension-note").hidden = !extensionAttached;
   $("#conversation-input").disabled = companionConnected;
   $("#send-conversation").disabled = companionConnected || conversationBusy;
