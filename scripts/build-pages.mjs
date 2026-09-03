@@ -32,6 +32,7 @@ const PUBLIC_FILES = [
   "packages/formbuilder-connector/src/index.js",
   "packages/integration-contract/src/index.js",
   "packages/model-transport/src/browser.js",
+  "packages/model-transport/src/openai-compatible.js",
   "packages/native-webmcp/src/index.js",
   "packages/reference-ui/src/index.js",
   "packages/reference-ui/assets/cowork-dialogue-mark.svg",
