@@ -19,8 +19,6 @@ each one brings with it:
 3. **Browser extension** — a side panel for pages that carry neither, registering the same Cowork tools over WebMCP.
 4. **Desktop Companion** — an app window without an extension: freer, not tied to one browser, with a filtered Computer Use fallback, and while connected it holds the session's model seat.
 
-[What each host adds and does not claim](docs/hosts.md) · [Install it with your AI assistant](docs/install-with-your-assistant.md) · [Machine-readable index](llms.txt)
-
 [![Cowork Protocol architecture: human and preferred model collaborate through any compatible UI, the provider-neutral protocol core and three bounded connector paths](design/architecture-overview.png)](docs/architecture.md)
 
 The protocol and the UI are separate products. A website decides whether it
