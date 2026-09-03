@@ -45,10 +45,6 @@ Requirements: Node.js 22 or newer; Chrome or Edge 150+ for the browser parts.
    Then click "Desktop Companion" in the page's Cowork panel. To give the
    Companion a model, also set COWORK_MODEL_ENDPOINT and COWORK_MODEL before
    starting it. Details: apps/desktop-companion/README.md
-8. Optional, for a local agent that should use the Companion as a tool over
-   MCP (stdio): see apps/desktop-companion/README.md, section "Use the
-   Companion as a tool", for the exact command and client configuration.
-
 Do not change any file in the repository, do not touch my other browser
 extensions, and do not read my browsing history, cookies or passwords. If a
 step's expected output differs, show me the output and ask before continuing.
