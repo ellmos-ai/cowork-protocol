@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { createField, insertField } from "../src/form-builder.mjs";
-import { BUILDER_CANVAS_TARGET_ID, builderFieldTargetId, createBuilderCoworkBridge } from "../src/builder-cowork.js";
+import { addFieldSummary, BUILDER_CANVAS_TARGET_ID, builderFieldTargetId, createBuilderCoworkBridge } from "../src/builder-cowork.js";
 
 test("focusFor (the canvas) exposes only form-add-field; focusForField exposes the two field-scoped capabilities", () => {
   const bridge = createBuilderCoworkBridge();
@@ -244,4 +244,11 @@ test("offers made for an earlier page version stop counting against the pending-
   const fresh = propose("Five", 2);
   assert.equal(fresh.pageVersion, 2);
   assert.deepEqual(bridge.pendingOffers(now).map((offer) => offer.offerId), [fresh.offerId]);
+});
+
+test("the add-field summary picks the article the label needs", () => {
+  assert.equal(addFieldSummary("Email address"), 'Add an "Email address" field');
+  assert.equal(addFieldSummary("Full name"), 'Add a "Full name" field');
+  // The chip is rendered as text, so the label must survive verbatim.
+  assert.equal(addFieldSummary("Address"), 'Add an "Address" field');
 });

@@ -18,6 +18,7 @@ import {
 import { createShowcaseSubmission } from "../../../apps/formbuilder-showcase/src/formbuilder-use-case.js";
 import { observeControlChange } from "../../../apps/formbuilder-showcase/src/interaction-log.js";
 import {
+  addFieldSummary,
   BUILDER_CANVAS_TARGET_ID,
   builderFieldTargetId,
   createBuilderCoworkBridge
@@ -203,7 +204,7 @@ export function runJurorProof() {
     capabilityId: "form-add-field",
     targetId: BUILDER_CANVAS_TARGET_ID,
     proposedArguments: { field: suggestedField },
-    summary: `Add a "${suggestedField.label}" field`,
+    summary: addFieldSummary(suggestedField.label),
     pageVersion: 1,
     now: "2026-08-30T10:00:40.000Z"
   });

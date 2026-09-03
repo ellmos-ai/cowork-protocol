@@ -34,6 +34,15 @@ const MAX_TARGETS_TOUCHED_TRACKED = 20; // generous local buffer; the delta itse
 
 export { BUILDER_CANVAS_TARGET_ID, builderFieldTargetId };
 
+/** The one wording for "add this field", so the offer chip a human reads and
+ *  the juror proof cannot drift apart - and so `Add a "Email address" field`
+ *  stops reading like a typo in the most visible string the model produces.
+ *  ponytail: first-letter vowel test; "an hour"/"a unique id" would need a
+ *  pronunciation table, and field labels do not earn one. */
+export function addFieldSummary(label) {
+  return `Add ${/^[aeiou]/i.test(label) ? "an" : "a"} "${label}" field`;
+}
+
 /** Applies one already-authorized plan (click, solo, or directive - the
  *  authorization mechanism differs, this part never does) and independently
  *  verifies the result against the actual field list, the same "trust but
