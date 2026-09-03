@@ -747,3 +747,6 @@ textarea { resize: vertical; }
   text-transform: uppercase;
 }
 .offer-list-heading + .offer-list { margin-top: .35rem; }
+/* Why no Dismiss button: a proposal that is ignored is already gone. Saying so
+   is cheaper than a control that removes what would remove itself. */
+.offer-list-note { margin-top: .5rem; }
