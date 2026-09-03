@@ -179,11 +179,12 @@ is kept in the tab only, never in the page's persistent storage.
 The same versioned session is reachable from three places, and the names are not
 interchangeable:
 
-| Surface | What it is |
-| --- | --- |
-| Embedded panel | the Cowork instrument the page itself renders, no install |
-| Browser extension | the Cowork Browser Companion, Chrome's side panel outside the page DOM |
-| Desktop Companion | the loopback app window with a Windows tray icon, no extension |
+| Level | Surface | What it is |
+| --- | --- | --- |
+| 1 | Protocol only | the packages, wired into your own app's own UI. No Cowork surface at all |
+| 2 | Embedded panel | the Cowork instrument the page itself renders, no install. This showcase runs at this level |
+| 3 | Browser extension | the Cowork Browser Companion, Chrome's side panel outside the page DOM, for pages that carry neither the protocol nor a panel |
+| 4 | Desktop Companion | the loopback app window with a Windows tray icon, no extension; while connected it holds the session's model seat |
 
 ## Build the optional browser extension
 
