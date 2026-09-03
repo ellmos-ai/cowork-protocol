@@ -23,6 +23,51 @@ each one brings with it:
 
 [![Cowork Protocol architecture: human and preferred model collaborate through any compatible UI, the provider-neutral protocol core and three bounded connector paths](design/architecture-overview.png)](docs/architecture.md)
 
+The same system as a source-backed flow; the component detail lives in
+[docs/architecture.md](docs/architecture.md).
+
+```mermaid
+flowchart TB
+  HUMAN["Human\nfocus, speech, click, presence"]
+  AGENT["Web agent\nhypothesis, proposal, scoped work"]
+  BROWSER["WebMCP-capable browser\nModelContext mediation"]
+  SURFACES["Interchangeable surfaces\nEmbed, PiP, Side Panel, Desktop/tray or provider chat"]
+  SESSION["Session Authority\nrevision, surface lease, model-seat lease"]
+  CONTEXT["Context Manager\ncompact summary and bounded recent turns"]
+  GATEWAY["Model Gateway\none serialized inference queue"]
+  CORE["Protocol Core\ncausal events, budgets, rights, leases"]
+  MODE["Work modes\npresent, area and role per partner"]
+  NATIVE["Native WebMCP Connector"]
+  WEBBRIDGE["WebMCP Bridge"]
+  LEGACY["Legacy DOM/A11y/Visual-request Bridge"]
+  EXTENSION["Browser Extension Relay\nheadless near page; UI in Side Panel"]
+  LEGACYPAGE["Arbitrary web page\nCowork and WebMCP absent"]
+  FORM["FormBuilder Showcase"]
+
+  HUMAN -->|"selects, authorizes and evaluates"| SURFACES
+  SURFACES <-->|"commands and versioned projections"| SESSION
+  SESSION -->|"Cowork-owned context"| CONTEXT
+  CONTEXT <-->|"one bounded turn at a time"| GATEWAY
+  GATEWAY <-->|"exclusive Cowork model seat"| AGENT
+  SURFACES -.->|"provider-owned private chat context"| AGENT
+  SESSION <-->|"presence, modes, rights and causal journal"| CORE
+  CORE <-->|"resolveWorkMode: who executes, who advises"| MODE
+  SURFACES -->|"authorization and FeedbackEvent"| CORE
+  CORE -->|"bounded focus, latest feedback, or offer"| AGENT
+  AGENT -->|"context request or proposal"| CORE
+  AGENT <-->|"discovers and invokes tools"| BROWSER
+  BROWSER <-->|"registerTool, getTools, executeTool"| NATIVE
+  CORE -->|"verified receipt"| SURFACES
+  CORE <--> |"versioned protocol messages"| NATIVE
+  CORE <--> |"degraded guarantees"| WEBBRIDGE
+  CORE <--> |"best-effort signals"| LEGACY
+  LEGACYPAGE <-->|"pointer focus and trusted visible click"| EXTENSION
+  EXTENSION <-->|"bounded host callbacks"| LEGACY
+  EXTENSION -->|"registers four Cowork tools over WebMCP"| BROWSER
+  NATIVE <--> |"stable fields and verified actions"| FORM
+  FORM -->|"observed ChangeEvent with cause refs"| CORE
+```
+
 The protocol and the UI are separate products. A website decides whether it
 ships no page UI, an automatic operator-selected UI, or a user-activated
 optional UI. Cowork's page panel, Extension Side Panel and Companion are only
