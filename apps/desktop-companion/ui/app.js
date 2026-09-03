@@ -200,6 +200,12 @@ function render(state) {
   $("#human-control").disabled = !connected || controlBusy;
   $("#model-control").disabled = !currentSession?.modelAvailable || controlBusy;
   $("#execution-control").disabled = !connected || !computerUseInstalled || controlBusy;
+  // A disabled control swallows a click without a trace, which reads to a
+  // screen reader and to any automated driver as "nothing happened". Say we
+  // are busy instead of only going quiet.
+  for (const id of ["#human-control", "#model-control", "#execution-control"]) {
+    $(id).setAttribute("aria-busy", String(controlBusy));
+  }
   $("#conversation-input").disabled = !modelInputEnabled;
   $("#send").disabled = !modelInputEnabled || busy;
   $("#talk").disabled = !modelInputEnabled;
