@@ -813,6 +813,63 @@ try {
   await dispatchTrustedClick(call, 'document.querySelector("#return-human")', "Take the job back");
   observed.handedOverWhileWatching = { handedOver, disjointAreas, doubling };
 
+  // --- The Studio canvas through the same three tools. Before this, the
+  // sample form was the only surface an agent could follow: pointing at the
+  // Studio left cowork_read_focus at STALE_FOCUS while the panel's own lens
+  // already named the field. Now the focus, its context and an inert offer
+  // come back for a Studio field on the same `form-field:<id>` target. ---
+  await evaluateValue(call, `document.querySelector("#workspace-tab-studio").click()`);
+  await evaluateValue(call, `document.querySelector("#builder-field-type").value = "text-short"`);
+  await dispatchTrustedClick(call, 'document.querySelector("#builder-add-field")', "Add a Studio field");
+  const studioFieldId = await evaluateValue(call, `(() => {
+    const row = document.querySelector(".builder-field-row[data-field-id]");
+    if (!row) return null;
+    row.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+    return row.dataset.fieldId;
+  })()`);
+  if (typeof studioFieldId !== "string") throw new Error("The Studio has no field row to point at");
+  const studioTargetId = `form-field:${studioFieldId}`;
+  const studioFocus = await evaluateValue(call, toolExecutionExpression("cowork_read_focus", {}));
+  if (
+    studioFocus.packet?.targetId !== studioTargetId ||
+    !studioFocus.packet?.capabilityIds?.includes("form-update-field")
+  ) {
+    throw new Error(`cowork_read_focus did not follow the human onto the Studio field: ${JSON.stringify(studioFocus)}`);
+  }
+  const studioContext = await evaluateValue(
+    call,
+    toolExecutionExpression("cowork_request_context", { reason: "Need the field kind before proposing a label" })
+  );
+  if (studioContext.packet?.level !== 3 || !studioContext.packet?.relatedContext?.includes("Short answer")) {
+    throw new Error(`cowork_request_context did not describe the Studio field: ${JSON.stringify(studioContext)}`);
+  }
+  const studioOffer = await evaluateValue(
+    call,
+    toolExecutionExpression("cowork_offer_action", {
+      capabilityId: "form-update-field",
+      targetId: studioTargetId,
+      value: "Work email",
+      summary: "Rename the field to Work email"
+    })
+  );
+  const studioBeforeClick = await evaluateValue(call, `(() => ({
+    label: document.querySelector('.builder-field-row[data-field-id="${studioFieldId}"] label input')?.value ?? null,
+    visibleOfferCount: document.querySelectorAll(".offer-chip").length
+  }))()`);
+  if (!studioOffer.packet?.offerId || studioBeforeClick.visibleOfferCount !== 1 || studioBeforeClick.label === "Work email") {
+    throw new Error(`A Studio offer must be visible and inert before the click: ${JSON.stringify({ studioOffer, studioBeforeClick })}`);
+  }
+  await dispatchTrustedClick(call, 'document.querySelector(".offer-chip")', "Studio action offer");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const studioAfterClick = await evaluateValue(call, `(() => ({
+    label: document.querySelector('.builder-field-row[data-field-id="${studioFieldId}"] label input')?.value ?? null,
+    visibleOfferCount: document.querySelectorAll(".offer-chip").length
+  }))()`);
+  if (studioAfterClick.label !== "Work email" || studioAfterClick.visibleOfferCount !== 0) {
+    throw new Error(`The trusted click did not apply the Studio offer: ${JSON.stringify(studioAfterClick)}`);
+  }
+  observed.studioThroughTools = { focus: studioFocus.packet, contextLevel: studioContext.packet.level, studioBeforeClick, studioAfterClick };
+
   const summary = validateNativeWebMcpObservation(observed);
   const conversationSummary = validateConversationObservation(conversationObserved);
   const bridgeSummary = validateBrowserHostBridgeObservation(bridgeObserved);
@@ -831,6 +888,7 @@ try {
     advisorCommentClaim: true,
     advisorCommentHiddenWhenModelStopsAdvising: advisorHiddenAfterModeChange,
     modelExecutionNeedsGrantClaim: true,
+    studioFollowedThroughToolsClaim: true,
     handOverWhileWatchingClaim: true,
     doublingOnDisjointAreasClaim: true
   }, null, 2));

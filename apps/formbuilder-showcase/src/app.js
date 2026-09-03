@@ -1478,6 +1478,23 @@ function builderProposalsAllowed() {
   return false;
 }
 
+/** cowork_offer_action while the human points at the Studio: the same
+ *  proposal gate as createVisibleOffer(), then the Builder bridge's own inert
+ *  offer, shown in the one offer list until a real click. */
+function createVisibleStudioOffer(input) {
+  if (!session.workMode.model.canPropose) {
+    throw new CoworkProtocolError(
+      "SESSION_PAUSED",
+      "The model is not advising here, so it cannot propose an action"
+    );
+  }
+  if (!builderCowork) throw new CoworkProtocolError("STALE_FOCUS", "No FormBuilder field is focused");
+  const offer = builderCowork.offerFromAgent(input);
+  setStatus("Agent proposal added to the Studio. Only a real click on the offer can authorize it.");
+  render();
+  return offer;
+}
+
 function addDemoOffer() {
   if (builderFocus !== null) {
     if (!builderProposalsAllowed()) return;
@@ -1968,15 +1985,21 @@ function configureSpeech() {
 
 async function configureWebMcp() {
   try {
+    // Two canvases, one lens, one set of tools: the sample form answers while
+    // the human points there, the Studio answers while the human points there.
     coworkToolHandlers = {
       readFocus: () => {
-        if (!focusPacket) {
-          throw new CoworkProtocolError("STALE_FOCUS", "No FormBuilder field is focused");
-        }
-        return focusPacket;
+        if (focusPacket) return focusPacket;
+        const studioFocus = builderCowork?.readFocusPacket() ?? null;
+        if (studioFocus !== null) return studioFocus;
+        throw new CoworkProtocolError("STALE_FOCUS", "No FormBuilder field is focused");
       },
-      requestContext: requestRelatedContext,
-      offerAction: createVisibleOffer,
+      requestContext: (input) => {
+        if (focusPacket) return requestRelatedContext(input);
+        if (!builderCowork) throw new CoworkProtocolError("STALE_FOCUS", "No FormBuilder field is focused");
+        return builderCowork.requestContext(input);
+      },
+      offerAction: (input) => (focusPacket ? createVisibleOffer(input) : createVisibleStudioOffer(input)),
       readPresence: () =>
         createPresenceEvent({
           humanPresence: session.humanPresence,

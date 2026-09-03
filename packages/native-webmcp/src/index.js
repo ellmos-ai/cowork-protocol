@@ -103,7 +103,8 @@ export async function registerNativeCoworkTools({
               value: {
                 type: "string",
                 maxLength: 350,
-                description: "Proposed field value."
+                description:
+                  "Proposed field value. On the Studio canvas: the new field's label for form-add-field (optionally prefixed with a palette id, e.g. \"date: Preferred date\"), the new label for form-update-field, \"up\" or \"down\" for form-move-field."
               },
               summary: {
                 type: "string",

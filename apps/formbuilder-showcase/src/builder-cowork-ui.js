@@ -9,6 +9,8 @@ import { classificationDisplayName, classificationOf, createField, FIELD_TYPE_PA
 import { createBuilderModelSuggester } from "./builder-model-suggester.js";
 import { addFieldSummary, BUILDER_CANVAS_TARGET_ID, builderFieldTargetId, createBuilderCoworkBridge } from "./builder-cowork.js";
 import { classifyBuilderDirective } from "./builder-directive-classifier.js";
+import { buildContextExpansion, CoworkProtocolError } from "../../../packages/core/src/index.js";
+import { buildFormBuilderContextExpansion } from "../../../packages/formbuilder-connector/src/index.js";
 
 const SUGGESTABLE_FIELDS = [
   { paletteId: "text-short", label: "Email address" },
@@ -344,6 +346,103 @@ export function initBuilderCowork({
     }
   }
 
+  // --- The Studio through the page's WebMCP tools. The fixed sample form has
+  // answered cowork_read_focus / cowork_request_context / cowork_offer_action
+  // since day one; the Studio - the product surface - answered STALE_FOCUS to
+  // all three even while the panel's own lens was pointing at it, so an agent
+  // (or the extension reading through those tools) could follow the human on
+  // the sample form only. These three are the Studio's side of the same
+  // contract, on the same target ids the panel already shows. ---
+  function readFocusPacket() {
+    if (focusedFieldId === null) return null;
+    const pageVersion = controller.getPageVersion();
+    if (focusedFieldId === CANVAS_FOCUS) {
+      return bridge.focusFor({ pageVersion, fieldCount: controller.getElements().length });
+    }
+    const element = focusedElement();
+    if (element === null) return null;
+    return bridge.focusForField({ pageVersion, fieldId: element.id, label: element.label });
+  }
+
+  function requireFocusPacket() {
+    const focusPacket = readFocusPacket();
+    if (focusPacket === null) {
+      throw new CoworkProtocolError("STALE_FOCUS", "Point at the Studio canvas or one of its fields first");
+    }
+    return focusPacket;
+  }
+
+  function requestContext({ reason } = {}) {
+    const focusPacket = requireFocusPacket();
+    if (focusPacket.targetId === CANVAS_FOCUS) {
+      const elements = controller.getElements();
+      return buildContextExpansion({
+        focusPacket,
+        currentLevel: 2,
+        requestedLevel: 3,
+        reason,
+        relatedContext: JSON.stringify({
+          title: controller.getTitle(),
+          fieldCount: elements.length,
+          labels: elements.map((element) => element.label)
+        })
+      });
+    }
+    const element = focusedElement();
+    return buildFormBuilderContextExpansion({
+      focusPacket,
+      fieldId: element.id,
+      label: element.label,
+      controlKind: classificationDisplayName(classificationOf(element)),
+      required: element.required === true,
+      helpText: "",
+      options: element.options ?? [],
+      reason
+    });
+  }
+
+  /** An agent's cowork_offer_action aimed at the Studio. The tool carries one
+   *  string, `value`: for form-add-field the new field's label, optionally
+   *  prefixed with a palette id ("date: Preferred date"); for
+   *  form-update-field the new label; for form-move-field "up" or "down".
+   *  The offer is inert until a real click, exactly like the panel's own. */
+  function offerFromAgent({ capabilityId, targetId, value, summary }) {
+    const focusPacket = requireFocusPacket();
+    if (targetId !== focusPacket.targetId) {
+      throw new CoworkProtocolError("STALE_FOCUS", "Offer target is not the current focus");
+    }
+    if (!focusPacket.capabilityIds.includes(capabilityId)) {
+      throw new CoworkProtocolError("CAPABILITY_UNAVAILABLE", "Capability is not available for the focused target");
+    }
+    const text = typeof value === "string" ? value.trim() : "";
+    if (text === "") throw new CoworkProtocolError("INVALID_ARGUMENTS", "The offer needs a value");
+    let proposedArguments;
+    if (capabilityId === "form-add-field") {
+      const prefixed = /^([a-z-]+):\s*(.+)$/.exec(text);
+      const paletteId = prefixed && paletteIds.includes(prefixed[1]) ? prefixed[1] : "text-short";
+      const label = prefixed && paletteIds.includes(prefixed[1]) ? prefixed[2] : text;
+      proposedArguments = { field: createField(paletteId, { label }) };
+    } else if (capabilityId === "form-update-field") {
+      proposedArguments = { fieldId: focusedFieldId, patch: { label: text } };
+    } else if (capabilityId === "form-move-field") {
+      const direction = text.toLowerCase();
+      if (direction !== "up" && direction !== "down") {
+        throw new CoworkProtocolError("INVALID_ARGUMENTS", "form-move-field value must be up or down");
+      }
+      proposedArguments = { fieldId: focusedFieldId, direction };
+    } else {
+      throw new CoworkProtocolError("INVALID_ARGUMENTS", `${capabilityId} is not an offerable change`);
+    }
+    return bridge.proposeOffer({
+      capabilityId,
+      targetId,
+      proposedArguments,
+      summary,
+      pageVersion: controller.getPageVersion(),
+      now: new Date().toISOString()
+    });
+  }
+
   controller.onPageVersionChange(() => {
     // Renaming the form changes what the canvas focus is called, so re-read it.
     if (focusedFieldId === CANVAS_FOCUS) onFocusChange(readFocus());
@@ -353,6 +452,9 @@ export function initBuilderCowork({
   return {
     bridge,
     readFocus,
+    readFocusPacket,
+    requestContext,
+    offerFromAgent,
     clearFocus: () => setFocusedField(null),
     pendingOffers,
     describeOffer: describeBuilderOffer,
