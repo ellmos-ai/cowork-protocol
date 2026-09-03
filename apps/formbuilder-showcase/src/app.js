@@ -306,6 +306,12 @@ session = sessionAuthority.readState();
 
 function commitSession(kind, nextSession = session, options = {}) {
   if (companionReplicaSnapshot !== null) {
+    // The Companion owns the shared session, so this surface authors no delta.
+    // What it must not do is drop what already happened here: a human clicked
+    // an offer on this page and the field changed. Reflecting that locally
+    // keeps the receipt and its verdicts visible; the Companion's next delta
+    // still wins, because adoptSessionState() replaces this state wholesale.
+    session = nextSession;
     return {
       committed: false,
       revision: companionReplicaSnapshot.revision,

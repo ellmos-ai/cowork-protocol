@@ -78,3 +78,36 @@ test("the Pages workflow is manual-only and uses the documented action generatio
   assert.match(workflow, /actions\/upload-pages-artifact@v4/);
   assert.match(workflow, /actions\/deploy-pages@v4/);
 });
+
+// The allowlist above is hand-written, and a module missing from it only shows
+// up as a 404 on the deployed page. Resolve every static import in the artifact
+// instead of trusting the list: one new module reached from app.js and left out
+// takes the whole page down.
+test("every static import in the Pages artifact resolves inside the artifact", async () => {
+  const sourceRoot = path.resolve(import.meta.dirname, "../..");
+  const temporaryRoot = await mkdtemp(path.join(tmpdir(), "cowork-pages-graph-"));
+  const outputRoot = path.join(temporaryRoot, "dist");
+
+  try {
+    await buildPages({ sourceRoot, outputRoot });
+    const files = await listFiles(outputRoot);
+    const present = new Set(files);
+    const missing = [];
+    for (const file of files.filter((name) => /\.m?js$/.test(name))) {
+      const source = await readFile(path.join(outputRoot, file), "utf8");
+      for (const [, specifier] of source.matchAll(
+        /(?:^|\n)\s*(?:import|export)[^\n]*?from\s*["']([^"']+)["']/g
+      )) {
+        if (!specifier.startsWith(".")) continue;
+        const resolved = path
+          .relative(outputRoot, path.resolve(path.dirname(path.join(outputRoot, file)), specifier))
+          .replaceAll("\\", "/");
+        if (!present.has(resolved)) missing.push(`${file} -> ${specifier}`);
+      }
+    }
+
+    assert.deepEqual(missing, []);
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});

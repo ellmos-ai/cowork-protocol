@@ -331,8 +331,8 @@ try {
   );
   evidence.inertOffer = { valueBeforeClick: offered.value, offerValue: offered.offerValue };
 
-  // Whether that inert offer is reachable by a human click is a property of the
-  // connected page, not of the MCP route, so it is measured rather than assumed.
+  // The offer an agent made over MCP has to be authorizable by a real click on
+  // the page, with the Companion connected and owning the session.
   evidence.offerReachableByHuman = await evaluateValue(call, `(() => {
     const chip = document.querySelector(".offer-chip");
     if (!chip) return { reachable: false, reason: "no offer chip in the page" };
@@ -340,36 +340,52 @@ try {
     const rect = chip.getBoundingClientRect();
     const panel = document.querySelector(".cowork-panel");
     return {
-      reachable: style.display !== "none" && style.visibility !== "hidden" && rect.width > 0,
-      display: style.display,
+      reachable: style.display !== "none" && rect.width > 0,
       width: rect.width,
-      panelCollapsedByCompanion: Boolean(panel?.classList.contains("is-companion-connected"))
+      panelConnected: Boolean(panel?.classList.contains("is-companion-connected")),
+      note: document.querySelector(".companion-authorization-note")?.textContent ?? null
     };
   })()`);
-  if (evidence.offerReachableByHuman.reachable) {
-    await trustedClick(call, ".offer-chip");
-    evidence.afterHumanClick = await waitForValue(
-      call,
-      `(() => ({
-        value: document.querySelector("#full-name")?.value,
-        offers: document.querySelectorAll(".offer-chip").length
-      }))()`,
-      (state) => state.value === "Ada Lovelace"
-    );
-    assert(
-      evidence.afterHumanClick.value === "Ada Lovelace",
-      "The human click did not apply the offer the agent made over MCP"
-    );
-  } else {
-    // Reported, not hidden: an agent can offer over MCP, but with the Companion
-    // connected the page collapses its offer list and the Companion window has
-    // none, so today that offer has no surface to be clicked on.
-    evidence.knownGap =
-      "An MCP offer is inert and correct, but not clickable while the Companion " +
-      "is connected: the page hides its offer list and the Companion window " +
-      "does not render offers.";
-    console.warn(`KNOWN GAP: ${evidence.knownGap}`);
-  }
+  assert(
+    evidence.offerReachableByHuman.reachable &&
+      evidence.offerReachableByHuman.panelConnected,
+    `An MCP offer must stay clickable while the Companion is connected: ${JSON.stringify(evidence.offerReachableByHuman)}`
+  );
+
+  await trustedClick(call, ".offer-chip");
+  evidence.afterHumanClick = await waitForValue(
+    call,
+    `(() => ({
+      value: document.querySelector("#full-name")?.value,
+      offers: document.querySelectorAll(".offer-chip").length,
+      receipts: document.querySelectorAll("#receipt-list li").length,
+      receiptText: document.querySelector("#receipt-list li strong")?.textContent ?? null,
+      verdicts: [...document.querySelectorAll("#receipt-list .feedback-buttons button")]
+        .map((button) => button.textContent)
+    }))()`,
+    (state) => state.value === "Ada Lovelace" && state.receipts >= 1
+  );
+  assert(
+    evidence.afterHumanClick.receiptText?.startsWith("Verified"),
+    `The authorized MCP offer did not produce a verified receipt: ${JSON.stringify(evidence.afterHumanClick)}`
+  );
+  assert(
+    ["Good", "Adjust", "Different"].every(
+      (label) => evidence.afterHumanClick.verdicts.includes(label)
+    ),
+    `The receipt did not offer the three verdicts: ${JSON.stringify(evidence.afterHumanClick.verdicts)}`
+  );
+
+  // One verdict click, to prove the feedback path is live in replica mode too.
+  await trustedClick(
+    call,
+    "#receipt-list .feedback-buttons button"
+  );
+  evidence.afterFeedbackClick = await waitForValue(
+    call,
+    `document.querySelector("#receipt-list .feedback-recorded")?.textContent ?? null`,
+    (value) => typeof value === "string" && value.length > 0
+  );
 
   const uiState = await (await fetch(`${companionEndpoint}/ui/state`)).json();
   evidence.cockpitAgentLine = uiState.agent;

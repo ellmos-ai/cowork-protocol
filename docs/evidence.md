@@ -633,15 +633,22 @@ carries.
 - `npm run smoke:surface` and `npm run smoke:companion-cockpit`: exit 0 after the host and page changes; `check:secrets` PASS, `check:architecture` exit 0
 - failure paths are asserted, not assumed: no linked page, a page that never answers within 15 seconds, a page that refuses the call, an unknown tool, and a website trying the local agent route each produce the expected code
 
-**A gap the smoke found and reports rather than hides.** An offer made over MCP
-is created correctly and stays inert, but while the Companion is connected it
-currently has no surface a human can click: the connected page collapses its
-own offer list (`.cowork-panel.is-companion-connected` hides everything but the
-topline), and the Companion window renders no offers. Measured in the smoke as
-`offerReachableByHuman: { reachable: false, display: "grid", width: 0,
-panelCollapsedByCompanion: true }`. The smoke therefore proves the offer up to
-its inert state and records the gap; it does not claim a completed human click
-in that state.
+**The click gap this work opened, and closed.** While the Companion was
+connected, the page collapsed its whole panel, so an offer made over MCP was
+correct and inert but had no surface a human could click. Two causes, both
+fixed: `.cowork-panel.is-companion-connected` now keeps the offer list and the
+verified receipts (`.authorize-here`) with a line saying why they stayed -
+"Session lives in the Desktop Companion - proposals are still authorized here";
+and `commitSession()` dropped the transition in replica mode, which discarded
+the receipt for a click that had already happened on the page. It now reflects
+that locally while still authoring no delta - the Companion's next delta
+replaces the state wholesale, so authority is unchanged.
+
+The smoke proves the whole chain in one run: `cowork_offer_action` over MCP,
+the offer visible and 305 px wide with the Companion connected, a trusted click
+that sets the field to `Ada Lovelace`, exactly one receipt reading `Verified:`
+with the three verdicts Good/Adjust/Different, and a trusted verdict click
+recorded as `Good`.
 
 **Provenance, for honesty:** the `coworkToolDefinitions()` export in
 `packages/native-webmcp/src/index.js` was written for this work but landed in
