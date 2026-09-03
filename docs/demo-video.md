@@ -8,10 +8,11 @@ show only behavior that is verified in the release candidate used for the video.
 WebMCP gives an agent an action layer; Cowork Protocol adds the attention,
 authority and presence contract that turns those actions into collaboration.
 
-> **This script records the submitted video, not the current UI.** The panel it
-> shows carries the `Point / Offer / Click / Verify` rhythm bar and the
-> `Action rights` selector, both replaced in 0.2 by the three-step status bar
-> `Present / Working on / Role` and a derived click right - see
+> **This script records the submitted video, not the current UI.** The video
+> shows the surface as it stood on 2 September 2026. Its panel carries the
+> `Point / Offer / Click / Verify` rhythm bar and the `Action rights` selector;
+> since v0.2.1 the bar reads `Present · Working on · Role` and the click right
+> is derived from those answers instead of being set - see
 > [work-modes.md](./work-modes.md). The script is left as filmed so it keeps
 > describing the video that exists; a re-shoot would update these two cells.
 
