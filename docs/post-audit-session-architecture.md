@@ -366,7 +366,7 @@ collaboration contract to the Cowork reference surface.
 | Versioned Session Authority, surface/model leases and Handoff Capsule | Implemented and unit-tested |
 | FormBuilder `protocol-and-ui` plus Document PiP | Implemented and Chrome-tested |
 | Loopback Companion Link, exact-revision handoff and token-free visibility/return deltas | Implemented and Chrome-tested |
-| Extension Side Panel, native-first bridge and bounded no-WebMCP fallback | Both branches Chrome-tested |
+| Extension Side Panel, native-first bridge, self-registered Cowork tools and bounded no-WebMCP fallback | All three branches Chrome-tested |
 | Persistent Desktop/tray surface, Context Manager and serialized Model Gateway | Implemented; deterministic model journey Chrome-tested |
 | Bounded DOM/accessibility/visual fallback for non-cooperating pages | Implemented in the optional extension; one-shot crop Chrome-tested |
 | Best-effort foreign-provider-chat transfer | Lower-priority future work; explicit protocol state can be shared, private chat memory cannot |

@@ -393,4 +393,10 @@ Text alternative: on a page without WebMCP, the human explicitly enables the ext
 - Diagram source: this Mermaid block; keep it beside any later SVG export.
 - Scope: logical components, not deployment topology.
 - Relationships are designed contracts, not reverse-engineered claims. They must be reconciled with exported package APIs after each MVP milestone.
-- Last reconciled with exported local APIs: 2026-08-30.
+- Last reconciled with exported local APIs: 2026-08-30. Two later changes are
+  not yet drawn into these component views: the work-mode matrix that replaced
+  the action-rights setting (`resolveWorkMode()` in `packages/core`, v0.2.1),
+  and the extension route in which the extension registers four Cowork tools
+  itself on a page that has none (`bridge-webmcp`). Both are described in
+  [work-modes.md](work-modes.md) and
+  [apps/browser-companion/README.md](../apps/browser-companion/README.md).
