@@ -1,6 +1,6 @@
 # Static web release
 
-The public site is a deliberately small allowlisted artifact. It contains the FormBuilder showcase, the ten runtime protocol packages it imports (core, conversation, model-transport, formbuilder-connector, native-webmcp, integration-contract, reference-ui, session-authority, companion-link and context-manager), the license and a root redirect. It excludes tests, repository documentation, Devpost drafts and internal planning paths.
+The public site is a deliberately small allowlisted artifact. It contains the FormBuilder showcase, the ten runtime protocol packages it imports (core, conversation, model-transport, formbuilder-connector, native-webmcp, integration-contract, reference-ui, session-authority, companion-link and context-manager), the license, the FormBuilder attribution notice and a root redirect. It excludes tests, repository documentation, Devpost drafts and internal planning paths.
 
 ## Build and preview
 
