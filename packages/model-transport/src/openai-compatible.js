@@ -182,10 +182,18 @@ function createOpenAiCompatibleSender({
       };
     } catch (error) {
       if (error instanceof ModelGatewayError) throw error;
-      // Nothing of the provider's own words travels on: only our own sentence.
+      // A model server that is down and one that is slow need different things
+      // from the human, so they are different answers. Nothing of the
+      // provider's own words travels on: only our own sentence.
+      if (controller.signal.aborted) {
+        throw new ModelGatewayError(
+          "MODEL_GATEWAY_TIMED_OUT",
+          `The model did not answer within ${boundedTimeout} ms. A local model that still has to load can take that long - try the turn again.`
+        );
+      }
       throw new ModelGatewayError(
-        "MODEL_GATEWAY_UNREACHABLE",
-        `The preferred model gateway did not answer within ${boundedTimeout} ms.`
+        "MODEL_ENDPOINT_UNREACHABLE",
+        "No answer from the configured model endpoint. Check that the model server is running and that COWORK_MODEL_ENDPOINT points at it."
       );
     } finally {
       clearTimeout(timer);

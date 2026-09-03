@@ -276,3 +276,33 @@ test("a fenced JSON reply is accepted and prose is refused with its own code", a
   });
   await assert.rejects(() => offSchema(turn), (error) => error.code === "MODEL_REPLY_REJECTED");
 });
+
+test("a model server that is down and one that is slow are different answers", async () => {
+  const refused = createOpenAiCompatibleTurnSender({
+    endpoint: "https://models.example.test/v1/chat/completions",
+    model: "preferred-model",
+    fetchImpl: async () => {
+      throw new TypeError("fetch failed");
+    }
+  });
+  await assert.rejects(
+    () => refused(turn),
+    (error) =>
+      error.code === "MODEL_ENDPOINT_UNREACHABLE" &&
+      /COWORK_MODEL_ENDPOINT/.test(error.message)
+  );
+
+  const slow = createOpenAiCompatibleTurnSender({
+    endpoint: "https://models.example.test/v1/chat/completions",
+    model: "preferred-model",
+    timeoutMs: 100,
+    fetchImpl: (_url, options) =>
+      new Promise((_resolve, reject) => {
+        options.signal.addEventListener("abort", () => reject(options.signal.reason));
+      })
+  });
+  await assert.rejects(
+    () => slow(turn),
+    (error) => error.code === "MODEL_GATEWAY_TIMED_OUT" && /load/.test(error.message)
+  );
+});
