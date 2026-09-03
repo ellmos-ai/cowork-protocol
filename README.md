@@ -6,7 +6,7 @@ Cowork Protocol is a small collaboration contract for people and web agents. It 
 
 > Native when available. Bridged when necessary.
 
-**[Try the live showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/)** · **[Watch the demo video](https://youtu.be/9CJehV7Bugk)** · [Three in one: protocol, surface, hosts](docs/hosts.md) · [Architecture](docs/architecture.md) · [Work modes](docs/work-modes.md) · [Panel tour](docs/panel-tour.md) · [Evidence ledger](docs/evidence.md) · [Pre-existing and new work](PREEXISTING-AND-NEW.md)
+**[Try the live showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/)** · **[Watch the demo video](https://youtu.be/9CJehV7Bugk)** · [Three in one: protocol, surface, hosts](docs/hosts.md) · [Architecture](docs/architecture.md) · [Work modes](docs/work-modes.md) · [Panel tour](docs/panel-tour.md) · [How to use it](docs/panel-tour.md#walkthrough-one-session-start-to-finish) · [Evidence ledger](docs/evidence.md) · [Pre-existing and new work](PREEXISTING-AND-NEW.md)
 
 **Install it with your AI assistant:** hand [docs/install-with-your-assistant.md](docs/install-with-your-assistant.md) to Claude Code, Codex CLI or a comparable agent and say "install this for me". [`llms.txt`](llms.txt) is the machine-readable index.
 

@@ -6,7 +6,7 @@ screenshots come from the live showcase
 captured in Chrome 152 with `--enable-features=WebMCP,WebMCPTesting` at a
 1440×1100 viewport. `node design/panel-tour/capture.mjs` regenerates all of
 them, measures the marked regions in the browser and redraws the overlay, so
-the boxes below cannot drift away from what they point at.
+the boxes cannot drift away from what they point at.
 
 ![The embedded Cowork panel with ten numbered regions marked](../design/panel-tour/panel-annotated.png)
 
@@ -17,7 +17,90 @@ per canvas. Nine WebMCP tools carry it to a model that speaks the protocol:
 `cowork_read_presence`, `cowork_offer_action`, `cowork_execute_solo`,
 `cowork_read_feedback`, `cowork_read_turn` and `cowork_reply_turn`.
 
-## 1 · Surface header
+## Walkthrough: one session, start to finish
+
+Ten steps on the live page, no install and no account. Open the showcase in
+Chrome or Edge 150+ with the WebMCP flags on, or start the browser with
+`--enable-features=WebMCP,WebMCPTesting`. Demo mode is on by default: a
+disclosed scripted helper, so the whole walkthrough works before you connect
+anything of your own.
+
+1. **Arrive.** FormBuilder Studio is the first thing on the page with the
+   Cowork panel beside it, and the fixed sample form sits below the workspace.
+   *You see* the panel resting at *Sparring · you execute* — you hold the click
+   right, the model advises.
+2. **Add two fields.** Pick a field type and press **Add field** twice.
+   *You see* two rows on the canvas and no Cowork controls anywhere near them:
+   the Studio has none of its own.
+3. **Point at the first row.** *You see* the panel's attention lens change to
+   `Pointing at: <the field's label> (Studio canvas)` — the panel followed your pointer to
+   one field, not to the page.
+4. **Say what to do.** Type `make it required` into the conversation box and
+   press **Send bounded turn**. *You see* the pointed-at row become required
+   at once, with no offer chip and no second click — the words were the click —
+   and the newest receipt asking for a verdict. Press **Good**.
+5. **Ask for a field.** With the same row pointed at, press **Model suggests a
+   field**. *You see* a chip marked *Studio canvas* in the offer list while the
+   canvas stays exactly as it was; clicking the chip adds one field and leaves
+   one *Verified* receipt.
+
+   ![The panel with a model proposal waiting to be authorized](../design/panel-tour/panel-offer.png)
+
+6. **Hand the work over.** Type `Draft good follow-up questions` into **Job to
+   hand over** and press **I'm briefly away**. *You see* the model draft six
+   fields under one grant with no per-field click. **Hand over, I'll watch**
+   does the same thing at a different pace — one draft per click, with you
+   present and advising, which is the state below.
+
+   ![The panel after handing the job to the model](../design/panel-tour/panel-handover.png)
+
+   The badge now reads *Sparring · model executes*, the figures say *You are
+   advising* and *Model is executing*, and the status line names the grant it
+   runs under: 1 of 6 drafts used.
+7. **Come back.** Press **I'm back**. *You see* the status line report
+   *6 fields added*, exactly those six rows highlighted, and the newest receipt
+   waiting for a verdict. Press **Good**.
+8. **Empty the model seat.** Switch **Demo mode** off under *Showcase add-on*.
+   *You see* the model figure go grey and the mode change: an empty seat means
+   no model is here, and nothing is proposed. Switch it back on, or connect
+   your own OpenAI-compatible endpoint.
+9. **Check the browser.** Open **How to enable WebMCP in this browser**.
+   *You see* your own browser named, with both routes to switch the experiment
+   on — the flags page and the command line.
+10. **Prove it from the agent side.** On the sample form below the workspace,
+    focus *Full name*, then call `document.modelContext.getTools()`. *You see*
+    the nine `cowork_*` tools; `cowork_read_focus` returns the bounded packet,
+    `cowork_offer_action` leaves the field unchanged until you click the visible
+    offer, and `cowork_read_changes` and `cowork_read_feedback` return only the
+    latest event. A turn read through `cowork_read_turn` must be answered
+    through `cowork_reply_turn` with its exact id, and that reply's offer stays
+    inert until clicked too.
+
+### Which mode you were in, at each step
+
+Steps 1 to 5 ran in **Sparring · you execute**. Step 6 changed it, and *which*
+mode you land in depends only on where you are: **I'm briefly away** leaves the
+model **working alone**, while **Hand over, I'll watch** keeps you present and
+advising, which is **Sparring · model executes** — the state in the screenshot
+above. Step 7 returns you to Sparring · you execute, and step 8 puts the model
+**away**, leaving **You work alone**.
+
+None of these is a setting of its own. Each partner answers *present?*,
+*working on what?* and *executing or advising?*; the mode and the click right
+follow from the six answers. That is why stepping away changes the pace of the
+work but never the model's right to act — the right comes from the grant.
+
+[![The work-mode matrix: who is present, on what and in which role, and who holds the click right in each combination](../design/work-modes.png)](work-modes.md)
+
+The full matrix, including why two partners are never offered doubling on the
+same area, is in [work-modes.md](work-modes.md).
+
+## The ten regions in detail
+
+The ten numbered markers on the image above, in the order they appear down the
+panel: what each region is, what a click does, and what the model gets to see.
+
+### 1 · Surface header
 
 The Cowork lockup, the surface the session is currently on (`Embedded · S1`,
 where the number is the session revision every surface agrees on), the resolved
@@ -34,7 +117,7 @@ work mode, and two buttons that move the panel without moving the session.
 *The model sees:* nothing extra. Moving the panel changes no protocol state,
 which is the point of the revision counter sitting here.
 
-## 2 · Present · Working on · Role
+### 2 · Present · Working on · Role
 
 The three questions the whole protocol is built on, one per dot. Hovering each
 label shows the question it answers: *Who is here right now*, *Which page, task
@@ -44,7 +127,7 @@ the answers are set by the two figures below it and by the Role selector.
 *The model sees:* `cowork_read_presence` returns the same three values for both
 partners. Full matrix in [work-modes.md](work-modes.md).
 
-## 3 · The two figures
+### 3 · The two figures
 
 You on the left, the model on the right, and between them the mode both answers
 add up to. Each figure is a button.
@@ -61,7 +144,7 @@ add up to. Each figure is a button.
 *The model sees:* its own and your availability, area and role, through
 `cowork_read_presence`.
 
-## 4 · WebMCP help
+### 4 · WebMCP help
 
 A collapsible section that names the browser you are in and tells you how to
 switch WebMCP on: the flags page, or the command line with
@@ -72,7 +155,7 @@ tests launch Chrome with. The badge reads **Native WebMCP** once
 *The model sees:* nothing. Without WebMCP the page still works; only
 in-browser agent discovery is missing.
 
-## 5 · Model seat and the demo switch
+### 5 · Model seat and the demo switch
 
 Which model answers, and where it comes from. The slate box is marked
 **Showcase add-on — not part of Cowork Protocol or FormBuilder**, because it is
@@ -88,7 +171,7 @@ scaffolding for the demo, not protocol.
 
 *The model sees:* nothing about this section — it decides who the model is.
 
-## 6 · Attention lens
+### 6 · Attention lens
 
 What the model is allowed to look at, and what it got. The large line names the
 current target (*Pointing at: Short answer (Studio canvas)*); the line under it
@@ -108,7 +191,7 @@ names the area; the metric on the right counts what was actually sent.
 extra level only on request through `cowork_request_context`, and the causal
 change list through `cowork_read_changes`. Never the screen.
 
-## 7 · Role and offers
+### 7 · Role and offers
 
 The role half of question three, plus everything the model has proposed.
 
@@ -125,7 +208,7 @@ The role half of question three, plus everything the model has proposed.
 *The model sees:* `cowork_offer_action` to propose. It cannot click its own
 offer; only a trusted human click applies one.
 
-## 8 · Conversation
+### 8 · Conversation
 
 One bounded turn at a time, typed or spoken. The badge names the transport that
 will answer — the local demo helper, your connected model, or the companion.
@@ -142,7 +225,7 @@ will answer — the local demo helper, your connected model, or the companion.
 *The model sees:* the pending turn through `cowork_read_turn` and answers
 through `cowork_reply_turn`.
 
-## 9 · Verified receipts
+### 9 · Verified receipts
 
 What actually changed, in order, each line beginning with **Verified**. The
 counter on the right is the total.
@@ -155,7 +238,7 @@ counter on the right is the total.
 *The model sees:* only the latest feedback event, through
 `cowork_read_feedback`.
 
-## 10 · Handoff
+### 10 · Handoff
 
 Handing work over, and taking it back.
 
@@ -175,24 +258,6 @@ Handing work over, and taking it back.
 
 *The model sees:* `cowork_execute_solo`, and only inside a current grant with a
 goal, a budget and an expiry.
-
-## An offer waiting
-
-![The panel with a model proposal waiting to be authorized](../design/panel-tour/panel-offer.png)
-
-Pointing at a Studio field and pressing **Model suggests a field** puts one
-proposal in the offer list — it names the field it would add, the canvas it
-belongs to, and that it is waiting to be authorized — and the canvas stays
-untouched until a real click applies it.
-
-## After handing over
-
-![The panel after handing the job to the model](../design/panel-tour/panel-handover.png)
-
-**Hand over, I'll watch** swaps the roles: the badge reads *Sparring · model
-executes*, the figures now say *You are advising* and *Model is executing*, the
-first verified receipt has appeared, and the status line reports the grant it
-runs under: 1 of 6 drafts used.
 
 ## The same session in the browser extension
 
