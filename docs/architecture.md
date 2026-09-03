@@ -43,6 +43,7 @@ flowchart TB
   CONTEXT["Context Manager\ncompact summary and bounded recent turns"]
   GATEWAY["Model Gateway\none serialized inference queue"]
   CORE["Protocol Core\ncausal events, budgets, rights, leases"]
+  MODE["Work modes\npresent, area and role per partner"]
   NATIVE["Native WebMCP Connector"]
   WEBBRIDGE["WebMCP Bridge"]
   LEGACY["Legacy DOM/A11y/Visual-request Bridge"]
@@ -57,6 +58,7 @@ flowchart TB
   GATEWAY <-->|"exclusive Cowork model seat"| AGENT
   SURFACES -.->|"provider-owned private chat context"| AGENT
   SESSION <-->|"presence, modes, rights and causal journal"| CORE
+  CORE <-->|"resolveWorkMode: who executes, who advises"| MODE
   SURFACES -->|"authorization and FeedbackEvent"| CORE
   CORE -->|"bounded focus, latest feedback, or offer"| AGENT
   AGENT -->|"context request or proposal"| CORE
@@ -68,6 +70,7 @@ flowchart TB
   CORE <--> |"best-effort signals"| LEGACY
   LEGACYPAGE <-->|"pointer focus and trusted visible click"| EXTENSION
   EXTENSION <-->|"bounded host callbacks"| LEGACY
+  EXTENSION -->|"registers four Cowork tools over WebMCP"| BROWSER
   NATIVE <--> |"stable fields and verified actions"| FORM
   FORM -->|"observed ChangeEvent with cause refs"| CORE
 ```
@@ -78,9 +81,13 @@ stores only a compact summary and recent bounded turns, and one Model Gateway
 serializes inference under an exclusive renewable model-seat lease. A foreign
 provider chat may use the Protocol Core while retaining its private context.
 The core enforces modes, rights and causal events, while connectors translate
-application or browser data into the same contract. A WebMCP-capable browser
-mediates discovery and invocation between the web agent and the native
-connector. Replies may describe offers, but only a compatible human-facing
+application or browser data into the same contract. Those modes are not a
+separate setting: three answers per partner, present, working on what and in
+which role, resolve to the work mode and with it to the right to click. A
+WebMCP-capable browser mediates discovery and invocation between the web agent
+and the native connector; on a page that ships no tools of its own, the
+extension registers four Cowork tools over WebMCP so the same agents can still
+read focus and propose. Replies may describe offers, but only a compatible human-facing
 surface can render them and only an explicit human authorization can approve
 them. FormBuilder reports value deltas as digest-based change events with
 explicit cause references. Only its native connector can promise stable
@@ -402,11 +409,11 @@ Text alternative: on a page without WebMCP, the human explicitly enables the ext
 - Diagram source: this Mermaid block; keep it beside any later SVG export.
 - Scope: logical components, not deployment topology.
 - Relationships are designed contracts, not reverse-engineered claims. They must be reconciled with exported package APIs after each MVP milestone.
-- Last reconciled with exported local APIs: 2026-08-30. Two later changes now
-  appear in the overview image above but are still absent from the Mermaid
-  views below: the work-mode matrix that replaced the action-rights setting
-  (`resolveWorkMode()` in `packages/core`, v0.2.1), and the extension route in
-  which the extension registers four Cowork tools itself on a page that has
-  none (`bridge-webmcp`). Both are described in
-  [work-modes.md](work-modes.md) and
-  [apps/browser-companion/README.md](../apps/browser-companion/README.md).
+- Last reconciled with exported local APIs: 2026-08-30. The overview image and
+  the component view above now both carry the two later changes: the work-mode
+  matrix that replaced the action-rights setting (`resolveWorkMode()` in
+  `packages/core`, v0.2.1), and the extension route in which the extension
+  registers four Cowork tools itself on a page that has none
+  (`bridge-webmcp`). They are described in [work-modes.md](work-modes.md) and
+  [apps/browser-companion/README.md](../apps/browser-companion/README.md). The
+  sequence diagrams below predate both and show neither.
