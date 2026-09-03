@@ -7,6 +7,7 @@ const EXTENSION_FILES = [
   "apps/browser-companion/native-page-bridge.js",
   "apps/browser-companion/manifest.json",
   "apps/browser-companion/icons/icon-16.png",
+  "apps/browser-companion/icons/icon-32.png",
   "apps/browser-companion/icons/icon-48.png",
   "apps/browser-companion/icons/icon-128.png",
   "apps/browser-companion/service-worker.js",

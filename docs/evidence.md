@@ -739,7 +739,8 @@ Gate numbers for that change:
   `smoke:contrast`, `smoke:companion`, `smoke:companion-cockpit`,
   `smoke:companion-native`, `smoke:companion-webmcp` and `smoke:companion-mcp`
   all exit 0 on Chrome/152.0.7977.77 and .65; `check:secrets` PASS;
-  `check:architecture` exit 0; `build:pages` 36 files, `build:companion` 21
+  `check:architecture` exit 0; `build:pages` 36 files, `build:companion` 22
+  (`icon-32.png` joined the artifact)
 - `CURRENT_INTERACTIVE_CONTROL_COUNT` re-measured **35 → 34** on the canvas the
   workspace opens on: five section summaries join the walk, the Role section's
   detail disclosure trades its demo button for a summary of its own, and the
