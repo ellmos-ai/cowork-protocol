@@ -375,6 +375,11 @@ try {
   // AFK-only lease could not do this at all. Presence decides the pace here,
   // never the right to act. ---
   const fieldsBeforeDelegation = await evaluateValue(call, `document.querySelectorAll(".builder-field-row").length`);
+  // The Handoff section starts folded and opens itself once a handoff, a
+  // grant or an absence is running - which the buttons inside it are what
+  // starts. A trusted click needs the control visible, so the smoke opens
+  // the section first, exactly as a reader reaches for it.
+  await evaluateValue(call, `document.querySelector("#fold-handoff").open = true`);
   await evaluateValue(call, `document.querySelector("#lease-goal").value = "Draft good follow-up questions"`);
   await dispatchTrustedClick(call, "#away-short");
   await waitForExpression(

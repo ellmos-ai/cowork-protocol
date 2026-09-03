@@ -321,6 +321,9 @@ try {
   const offerText = await evaluate(call, `document.querySelector("#offer-list .offer-chip").textContent.trim()`);
 
   // (c) After handing the job over while watching: the model holds the click right.
+  // The Handoff section opens itself once a grant runs; starting one means
+  // opening it first, which is what a reader does too.
+  await evaluate(call, `document.querySelector("#fold-handoff").open = true`);
   await hover(call, ".builder-field-row");
   await click(call, "#hand-over");
   await waitFor(

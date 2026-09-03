@@ -252,10 +252,11 @@
       </details>
 
       <section class="panel-section model-seat" aria-labelledby="model-seat-heading">
-        <div class="section-row">
+        <details class="section-fold" id="fold-model-seat" open>
+        <summary class="section-row">
           <h3 id="model-seat-heading"><span class="section-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.6 8.4A1.6 1.6 0 0 1 8.2 6.8h7.6a1.6 1.6 0 0 1 1.6 1.6v7a1.6 1.6 0 0 1-1.6 1.6H8.2a1.6 1.6 0 0 1-1.6-1.6Z"/><path d="M12 6.8V4.4"/><path d="M9.9 11.2v1.4"/><path d="M14.1 11.2v1.4"/><path d="M4.2 11.6v2.6"/><path d="M19.8 11.6v2.6"/></svg></span>Model seat</h3>
           <span class="badge" id="model-seat-badge" data-tone="demo">Demo helper (scripted)</span>
-        </div>
+        </summary>
         <div class="showcase-addon">
           <p class="showcase-addon-kicker">Showcase add-on · not part of Cowork Protocol or FormBuilder</p>
           <label class="check-row">
@@ -287,13 +288,15 @@
           </div>
           <p class="microcopy">Local Ollama or LM Studio work from a locally served copy (npm start, then http://127.0.0.1:4173); on an HTTPS page the endpoint must be https:// too. Alternatives: the Desktop Companion (button above) carries the model seat for the whole session, a same-origin model host (npm run start:model) keeps the key server-side, and a WebMCP-capable browser agent can answer turns through cowork_read_turn / cowork_reply_turn.</p>
         </details>
+        </details>
       </section>
 
       <section class="panel-section focus-readout" aria-labelledby="focus-heading">
-        <div class="section-row">
+        <details class="section-fold" id="fold-attention" open>
+        <summary class="section-row">
           <h3 id="focus-heading"><span class="section-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.9 12S6.5 6.3 12 6.3 21.1 12 21.1 12 17.5 17.7 12 17.7 2.9 12 2.9 12Z"/><path d="M12 9.6a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Z"/></svg></span>Attention lens</h3>
           <span class="metric" id="context-label">No context sent</span>
-        </div>
+        </summary>
         <p class="focus-target" id="focus-label">Point to or select a form field</p>
         <p class="microcopy" id="area-label"></p>
         <div class="field-grid">
@@ -313,16 +316,18 @@
         </div>
         <button class="quiet-button" id="expand-context" type="button">Preview one related context level</button>
         <p class="microcopy advisor-comment" id="advisor-comment" role="status" hidden></p>
+        </details>
       </section>
 
       <section class="panel-section authorize-here" aria-labelledby="work-mode-heading">
-        <div class="section-row">
+        <details class="section-fold" id="fold-role" open>
+        <summary class="section-row">
           <h3 id="work-mode-heading"><span class="section-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7.4 8.4h11.2"/><path d="M15.4 5.2 18.6 8.4l-3.2 3.2"/><path d="M16.6 15.6H5.4"/><path d="M8.6 12.4 5.4 15.6l3.2 3.2"/></svg></span><span id="work-mode-heading-text"></span></h3>
-          <label class="compact-select">
-            <span class="visually-hidden" id="work-mode-select-label"></span>
-            <select id="work-mode"></select>
-          </label>
-        </div>
+        </summary>
+        <label class="compact-select">
+          <span class="visually-hidden" id="work-mode-select-label"></span>
+          <select id="work-mode"></select>
+        </label>
         <p class="microcopy" id="authority-label"></p>
         <h4 class="offer-list-heading" id="offer-list-heading">Proposals — your click authorizes</h4>
         <div id="offer-list" class="offer-list" aria-labelledby="offer-list-heading" aria-live="polite">
@@ -337,6 +342,7 @@
             <span class="badge" id="role-badge"></span>
           </div>
           <button class="demo-button" id="demo-offer" type="button">Create local demo offer</button>
+        </details>
         </details>
       </section>
 
@@ -362,19 +368,22 @@
       </section>
 
       <section class="receipt-panel authorize-here" aria-labelledby="receipt-heading">
-        <div class="section-row">
+        <details class="section-fold" id="fold-receipts">
+        <summary class="section-row">
           <h3 id="receipt-heading"><span class="section-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4.4a7.6 7.6 0 1 1 0 15.2 7.6 7.6 0 0 1 0-15.2Z"/><path d="M8.5 12.1l2.5 2.5 4.5-4.9"/></svg></span>Verified receipts</h3>
           <span class="metric" id="receipt-count">0</span>
-        </div>
+        </summary>
         <ol id="receipt-list" class="receipt-list" aria-live="polite"></ol>
         <p class="microcopy">Evaluate a result with one click. Optional direction is capped at 350 characters, and WebMCP exposes only the latest feedback event.</p>
+        </details>
       </section>
 
       <section class="panel-section" aria-labelledby="presence-heading">
-        <div class="section-row">
+        <details class="section-fold" id="fold-handoff">
+        <summary class="section-row">
           <h3 id="presence-heading"><span class="section-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.2 5.2v13.6"/><path d="M17.8 5.2v13.6"/><path d="M9.2 12h6.4"/><path d="M12.9 9.2 15.6 12l-2.7 2.8"/></svg></span>Handoff</h3>
-          <button class="text-button" id="toggle-agent" type="button">Pause agent</button>
-        </div>
+        </summary>
+        <button class="text-button" id="toggle-agent" type="button">Pause agent</button>
         <label>
           <span>Job to hand over</span>
           <input id="lease-goal" value="Complete only the focused field" maxlength="120">
@@ -386,6 +395,7 @@
           <button class="primary-small" id="return-human" type="button">I’m back</button>
         </div>
         <p class="microcopy" id="lease-microcopy">This field-scoped demo lease lasts two minutes, permits at most two attempts, and ends after a verified page change.</p>
+        </details>
       </section>
 
       <p class="system-status" id="system-status" role="status">Initializing local protocol…</p>

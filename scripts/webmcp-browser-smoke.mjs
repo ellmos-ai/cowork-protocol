@@ -659,6 +659,11 @@ try {
       .dispatchEvent(new PointerEvent("pointerenter", { bubbles: true }));
   })()`);
   await new Promise((resolve) => setTimeout(resolve, 50));
+  // The Handoff section starts folded and opens itself once a handoff, a
+  // grant or an absence is running - which the buttons inside it are what
+  // starts. A trusted click needs the control visible, so the smoke opens
+  // the section first, exactly as a reader reaches for it.
+  await evaluateValue(call, `document.querySelector("#fold-handoff").open = true`);
   await dispatchTrustedClick(call, 'document.querySelector("#away-short")', "Briefly away, granting a solo lease");
   await new Promise((resolve) => setTimeout(resolve, 50));
   const presenceExecution = await evaluateValue(

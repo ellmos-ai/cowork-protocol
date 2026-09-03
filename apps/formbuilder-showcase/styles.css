@@ -787,8 +787,17 @@ textarea { resize: vertical; }
 }
 .section-detail:not([open]) > :not(summary) { display: none; }
 .section-detail > summary::-webkit-details-marker { display: none; }
-/* One fold affordance for every disclosure in the panel, drawn rather than
-   asked of a marker that a flex summary does not render anyway. */
+
+/* A panel section is a native disclosure: its heading row is the summary, and
+   what it shows below is hidden when it is closed. Same mechanism as the
+   WebMCP help and the Role detail above - the panel has one way to fold. */
+/* The heading row is the summary, so the chevron is a third flex item in a
+   space-between row: the row switches to flow order and the chevron takes the
+   free space, leaving heading and badge where they always sat. */
+.section-fold > summary { justify-content: flex-start; cursor: pointer; }
+.section-fold:not([open]) > :not(summary) { display: none; }
+.section-fold > summary::-webkit-details-marker { display: none; }
+.section-fold > summary::after,
 .section-detail > summary::after,
 .webmcp-help > summary::after {
   content: "";
@@ -799,5 +808,6 @@ textarea { resize: vertical; }
   border-bottom: 1.6px solid currentColor;
   transform: translateY(-.1rem) rotate(45deg);
 }
+.section-fold[open] > summary::after,
 .section-detail[open] > summary::after,
 .webmcp-help[open] > summary::after { transform: translateY(.06rem) rotate(-135deg); }

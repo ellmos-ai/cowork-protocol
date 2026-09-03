@@ -120,6 +120,59 @@ $("#status-steps").replaceChildren(
     return item;
   })
 );
+
+// --- Folded sections -------------------------------------------------------
+// The panel answers six questions at once, and a reader arriving at it meets
+// all six. Each section is a native <details>: the ones that carry the live
+// state stay open, the two that only matter once something happened start
+// closed and open themselves when it does. What the reader folds by hand is
+// remembered; what the panel opens for them is help for this sitting, not a
+// preference, so it is never written back.
+const FOLD_STORAGE_KEY = "cowork-panel-folds";
+
+function readStoredFolds() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(FOLD_STORAGE_KEY) ?? "{}");
+    return stored !== null && typeof stored === "object" ? stored : {};
+  } catch {
+    // A corrupted or unreadable entry costs the memory, never the panel.
+    return {};
+  }
+}
+
+function rememberFold(fold) {
+  try {
+    window.localStorage.setItem(
+      FOLD_STORAGE_KEY,
+      JSON.stringify({ ...readStoredFolds(), [fold.id]: fold.open })
+    );
+  } catch {
+    // Storage can be denied; the fold still works for this sitting.
+  }
+}
+
+const storedFolds = readStoredFolds();
+for (const fold of coworkPanel.querySelectorAll(".section-fold")) {
+  if (typeof storedFolds[fold.id] === "boolean") fold.open = storedFolds[fold.id];
+  // Only a summary the reader actually pressed writes the state back - a
+  // toggle event alone cannot tell a hand from the panel's own hand.
+  fold.querySelector("summary").addEventListener("click", () => {
+    fold.dataset.pressed = "1";
+  });
+  fold.addEventListener("toggle", () => {
+    if (fold.dataset.pressed !== "1") return;
+    delete fold.dataset.pressed;
+    rememberFold(fold);
+  });
+}
+
+function revealFold(foldId) {
+  const fold = document.getElementById(foldId);
+  if (fold !== null && !fold.open) fold.open = true;
+}
+
+let renderedReceiptCount = 0;
+
 const [, AREA_STEP, ROLE_STEP] = STATUS_STEPS;
 $("#work-mode-heading-text").textContent = ROLE_STEP.label;
 $("#work-mode-select-label").textContent = ROLE_STEP.question;
@@ -1218,6 +1271,12 @@ function render() {
   modelSeatButton.setAttribute("aria-pressed", String(modelHere));
   renderOffers(view);
   renderReceipts();
+  // Handoff and Verified receipts start folded; they unfold the moment they
+  // have something to say, and stay where the reader leaves them afterwards.
+  if (session.lease !== null || builderGrant !== null || !humanHere) revealFold("fold-handoff");
+  const receiptCount = $("#receipt-list").childElementCount;
+  if (receiptCount > renderedReceiptCount) revealFold("fold-receipts");
+  renderedReceiptCount = receiptCount;
   // GAP-06: a silent advisory line, gated live on the current work mode (not
   // only at the moment the comment was created) so putting the model on
   // standby - or handing it the click right - hides it immediately, even for

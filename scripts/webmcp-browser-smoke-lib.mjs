@@ -18,12 +18,16 @@ function requireCondition(condition, message) {
 // sections, 38 once the WebMCP help became a collapsible section and <summary>
 // was counted as the keyboard control it is, 35 once the workspace switcher put
 // the two canvases behind one pair of tabs: the sample form's five controls
-// leave the default view (38 - 5) and the two tabs join it (+2). Measured on
-// the canvas the workspace opens on (see
-// apps/formbuilder-showcase/INTEGRATION.md and docs/evidence.md).
+// leave the default view (38 - 5) and the two tabs join it (+2), and 34 once
+// every panel section became a disclosure of its own: four more <summary>
+// controls join the walk (Model seat, Attention lens, Role, Verified receipts,
+// Handoff = +5), the Role section's detail disclosure trades its demo button
+// for its own summary (+-0), and the folded Handoff section takes its six
+// controls out of the default view (-6). Measured on the canvas the workspace
+// opens on (see apps/formbuilder-showcase/INTEGRATION.md and docs/evidence.md).
 // Exported so scripts/test/webmcp-browser-smoke.test.js does not hold its own
 // copy of this number.
-export const CURRENT_INTERACTIVE_CONTROL_COUNT = 35;
+export const CURRENT_INTERACTIVE_CONTROL_COUNT = 34;
 
 function isNonNegativeInteger(value) {
   return Number.isInteger(value) && value >= 0;
