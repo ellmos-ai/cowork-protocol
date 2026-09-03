@@ -5,12 +5,21 @@ precision bridge. It is disabled by default. When enabled, it consumes native
 Cowork/WebMCP first. Only when neither is available does it activate the
 bounded semantic/accessibility/visual fallback.
 
+On a page that carries no Cowork tools of its own, the extension registers
+`cowork_read_focus`, `cowork_request_context`, `cowork_offer_action` and
+`cowork_read_presence` through WebMCP and answers them from the bounded relay,
+so any WebMCP agent in the browser can read focus and propose on that page. The
+Side Panel calls this route `bridge-webmcp`. Registered tools never route back
+through the page's own WebMCP, and a proposal still changes nothing until a
+trusted click in the panel.
+
 The current artifact separates a headless content relay from a browser-owned
 Chrome/Edge Side Panel. The visual surface remains on the extension origin and
 outside the website; the browser acceptance rejects any injected Cowork UI
-root in the page. Two separate Chrome 152 acceptances cover both branches:
-native FormBuilder exposes nine Cowork tools with no fallback, while the
-no-WebMCP fixture activates the bounded fallback and trusted-click gate.
+root in the page. Three separate Chrome 152 acceptances cover the branches: native FormBuilder
+exposes nine Cowork tools with no fallback, the no-WebMCP fixture activates the
+bounded fallback and trusted-click gate, and `npm run smoke:companion-webmcp`
+proves the four tools the extension registers where a page has none.
 
 This does not prohibit a cooperating website from embedding the Cowork
 reference UI itself. Voluntary page embedding is a separate
@@ -117,6 +126,7 @@ $env:COWORK_COMPANION_BROWSER_PATH='C:\path\to\chrome-for-testing\chrome.exe'
 npm run smoke:companion
 npm run smoke:companion-cockpit
 npm run smoke:companion-native
+npm run smoke:companion-webmcp
 ```
 
 Chrome builds that do not load extensions in headless mode can run the same

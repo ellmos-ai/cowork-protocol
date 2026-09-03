@@ -30,7 +30,7 @@ npm dependencies, so no `npm install` is needed.
 3. Turn on **Developer mode** (top right).
 4. Choose **Load unpacked** and select the `dist-browser-companion` directory —
    the directory itself, not a file inside it.
-5. The card **Cowork Protocol Browser Companion 0.1.0** appears with no errors.
+5. The card **Cowork Protocol Browser Companion 0.3.0** appears with no errors.
    Pin it: click the puzzle-piece toolbar icon, then the pin next to the entry.
 6. Optional: check the shortcut under `chrome://extensions/shortcuts`. It ships
    as `Ctrl+Shift+Y` (`Command+Shift+Y` on macOS) and does the same as clicking
@@ -65,7 +65,7 @@ Extension:  apps/browser-companion (Manifest V3, Chrome/Edge, unpacked)
    click "Load unpacked", select that directory. Do this yourself only if you
    have browser control; otherwise give me the clicks and wait for me.
 5. Expected result: a card named "Cowork Protocol Browser Companion" version
-   0.1.0 with no error badge. Ask me to confirm before continuing.
+   0.3.0 with no error badge. Ask me to confirm before continuing.
 6. Verify with me: open any ordinary web page with a text field, click the
    extension's toolbar icon (or press Ctrl+Shift+Y). The icon should show an
    "ON" badge and a side panel titled "Dialogue Relay Cockpit" should open.
@@ -84,14 +84,19 @@ unclear, ask me rather than guessing.
 - Click the pinned toolbar icon, or press `Ctrl+Shift+Y`.
 - The toolbar icon shows an **ON** badge, and the Side Panel opens with the
   **Dialogue Relay Cockpit**: the connector route rail (Native / WebMCP /
-  Bridge), the "Who works now?" actor controls and the **Current focus** lens.
+  Bridge / Bridge + WebMCP), the "Who works now?" actor controls and the
+  **Current focus** lens.
 - The panel says in plain words what the current route means and where the model
   sits: it has no model seat of its own, so on WebMCP and Bridge pages nothing is
   proposed until a model client attaches, and voice and handoff need the Desktop
   Companion (`npm run start:companion-host`, then `127.0.0.1:47831/cowork/v1/ui`).
 - On [the FormBuilder showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/)
-  the rail resolves to **Native**; on a page without WebMCP it resolves to
-  **Bridge**, which is the fallback this extension exists for.
+  the rail resolves to **Native**. On a page that carries no Cowork tools the
+  extension registers `cowork_read_focus`, `cowork_request_context`,
+  `cowork_offer_action` and `cowork_read_presence` itself, and the rail reads
+  **Bridge + WebMCP**: any WebMCP agent in the browser can then read focus and
+  propose there, while the click stays in this panel. Where that registration
+  does not succeed, the rail falls back to plain **Bridge**.
 - Focus a text field and use the focus lens: you get the semantic target and
   bounded nearby text, and the context gauge widens that context one level per
   explicit request.
