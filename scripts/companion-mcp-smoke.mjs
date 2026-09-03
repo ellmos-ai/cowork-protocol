@@ -245,6 +245,9 @@ try {
     `document.querySelector("#open-companion")?.textContent ?? null`,
     (value) => value === "Connected"
   );
+  // The workspace opens on the Studio canvas, so the fixed sample form this
+  // proof reads is behind its tab: activate it with a real click first.
+  await trustedClick(call, "#workspace-tab-sample");
   // The agent reads what the human is looking at, so give it a focus to read.
   await trustedClick(call, "#full-name");
   evidence.focusedField = await waitForValue(

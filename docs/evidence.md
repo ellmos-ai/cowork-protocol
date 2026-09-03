@@ -656,6 +656,50 @@ commit `7061b45` ("fix(smoke): count `<summary>` in the zoom reflow check
 too"), swept in by another agent's wide `git add` in the shared clone. It was
 not reverted; it is the export the MCP server and its drift test depend on.
 
+## The workspace switcher, and the Studio lens it fixed
+
+A user reported on the live page that the panel followed the pointer only on
+the sample form, never in the Studio. Reproduced in Chrome for Testing
+152.0.7977.65 and traced to one line: the Studio's attention lens listened on
+`#builder-field-list` only. That list is **empty on a fresh page**, so until a
+row existed and the pointer happened to cross it, the entire left-hand canvas
+was invisible to the panel - while the sample form, populated from the first
+paint, answered immediately. The Fill tab was worse than silent: its fields
+carry `data-field-id` but no `.form-field` class, so pointing at one left the
+panel naming whichever Build row it was last stuck on.
+
+The lens now listens on the whole `.builder-studio` section and resolves three
+cases: any `[data-field-id]` (which covers Build rows and Fill fields alike),
+Studio chrome (title, palette, empty canvas, Export tab) as the canvas target
+named by the form's own title, and nothing at all when the panel's attention is
+switched off - the Studio was previously reporting a target with attention
+`off`, which the demo form never did. Chrome retargets on a click but not on a
+passing pointer, so the field a human is working on survives the trip to the
+panel that acts on it (GAP-02 directives read that focus).
+
+Measured before and after, same page, same browser:
+
+| Pointer at | Before | After |
+|---|---|---|
+| empty Studio canvas, no fields yet | `Point to or select a form field` | `Pointing at: Untitled form (Studio canvas)` |
+| Studio title input / palette | `Point to or select a form field` | `Pointing at: Untitled form (Studio canvas)` |
+| Fill tab field 2 | `Short answer` (the stale Build row) | `Long answer` (the field under the pointer) |
+| any Studio row, attention `off` | still reported a target | silent, highlight included |
+
+The two canvases now sit behind one `role="tablist"` at the top of the
+workspace - "Build your own form" (first) and "Fill the sample form" - so only
+one is on the page and the panel can never name a surface nobody can see. Both
+tabs stay in the Tab order (no roving `tabindex`), arrow keys move between
+them, and the choice is stored in `localStorage` behind try/catch.
+
+Gate numbers for that change:
+
+- `node --test`: 480 of 480 passed, 0 failed
+- all ten browser smokes plus `smoke:companion-mcp` exit 0 on Chrome/152.0.7977.65; `npm run proof` 10 of 10 passed; `check:secrets` PASS; `check:architecture` exit 0; `build:pages` 36 files, dist module graph 20 files all present, Studio panel first in the dist markup
+- `CURRENT_INTERACTIVE_CONTROL_COUNT` re-measured **38 → 35** on the canvas the workspace opens on: the sample form's five controls leave the default view and the two switcher tabs join it. At the 390 px viewport the walk reports 35 interactive, 35 reachable, 35 focus-visible, 35 unique in the Tab sequence
+- every smoke that reads sample-form fields now activates the "Fill the sample form" tab with a trusted click first; `smoke:contrast` switches back to the Studio tab for its Studio section, and the zoom census in `smoke:webmcp` deliberately still runs on the default canvas
+- the switcher's two tab buttons pass the pixel contrast audit unchanged (minimum contrast 4.57); `flex-wrap` on the tab row was required, because at 200 % zoom the two labels overflowed the column horizontally
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;

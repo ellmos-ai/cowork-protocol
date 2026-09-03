@@ -562,6 +562,9 @@ try {
     `document.activeElement?.classList.contains("skip-link") === true && document.activeElement.matches(":focus-visible")`
   ));
 
+  // The workspace opens on the Studio canvas, so the fixed sample form this
+  // proof reads is behind its tab: activate it with a real click first.
+  await dispatchTrustedClick(call, 'document.querySelector("#workspace-tab-sample")', "Sample form tab");
   await dispatchTrustedPointer(call, 'document.querySelector("#full-name")', "Full name field");
   states.push(await auditRenderedState(
     call,
@@ -640,8 +643,10 @@ try {
     `document.querySelector("#talk")?.classList.contains("is-listening") === true && document.querySelector("#talk")?.textContent.trim() === "Listening…"`
   ));
 
-  // The Studio canvas offers through the one panel now: add a field, point at
-  // it, bring the model back in, and ask the seat for a proposal.
+  // The Studio canvas offers through the one panel now: switch the workspace
+  // back to it, add a field, point at it, bring the model back in, and ask the
+  // seat for a proposal.
+  await dispatchTrustedClick(call, 'document.querySelector("#workspace-tab-studio")', "Studio canvas tab");
   await dispatchTrustedClick(call, 'document.querySelector("#builder-tab-build")', "FormBuilder Studio Build tab");
   await dispatchTrustedClick(call, 'document.querySelector("#builder-add-field")', "Add a Studio field");
   await dispatchTrustedClick(call, 'document.querySelector("#builder-field-list .form-field")', "Point at the Studio field");

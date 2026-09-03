@@ -26,7 +26,15 @@
   </header>
 
   <main class="workspace">
-    <section class="builder-studio form-surface" aria-labelledby="builder-title">
+    <div class="workspace-canvas">
+      <!-- Two canvases, one panel: only the chosen one is on the page, so the
+           panel can never report attention on a surface nobody can see. -->
+      <div class="workspace-tabs" role="tablist" aria-label="Choose a canvas to work on">
+        <button type="button" role="tab" class="workspace-tab" id="workspace-tab-studio" aria-controls="workspace-panel-studio" aria-selected="true">Build your own form</button>
+        <button type="button" role="tab" class="workspace-tab" id="workspace-tab-sample" aria-controls="workspace-panel-sample" aria-selected="false">Fill the sample form</button>
+      </div>
+
+    <section class="builder-studio form-surface" id="workspace-panel-studio" role="tabpanel" aria-labelledby="builder-title">
       <div class="section-heading">
         <div>
           <p class="formbuilder-eyebrow">FormBuilder Studio · Design your own form</p>
@@ -34,7 +42,7 @@
         </div>
         <span class="page-version">Canvas v<span id="builder-page-version">1</span></span>
       </div>
-      <p class="form-intro">Designing a form is the job here, and FormBuilder Studio does it on its own: build from the palette, fill it in, export it — no agent, no WebMCP, no browser extension. The panel beside it is Cowork Protocol’s embedded version: the protocol runs underneath, and this one panel is the example instrument built on it. Point at a field and the panel follows it; every suggestion still needs your real click.</p>
+      <p class="form-intro">Designing a form is the job here, and FormBuilder Studio does it on its own: build from the palette, fill it in, export it — no agent, no WebMCP, no browser extension. The panel beside it is Cowork Protocol’s embedded version: the protocol runs underneath, and this one panel is the example instrument built on it. Point anywhere on this canvas — a field, the title, the palette, the empty canvas — and the panel follows you; every suggestion still needs your real click. Prefer a form that is already built? Switch to <em>Fill the sample form</em> above.</p>
 
       <div class="builder-tabs" role="tablist" aria-label="Builder mode">
         <button type="button" role="tab" id="builder-tab-build" aria-controls="builder-panel-build" aria-selected="true" class="builder-tab">Build</button>
@@ -97,6 +105,61 @@
 
       <p class="system-status" id="builder-status" role="status">Design a form to get started.</p>
     </section>
+
+    <section class="form-surface sample-form" id="workspace-panel-sample" role="tabpanel" aria-labelledby="form-title" hidden>
+    <div class="section-heading">
+      <div>
+        <p class="formbuilder-eyebrow">Sample form · fixed fields for the WebMCP proof</p>
+        <h2 id="form-title">Event registration</h2>
+      </div>
+      <span class="page-version">Page v<span id="page-version">1</span></span>
+    </div>
+
+    <p class="form-intro">This is the fixed form the WebMCP proof reads: fill it in and export the JSON. Follow me tracks your pointer, clicks and text selections here exactly as it does on the Studio canvas, and the panel reports exactly what enters the Cowork context.</p>
+
+    <form id="demo-form" novalidate>
+      <div class="form-field" data-field-id="full-name" data-label="Full name" data-control-kind="text">
+        <label for="full-name">Full name <span aria-hidden="true">*</span></label>
+        <input id="full-name" name="full-name" autocomplete="name" required value="">
+        <p class="field-help">Used on your event badge.</p>
+      </div>
+
+      <div class="form-field" data-field-id="email" data-label="Email address" data-control-kind="text">
+        <label for="email">Email address <span aria-hidden="true">*</span></label>
+        <input id="email" name="email" type="email" autocomplete="email" required value="">
+        <p class="field-help">We send the access link here.</p>
+      </div>
+
+      <div class="form-field" data-field-id="role" data-label="Role" data-control-kind="select">
+        <label for="role">Role</label>
+        <select id="role" name="role">
+          <option value="">Choose one</option>
+          <option>Developer</option>
+          <option>Designer</option>
+          <option>Product</option>
+        </select>
+        <p class="field-help">Helps us tailor the sessions.</p>
+      </div>
+
+      <div class="form-field" data-field-id="access-needs" data-label="Access needs" data-control-kind="textarea">
+        <label for="access-needs">Access needs</label>
+        <textarea id="access-needs" name="access-needs" rows="4" placeholder="Tell us what would help"></textarea>
+        <p class="field-help">Optional. This text is hashed instead of copied when a selection exceeds 160 characters.</p>
+      </div>
+
+      <button class="primary-action" type="submit">Validate and export JSON</button>
+    </form>
+
+    <section id="form-result" class="form-result" aria-labelledby="form-result-title" hidden>
+      <div class="section-row">
+        <h3 id="form-result-title">FormBuilder response</h3>
+        <a id="download-response" class="download-link" download>Download JSON</a>
+      </div>
+      <pre id="response-json"></pre>
+    </section>
+  </section>
+
+    </div>
 
     <aside class="cowork-panel" aria-labelledby="panel-title" data-cowork-brand="dialogue-relay" data-cowork-surface="embedded" data-human-state="here-executing" data-model-state="here-advising" data-relay-state="watching">
       <div class="panel-topline">
@@ -323,59 +386,6 @@
       <p class="system-status" id="system-status" role="status">Initializing local protocol…</p>
     </aside>
   </main>
-
-  <section class="form-surface sample-form" aria-labelledby="form-title">
-    <div class="section-heading">
-      <div>
-        <p class="formbuilder-eyebrow">Sample form · fixed fields for the WebMCP proof</p>
-        <h2 id="form-title">Event registration</h2>
-      </div>
-      <span class="page-version">Page v<span id="page-version">1</span></span>
-    </div>
-
-    <p class="form-intro">Follow me tracks your pointer, clicks and text selections by default. The panel reports exactly what enters the Cowork context.</p>
-
-    <form id="demo-form" novalidate>
-      <div class="form-field" data-field-id="full-name" data-label="Full name" data-control-kind="text">
-        <label for="full-name">Full name <span aria-hidden="true">*</span></label>
-        <input id="full-name" name="full-name" autocomplete="name" required value="">
-        <p class="field-help">Used on your event badge.</p>
-      </div>
-
-      <div class="form-field" data-field-id="email" data-label="Email address" data-control-kind="text">
-        <label for="email">Email address <span aria-hidden="true">*</span></label>
-        <input id="email" name="email" type="email" autocomplete="email" required value="">
-        <p class="field-help">We send the access link here.</p>
-      </div>
-
-      <div class="form-field" data-field-id="role" data-label="Role" data-control-kind="select">
-        <label for="role">Role</label>
-        <select id="role" name="role">
-          <option value="">Choose one</option>
-          <option>Developer</option>
-          <option>Designer</option>
-          <option>Product</option>
-        </select>
-        <p class="field-help">Helps us tailor the sessions.</p>
-      </div>
-
-      <div class="form-field" data-field-id="access-needs" data-label="Access needs" data-control-kind="textarea">
-        <label for="access-needs">Access needs</label>
-        <textarea id="access-needs" name="access-needs" rows="4" placeholder="Tell us what would help"></textarea>
-        <p class="field-help">Optional. This text is hashed instead of copied when a selection exceeds 160 characters.</p>
-      </div>
-
-      <button class="primary-action" type="submit">Validate and export JSON</button>
-    </form>
-
-    <section id="form-result" class="form-result" aria-labelledby="form-result-title" hidden>
-      <div class="section-row">
-        <h3 id="form-result-title">FormBuilder response</h3>
-        <a id="download-response" class="download-link" download>Download JSON</a>
-      </div>
-      <pre id="response-json"></pre>
-    </section>
-  </section>
 
   <script type="module" src="./src/app.js?v=dialogue-relay-v2"></script>
 </body>

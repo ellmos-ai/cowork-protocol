@@ -13,8 +13,12 @@ without an agent, without WebMCP, and without any extension; see
 Cowork Protocol was then connected on top, at the embedded level: the protocol
 runs underneath and the page renders one Cowork panel on it, with no install
 and no extension. That connection adds no controls to the Studio - the one
-panel serves the Studio canvas the same way it serves the fixed sample form
-below the workspace, and every suggestion still needs your real click. The
+panel serves the Studio canvas the same way it serves the fixed sample form,
+and every suggestion still needs your real click. A switcher at the top of the
+workspace decides which of the two canvases is on the page - "Build your own
+form" (the Studio, shown first) or "Fill the sample form" (the fixed form the
+WebMCP proof reads) - so the panel is only ever serving a surface you can
+actually see, and your choice is remembered for the next visit. The
 same protocol also runs with no Cowork surface at all, behind a browser
 extension, or behind the Desktop Companion; see the level table in the
 [repository README](../../README.md) and

@@ -216,6 +216,9 @@ try {
     "model bridge discovery"
   );
 
+  // The workspace opens on the Studio canvas, so the fixed sample form this
+  // proof reads is behind its tab: activate it with a real click first.
+  await dispatchTrustedClick(call, "#workspace-tab-sample", "Sample form tab");
   await dispatchTrustedClick(call, "#full-name", "Full name field");
   await evaluateValue(call, `(() => {
     document.querySelector("#conversation-input").value = ${JSON.stringify(

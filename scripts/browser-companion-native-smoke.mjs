@@ -204,6 +204,9 @@ try {
   await call("Page.bringToFront");
   const extensionContext = await activateExtensionWithRetry(call, contexts);
   const extensionContextId = extensionContext.id;
+  // The workspace opens on the Studio canvas: show the sample form before
+  // pointing at one of its fields, so this reads a field a human could see.
+  await evaluate(call, `document.querySelector("#workspace-tab-sample").click()`, undefined);
   await evaluate(
     call,
     `document.querySelector("#full-name").dispatchEvent(new PointerEvent("pointerenter", { bubbles: true }))`,

@@ -280,6 +280,7 @@ try {
       value.badge === "Native WebMCP"
   );
 
+
   const zoomObserved = await evaluateValue(call, `(async () => {
     await document.fonts?.ready;
     const selector = [
@@ -374,6 +375,11 @@ try {
     if (!focus.horizontallyVisible) zoomObserved.horizontallyClippedControls.push(focus.label);
     if (focus.textClipped) zoomObserved.textClippedControls.push(focus.label);
   }
+
+  // The workspace opens on the Studio canvas, so the fixed sample form the rest
+  // of this proof reads is behind its tab: activate it with a real click. The
+  // zoom census above deliberately runs before this, on the default canvas.
+  await dispatchTrustedClick(call, 'document.querySelector("#workspace-tab-sample")', "Sample form tab");
 
   const evaluation = await call("Runtime.evaluate", {
     expression: `(async () => {

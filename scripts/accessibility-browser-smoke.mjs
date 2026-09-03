@@ -195,6 +195,7 @@ try {
   });
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
+
   const observation = await evaluateValue(call, `(async () => {
     await document.fonts?.ready;
     const selector = [
@@ -296,6 +297,7 @@ try {
   observation.reachableControlCount = 0;
   observation.focusVisibleControlCount = 0;
   observation.tabSequence = [];
+  observation.controlsWithoutFocusRing = [];
   for (let index = 0; index < observation.interactiveControlCount; index += 1) {
     await dispatchTrustedTab(call);
     await new Promise((resolve) => setTimeout(resolve, 30));
@@ -317,7 +319,10 @@ try {
     if (focus.horizontallyVisible && focus.verticallyVisible) {
       observation.reachableControlCount += 1;
     }
+    // Naming the offender: the count alone never said which control lost its
+    // keyboard focus ring, which made this failure a guessing game.
     if (focus.focusVisible) observation.focusVisibleControlCount += 1;
+    else observation.controlsWithoutFocusRing.push(focus.label);
   }
 
   let summary;
@@ -367,6 +372,9 @@ try {
     }
     actorControlStates.push(`model:${state}`);
   }
+  // The workspace opens on the Studio canvas, so the fixed sample form this
+  // proof reads is behind its tab: activate it with a real click first.
+  await dispatchTrustedClick(call, "#workspace-tab-sample");
   await dispatchTrustedClick(call, "#full-name");
   for (const expectedHumanState of ["here-advising", "standby", "away"]) {
     await dispatchTrustedClick(call, "#human-seat");

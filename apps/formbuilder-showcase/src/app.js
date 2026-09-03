@@ -381,6 +381,24 @@ let builderCowork = null;
 // `{ fieldId, label }` while the human points at a Builder field, null
 // while they are on the demo form. Only one of the two is ever set.
 let builderFocus = null;
+// --- Two canvases, one panel. The workspace shows exactly one of them, so the
+// panel can never report attention on a surface nobody can see, and the human
+// picks where to test. The Studio opens first: designing a form is the
+// product, the sample form is the fixed fixture the WebMCP proof reads. ---
+const WORKSPACE_AREAS = Object.freeze({
+  studio: { tab: "#workspace-tab-studio", panel: "#workspace-panel-studio", name: "Studio canvas" },
+  sample: { tab: "#workspace-tab-sample", panel: "#workspace-panel-sample", name: "Sample form" }
+});
+const WORKSPACE_STORAGE_KEY = "cowork-workspace-area";
+let activeWorkspace = "studio";
+try {
+  const storedWorkspace = window.localStorage.getItem(WORKSPACE_STORAGE_KEY);
+  if (storedWorkspace !== null && Object.hasOwn(WORKSPACE_AREAS, storedWorkspace)) {
+    activeWorkspace = storedWorkspace;
+  }
+} catch {
+  // Private windows and blocked site data are fine: the Studio opens first.
+}
 const REPLY_STATUS_BY_TRANSPORT = Object.freeze({
   "Connected model bridge": "Connected model reply received through the bounded conversation bridge.",
   "Direct model": "Direct model reply received through the bounded conversation turn.",
@@ -1145,7 +1163,10 @@ function render() {
   $("#authority-label").textContent = view.authorityLabel;
   $("#role-badge").textContent = view.roleLabel;
   $("#role-detail").textContent = view.roleDetail;
-  $("#area-label").textContent = `${AREA_STEP.label}: ${view.areaLabel}`;
+  // Naming the active canvas first: with two of them behind one switcher, the
+  // work-mode areas alone no longer say where the human actually is.
+  $("#area-label").textContent =
+    `${AREA_STEP.label}: ${WORKSPACE_AREAS[activeWorkspace].name} · ${view.areaLabel}`;
   // The Studio canvas has no focus packet of its own - its capabilities are
   // structural (add/update/move a field), not form.set_value - so the lens
   // names its target here instead of through the shared view model.
@@ -2088,6 +2109,8 @@ $("#attention-mode").addEventListener("change", (event) => {
     focusPacket = null;
     focusedField = null;
     fields.forEach((field) => field.classList.remove("is-focused"));
+    // Off means off on both canvases, not just the demo form.
+    builderCowork?.clearFocus();
     setStatus("Attention is off. No page context is sent.");
   } else if (focusedField) {
     focusPacket = buildFocus(focusedField, nextSession.attentionMode);
@@ -2302,6 +2325,7 @@ builderCowork = initBuilderCowork({
   root: document,
   controller: builderController,
   modelSeat,
+  attentionOn: () => session.attentionMode !== "off",
   onFocusChange(focus) {
     builderFocus = focus;
     if (focus !== null && focusedField !== null) {
@@ -2314,4 +2338,45 @@ builderCowork = initBuilderCowork({
     render();
   }
 });
+
+// --- The workspace switcher (see WORKSPACE_AREAS above). Hiding a canvas
+// releases its focus with it: a panel still pointing at a hidden field would
+// be reporting attention nobody can act on. ---
+const workspaceOrder = Object.keys(WORKSPACE_AREAS);
+
+function selectWorkspace(area, { moveFocus = false } = {}) {
+  activeWorkspace = area;
+  for (const [id, entry] of Object.entries(WORKSPACE_AREAS)) {
+    $(entry.tab).setAttribute("aria-selected", String(id === area));
+    $(entry.panel).hidden = id !== area;
+  }
+  if (area === "studio") {
+    focusedField = null;
+    focusPacket = null;
+    fields.forEach((field) => field.classList.remove("is-focused"));
+  } else {
+    builderCowork.clearFocus();
+  }
+  try {
+    window.localStorage.setItem(WORKSPACE_STORAGE_KEY, area);
+  } catch {
+    // Private windows and blocked site data: the choice just is not remembered.
+  }
+  if (moveFocus) $(WORKSPACE_AREAS[area].tab).focus();
+  render();
+}
+
+for (const [id, entry] of Object.entries(WORKSPACE_AREAS)) {
+  const tab = $(entry.tab);
+  tab.addEventListener("click", () => selectWorkspace(id));
+  tab.addEventListener("keydown", (event) => {
+    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const next = (workspaceOrder.indexOf(id) + step + workspaceOrder.length) % workspaceOrder.length;
+    selectWorkspace(workspaceOrder[next], { moveFocus: true });
+  });
+}
+selectWorkspace(activeWorkspace);
+
 renderModelSeat();

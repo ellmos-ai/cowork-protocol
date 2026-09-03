@@ -592,6 +592,26 @@ textarea { resize: vertical; }
    sample form moved below the workspace and carries the page width. */
 .builder-studio { min-height: auto; }
 .sample-form { width: min(1440px, calc(100% - 3rem)); min-height: auto; margin: 0 auto 3rem; }
+/* Both canvases share one grid column and one panel; the sample form no longer
+   sits under the workspace, so it drops the standalone centering above. */
+.workspace-canvas { display: flex; flex-direction: column; min-width: 0; }
+.workspace-canvas .sample-form { width: auto; margin: 0; }
+/* Wraps rather than overflowing: at 200% zoom the two labels no longer fit
+   the column side by side, and every control has to stay reachable. */
+.workspace-tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 .9rem; }
+.workspace-tab {
+  padding: .62rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: .9rem;
+  color: var(--muted);
+  background: var(--panel);
+  font-weight: 800;
+}
+.workspace-tab[aria-selected="true"] {
+  color: var(--formbuilder-violet-deep);
+  border-color: var(--formbuilder-violet);
+  background: var(--formbuilder-lilac);
+}
 .builder-tabs { display: flex; gap: .35rem; margin: 1.2rem 0 1.1rem; border-bottom: 1px solid var(--line); }
 .builder-tab { padding: .65rem 1.05rem; border: 0; border-bottom: 3px solid transparent; color: var(--muted); background: transparent; font-weight: 800; }
 .builder-tab[aria-selected="true"] { color: var(--formbuilder-violet-deep); border-bottom-color: var(--formbuilder-violet); }
