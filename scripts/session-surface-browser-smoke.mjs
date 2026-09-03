@@ -533,9 +533,10 @@ try {
       humanState: document.querySelector(".companion-cockpit")?.dataset.humanState ?? null,
       relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null
     }))()`,
-    // Back at the screen with the seat set to work but no grant yet: nobody
-    // holds the click right, and the cockpit says so instead of pretending.
-    (value) => value?.humanState === "here-advising" && value?.relayState === "dormant"
+    // Back at the screen and no grant exists yet, so the seat click could not
+    // hand the job over. The model advises, the human keeps the click right,
+    // and the cockpit says why instead of parking on a state nobody holds.
+    (value) => value?.humanState === "here-executing" && value?.relayState === "watching"
   );
   const beforeDelegation = companionHost.readSnapshot("browser-surface-link");
   const delegatedAt = new Date();
@@ -553,6 +554,20 @@ try {
     sourceSurfaceId: beforeDelegation.state.surface.primarySurfaceId,
     at: delegatedAt.toISOString()
   });
+  // With a grant running, the seat click hands the job over for real. The
+  // model's three statuses cycle in the page's order, so advising reaches
+  // executing by way of standby.
+  await clickCompanionControl(companionWindowCall, "#model-control");
+  await clickCompanionControl(companionWindowCall, "#model-control");
+  await waitForValue(
+    companionWindowCall,
+    `(() => ({
+      modelState: document.querySelector(".companion-cockpit")?.dataset.modelState ?? null,
+      status: document.querySelector("#cockpit-status")?.textContent ?? null
+    }))()`,
+    (value) => value?.modelState === "here-executing" &&
+      value.status.includes("Continue the bounded form task")
+  );
   await clickCompanionControl(companionWindowCall, "#human-control");
   const delegatedSolo = await waitForValue(
     companionWindowCall,

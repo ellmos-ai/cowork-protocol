@@ -269,7 +269,11 @@ async function postControl(kind, body) {
       }
     );
     const result = await response.json();
-    if (!response.ok) throw new Error(result.code ?? "CONTROL_UPDATE_FAILED");
+    if (!response.ok) {
+      throw new Error(
+        [result.code ?? "CONTROL_UPDATE_FAILED", result.message].filter(Boolean).join(" - ")
+      );
+    }
     $("#status").textContent = "Collaboration state shared.";
   } catch (error) {
     $("#status").textContent = error.message;
@@ -298,11 +302,21 @@ function cycleHumanPresence() {
   });
 }
 
-function cycleModelEngagement() {
+// Clicking the model's seat toward "collaborating" is the handover, and the
+// host mints the grant for it. When it cannot - no page linked, no field
+// pointed at - the seat must not stall on the status it is already in, or the
+// model could never be woken again. It moves on to the status this Companion
+// can deliver, and the refusal stays on screen as the reason.
+async function cycleModelEngagement() {
   if (!currentSession?.modelAvailable) return;
-  return postControl("engagement", {
-    agentEngagement: nextValue(MODEL_STATES, currentSession.agentEngagement)
-  });
+  const wanted = nextValue(MODEL_STATES, currentSession.agentEngagement);
+  await postControl("engagement", { agentEngagement: wanted });
+  if (wanted !== "collaborating" || currentSession?.agentEngagement === "collaborating") {
+    return;
+  }
+  const refusal = $("#status").textContent;
+  await postControl("engagement", { agentEngagement: nextValue(MODEL_STATES, wanted) });
+  $("#status").textContent = `${refusal} The model is advising instead.`;
 }
 
 async function toggleComputerUse(event) {

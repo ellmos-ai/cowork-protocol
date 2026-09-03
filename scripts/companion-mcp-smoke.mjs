@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { removeTempProfile, resolveExtensionBrowserPath } from "./smoke-runtime.mjs";
 
 import { createCompanionSessionHost } from "../apps/desktop-companion/src/host.js";
+import { createOpenAiCompatibleGatewaySender } from "../packages/model-transport/src/openai-compatible.js";
 import { coworkToolDefinitions } from "../packages/native-webmcp/src/index.js";
 import { createStaticServer } from "./serve.mjs";
 
@@ -19,6 +21,7 @@ const MCP_SERVER = fileURLToPath(
 );
 const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-companion-mcp-smoke-"));
 let server;
+let provider;
 let browser;
 let companionHost;
 let mcpClient;
@@ -187,10 +190,53 @@ try {
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("Showcase server has no port");
   const showcaseOrigin = `http://127.0.0.1:${address.port}`;
+  // A provider that behaves the way the measured one does: qwen3.8:27b-mlx on
+  // Ollama spent all 500 answer tokens on 2,136 characters of reasoning and
+  // returned an empty content field, and only answered once the turn was sent
+  // again with reasoning_effort "none". Faked here so the smoke stays fast;
+  // the live numbers are in docs/evidence.md.
+  const providerCalls = [];
+  provider = createServer((request, response) => {
+    let body = "";
+    request.on("data", (chunk) => { body += chunk; });
+    request.on("end", () => {
+      const sent = JSON.parse(body);
+      providerCalls.push(sent.reasoning_effort ?? null);
+      const thinking = sent.reasoning_effort !== "none";
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({
+        choices: [{
+          finish_reason: thinking ? "length" : "stop",
+          message: thinking
+            ? { content: "", reasoning: "Weighing which field to offer. ".repeat(70) }
+            : {
+                content: JSON.stringify({
+                  message: "I can put Grace Hopper in the name field.",
+                  offers: [{
+                    capabilityId: "form.set_value",
+                    targetId: "form-field:full-name",
+                    value: "Grace Hopper",
+                    summary: "Set Full name to Grace Hopper"
+                  }]
+                })
+              }
+        }]
+      }));
+    });
+  });
+  await new Promise((resolve) => provider.listen(0, "127.0.0.1", resolve));
+  const providerEndpoint =
+    `http://127.0.0.1:${provider.address().port}/v1/chat/completions`;
+  const modelNotices = [];
   companionHost = createCompanionSessionHost({
     allowedOrigins: [showcaseOrigin],
     port: 0,
-    createLinkSessionId: () => "companion-mcp-link"
+    createLinkSessionId: () => "companion-mcp-link",
+    sendModelTurn: createOpenAiCompatibleGatewaySender({
+      endpoint: providerEndpoint,
+      model: "reasoning-model",
+      onNotice: (notice) => modelNotices.push(notice)
+    })
   });
   const companionAddress = await companionHost.listen();
   const companionEndpoint =
@@ -399,13 +445,83 @@ try {
     `The Companion window did not report the connected MCP agent: ${JSON.stringify(uiState.agent)}`
   );
 
+  // --- The Companion's own model, end to end: a human types in the Companion,
+  // the model answers, its suggestion appears on the page, and only a trusted
+  // click there applies it. No MCP agent is involved in this part. ---
+  const companionOrigin = `http://${companionAddress.hostname}:${companionAddress.port}`;
+  const turnResponse = await fetch(
+    `${companionOrigin}/cowork/v1/ui/sessions/companion-mcp-link/turns`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: companionOrigin },
+      body: JSON.stringify({
+        turnId: "companion-model-turn",
+        input: { transcript: "Fill in the form fields for me please." }
+      })
+    }
+  );
+  const turnResult = await turnResponse.json();
+  assert(
+    turnResponse.ok,
+    `The Companion model turn failed: ${JSON.stringify(turnResult)}`
+  );
+  assert(
+    providerCalls.length === 2 &&
+      providerCalls[0] === null &&
+      providerCalls[1] === "none" &&
+      modelNotices[0]?.code === "MODEL_THOUGHT_PAST_ITS_BUDGET",
+    `A reasoning model must be retried once, and the retry disclosed: ${JSON.stringify({ providerCalls, modelNotices })}`
+  );
+  evidence.companionModelTurn = {
+    message: turnResult.reply.message,
+    delivery: turnResult.delivery,
+    providerCalls,
+    retryDisclosed: modelNotices[0]?.code ?? null
+  };
+  assert(
+    turnResult.delivery?.offered === 1 && turnResult.delivery.rejected === 0,
+    `The model's offer did not reach the page: ${JSON.stringify(turnResult.delivery)}`
+  );
+
+  const modelOffer = await waitForValue(call, `(() => ({
+    value: document.querySelector("#full-name")?.value,
+    offerValue: document.querySelector(".offer-chip")?.dataset.offerValue ?? null,
+    transcript: document.querySelector("#transcript")?.textContent ?? null
+  }))()`, (state) => state.offerValue === "Grace Hopper" &&
+    state.transcript?.includes("Grace Hopper"));
+  assert(
+    modelOffer.value === "Ada Lovelace",
+    `The model's suggestion changed the page before any click: ${JSON.stringify(modelOffer)}`
+  );
+  assert(
+    modelOffer.transcript?.includes("Fill in the form fields for me please.") &&
+      modelOffer.transcript.includes("Grace Hopper"),
+    `The page did not show the Companion-side conversation: ${JSON.stringify(modelOffer)}`
+  );
+  evidence.modelOfferBeforeClick = modelOffer;
+
+  await trustedClick(call, ".offer-chip");
+  evidence.modelOfferAfterClick = await waitForValue(call, `(() => ({
+    value: document.querySelector("#full-name")?.value,
+    receipts: document.querySelectorAll("#receipt-list li").length,
+    receiptText: document.querySelector("#receipt-list li strong")?.textContent ?? null
+  }))()`, (state) => state.value === "Grace Hopper" && state.receipts >= 1);
+  assert(
+    evidence.modelOfferAfterClick.receiptText?.startsWith("Verified"),
+    `The model's authorized offer did not verify: ${JSON.stringify(evidence.modelOfferAfterClick)}`
+  );
+
   evidence.browserVersion = version.Browser;
   console.log(JSON.stringify(evidence, null, 2));
   console.log("Companion MCP smoke passed: a local agent used the page as a tool.");
+  console.log(
+    "Companion model end to end: typed turn -> model reply -> page offer -> trusted click -> verified."
+  );
 } finally {
   mcpClient?.close();
   browser?.kill();
   await companionHost?.close();
   server?.close();
+  provider?.close();
   await removeTempProfile(profilePath);
 }

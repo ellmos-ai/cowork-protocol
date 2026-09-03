@@ -899,8 +899,14 @@ export function createCompanionSessionHost({
     // The cockpit click on the model's seat IS the handover. The Companion is
     // the session authority, so it mints the grant itself instead of sending
     // the human back to the page for a button the cockpit does not have.
-    // Cycling the seat off execution hands the job back and ends the grant.
-    let lease = null;
+    // Only leaving execution takes the job back and ends the grant: parking a
+    // model that was merely advising must not delete a grant someone else
+    // authorized.
+    const previousEngagement = readAgentEngagement(snapshot.state);
+    let lease = snapshot.state.lease ?? null;
+    if (previousEngagement === "collaborating" && agentEngagement !== "collaborating") {
+      lease = null;
+    }
     if (agentEngagement === "collaborating") {
       if (linkSession.lastPageContactAt === null) {
         throw new CompanionHostError(
@@ -909,7 +915,11 @@ export function createCompanionSessionHost({
           409
         );
       }
-      lease = mintCompanionLease(snapshot.state, changedAt);
+      // A grant that is already running is the grant; minting over it would
+      // silently rewrite a goal and budget a human already authorized.
+      lease = hasCurrentSoloLease(snapshot.state, changedAt)
+        ? snapshot.state.lease
+        : mintCompanionLease(snapshot.state, changedAt);
       if (lease === null) {
         throw new CompanionHostError(
           "NO_FOCUSED_TARGET",
