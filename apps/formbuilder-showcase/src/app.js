@@ -189,6 +189,7 @@ let modelWorkingTimer = null;
 let detachedSurfaceWindow = null;
 let companionReplicaSnapshot = null;
 let companionConnection = null;
+let companionRelayStop = null;
 let companionSurfaceQueue = Promise.resolve();
 let contextTurnCounter = 0;
 
@@ -568,7 +569,7 @@ async function openInCompanion() {
     };
     // A local agent's tool calls wait on the Companion until this page pulls
     // them: the Companion stays the session authority and never reaches in.
-    startCompanionAgentRelay({
+    companionRelayStop = startCompanionAgentRelay({
       link,
       linkSessionId: acknowledgement.linkSessionId,
       handlers: coworkToolHandlers
@@ -622,6 +623,29 @@ function copySurfaceStyles(targetDocument) {
       // A cross-origin stylesheet remains unavailable to the detached document.
     }
   }
+}
+
+/** Back from the Companion to the embedded panel. The page is its own
+ *  session authority again, from its own last revision; the Companion keeps
+ *  its copy and nothing here reaches into it. Before this, the only way
+ *  back was reloading the page. */
+function leaveCompanion() {
+  if (!companionConnection) return;
+  companionRelayStop?.();
+  companionRelayStop = null;
+  companionConnection = null;
+  companionReplicaSnapshot = null;
+  session = sessionAuthority.readState();
+  if (session.surface?.kind !== "embedded") {
+    claimSurface({
+      surfaceId: EMBEDDED_SURFACE_ID,
+      kind: "embedded",
+      reason: "Left the Desktop Companion"
+    });
+  }
+  coworkPanel.classList.remove("is-companion-connected");
+  setStatus("Left the Desktop Companion. This page owns its session again; the Companion keeps its own copy.");
+  render();
 }
 
 function dockCoworkSurface({ closeDetachedWindow = false } = {}) {
@@ -2279,6 +2303,7 @@ $("#detach-cowork").addEventListener("click", () => {
 $("#open-companion").addEventListener("click", () => {
   void openInCompanion();
 });
+$("#leave-companion").addEventListener("click", leaveCompanion);
 $("#conversation-form").addEventListener("submit", (event) => {
   event.preventDefault();
   void sendConversationTurn($("#conversation-input").value);

@@ -171,12 +171,15 @@ call until the linked page pulls it, so:
 The Companion window names the connected client and counts its calls, and says
 so when there is no page for those calls to run on.
 
-Known gap, measured by `npm run smoke:companion-mcp`: an offer an agent makes
-over MCP is created correctly and stays inert, but while the Companion is
-connected it currently has no surface to be clicked on - the connected page
-collapses its own offer list, and the Companion window does not render offers
-yet. The offer exists and is refused execution; a human simply cannot approve it
-from either surface today.
+While the Companion is connected, the page folds to its header, status line,
+offer list and receipts, with a note saying so: an offer an agent makes over
+MCP appears in that offer list and is authorized by a real click on the page,
+never in the Companion window (measured by `npm run smoke:companion-mcp`; the
+earlier version of this page hid the offer list too, which left such an offer
+with no surface to be clicked on). `Leave Companion` on the same note hands
+the session back to the page: it becomes its own session authority again and
+shows the full panel, while the Companion keeps its own copy (measured by
+`npm run smoke:surface`).
 
 Measured: the stdio handshake, the tool list and the full agent → page → agent
 round trip, in `npm test` and in `npm run smoke:companion-mcp` against a real

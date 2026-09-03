@@ -649,8 +649,30 @@ try {
     );
   }
 
+  // --- Leaving the Companion: the page takes its session back and shows the
+  // full embedded panel again. Before this there was no way back short of
+  // reloading the page. ---
+  await trustedClick(call, "#leave-companion");
+  const leftCompanion = await waitForValue(
+    call,
+    `(() => ({
+      surfaceKind: window.coworkSession.readSnapshot()?.state?.surface?.kind ?? null,
+      buttonLabel: document.querySelector("#open-companion")?.textContent ?? null,
+      collapsed: document.querySelector(".cowork-panel")?.classList.contains("is-companion-connected") ?? null,
+      localAuthority: window.coworkSession.readDeltas(0) !== null,
+      conversationDisabled: document.querySelector("#conversation-input")?.disabled ?? null
+    }))()`,
+    (value) =>
+      value?.surfaceKind === "embedded" &&
+      value?.buttonLabel === "Desktop Companion" &&
+      value?.collapsed === false &&
+      value?.localAuthority === true &&
+      value?.conversationDisabled === false
+  );
+
   console.log(JSON.stringify({
     detachedSurfaceClaim: true,
+    leaveCompanionClaim: leftCompanion.surfaceKind === "embedded",
     sameSessionClaim: true,
     protocolUiSeparationClaim: true,
     noExtensionCompanionHandoffClaim: true,
