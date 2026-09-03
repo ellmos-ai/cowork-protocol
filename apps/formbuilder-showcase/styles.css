@@ -734,3 +734,16 @@ textarea { resize: vertical; }
   font-size: .96em;
   overflow-wrap: anywhere;
 }
+
+/* The proposals sit inside the Role section because that is where the click
+   right is explained - but a reader arriving at the panel did not expect them
+   under a mode selector, so they get a heading of their own. */
+.offer-list-heading {
+  margin: .9rem 0 0;
+  color: #6b5843;
+  font-size: .68rem;
+  font-weight: 850;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.offer-list-heading + .offer-list { margin-top: .35rem; }
