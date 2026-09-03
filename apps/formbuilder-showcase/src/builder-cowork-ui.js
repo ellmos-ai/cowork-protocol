@@ -50,8 +50,17 @@ export function describeBuilderOffer(offer) {
  * @param onFocusChange called with `{ fieldId, label } | null` whenever the
  *        pointed-at Builder field changes, so the panel's attention lens can
  *        follow the Studio canvas the same way it follows the demo form.
+ * @param attentionOn asked before every pointer, focus or click target: with
+ *        the panel's attention switched off, the Studio must go as quiet as
+ *        the demo form does, highlight included.
  */
-export function initBuilderCowork({ root = document, controller, modelSeat = null, onFocusChange = () => {} }) {
+export function initBuilderCowork({
+  root = document,
+  controller,
+  modelSeat = null,
+  onFocusChange = () => {},
+  attentionOn = () => true
+}) {
   const bridge = createBuilderCoworkBridge();
   let focusedFieldId = null;
   let callsUsed = 0;
@@ -86,9 +95,14 @@ export function initBuilderCowork({ root = document, controller, modelSeat = nul
     };
   }
 
-  // --- GAP-00: an attention lens for one addressable builder field, not just
-  // the whole canvas. One delegated listener covers every row, including
-  // ones added or removed after this runs. ---
+  // --- GAP-00: an attention lens for one addressable builder field, and for
+  // the canvas itself when the pointer is on Studio chrome rather than a
+  // field. The canvas needs to be a target of its own: on a fresh page the
+  // Studio holds no rows at all, so a rows-only lens left the whole left-hand
+  // canvas dead to the panel while the fixed sample form - populated from the
+  // first paint - looked like the only surface the panel follows. ---
+  const CANVAS_FOCUS = BUILDER_CANVAS_TARGET_ID;
+
   function setFocusedField(fieldId) {
     const changed = focusedFieldId !== fieldId;
     focusedFieldId = fieldId;
@@ -99,23 +113,40 @@ export function initBuilderCowork({ root = document, controller, modelSeat = nul
   }
 
   function focusedElement() {
-    if (!focusedFieldId) return null;
+    if (focusedFieldId === null || focusedFieldId === CANVAS_FOCUS) return null;
     return controller.getElements().find((element) => element.id === focusedFieldId) ?? null;
   }
 
   function readFocus() {
+    if (focusedFieldId === null) return null;
+    // The canvas names itself by the form's own title, so the readout stays
+    // truthful on an empty Studio and on the Export tab, where no field exists.
+    if (focusedFieldId === CANVAS_FOCUS) return { fieldId: null, label: controller.getTitle() };
     const element = focusedElement();
     return element === null ? null : { fieldId: element.id, label: element.label };
   }
 
-  // pointerover bubbles (unlike pointerenter), so one listener on the list
-  // container covers every row, including ones added or removed later.
+  // pointerover bubbles (unlike pointerenter), so one listener on the Studio
+  // section covers every Build row AND every Fill field - including ones added
+  // or removed later - plus the chrome between them. Scoping this to
+  // #builder-field-list was the actual defect behind "the pointer is only
+  // followed on the sample form".
   const focusFromEvent = (event) => {
-    const row = event.target.closest(".form-field[data-field-id]");
-    if (row) setFocusedField(row.dataset.fieldId);
+    if (!attentionOn()) return;
+    const target = event.target.closest("[data-field-id]");
+    if (target) {
+      setFocusedField(target.dataset.fieldId);
+      return;
+    }
+    // Studio chrome: title, palette, empty canvas, Export tab. A click there
+    // is deliberate and always retargets. Merely sweeping the pointer across
+    // it must not, or the field a human is working on would be dropped on the
+    // way to the panel that acts on it (GAP-02 directives read this focus).
+    if (event.type === "click" || focusedFieldId === null) setFocusedField(CANVAS_FOCUS);
   };
+  const studioSurface = root.querySelector(".builder-studio");
   for (const type of ["pointerover", "focusin", "click"]) {
-    root.querySelector("#builder-field-list").addEventListener(type, focusFromEvent);
+    studioSurface.addEventListener(type, focusFromEvent);
   }
 
   function pendingOffers() {
@@ -314,7 +345,9 @@ export function initBuilderCowork({ root = document, controller, modelSeat = nul
   }
 
   controller.onPageVersionChange(() => {
-    if (focusedFieldId && !focusedElement()) setFocusedField(null);
+    // Renaming the form changes what the canvas focus is called, so re-read it.
+    if (focusedFieldId === CANVAS_FOCUS) onFocusChange(readFocus());
+    else if (focusedFieldId !== null && !focusedElement()) setFocusedField(null);
   });
 
   return {
