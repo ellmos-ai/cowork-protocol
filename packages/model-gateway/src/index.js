@@ -86,6 +86,7 @@ export function createCoworkModelGateway({
   let activeTurnId = null;
   let queuedTurns = 0;
   let completedTurns = 0;
+  let failedTurns = 0;
 
   function trimCompleted() {
     while (turns.size > maxCompletedTurns) {
@@ -206,9 +207,14 @@ export function createCoworkModelGateway({
       () => undefined,
       () => undefined
     );
-    promise.finally(() => {
+    // Settled is not the same as answered. Counting a failed turn as completed
+    // told the cockpit two turns had succeeded while the model had answered
+    // neither, so the two are counted apart.
+    promise.then(
+      () => { completedTurns += 1; },
+      () => { failedTurns += 1; }
+    ).finally(() => {
       entry.completed = true;
-      completedTurns += 1;
       trimCompleted();
     }).catch(() => {});
     return promise;
@@ -218,7 +224,8 @@ export function createCoworkModelGateway({
     return {
       activeTurnId,
       queuedTurns,
-      completedTurns
+      completedTurns,
+      failedTurns
     };
   }
 

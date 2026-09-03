@@ -71,6 +71,36 @@ function hasCurrentSoloLease(state, at) {
   );
 }
 
+// The same grant the page's "Hand over, I'll watch" button mints, in the same
+// shape and with the same defaults, so a page adopting this state can execute
+// under it - see apps/formbuilder-showcase LEASE_MAX_CALLS / LEASE_DURATION_MS.
+const COMPANION_LEASE_MAX_CALLS = 2;
+const COMPANION_LEASE_DURATION_MS = 120_000;
+
+function mintCompanionLease(state, at) {
+  const focus = state.focus;
+  const targetId = typeof focus?.targetId === "string" && focus.targetId !== ""
+    ? focus.targetId
+    : null;
+  if (targetId === null) return null;
+  const capabilityIds = Array.isArray(focus.capabilityIds)
+    ? focus.capabilityIds.filter((id) => id !== "form.explain_field")
+    : [];
+  return {
+    leaseId: `companion-lease-${Date.parse(at)}`,
+    // A trusted click in the local cockpit is a human origin, the same way the
+    // page's own handover buttons are.
+    origin: "human-click",
+    goal: `Work on ${focus.focus?.label ?? targetId}`,
+    allowedCapabilityIds: capabilityIds,
+    allowedTargetIds: [targetId],
+    maxCalls: COMPANION_LEASE_MAX_CALLS,
+    maxContextLevel: 2,
+    pageVersion: Number.isInteger(focus.pageVersion) ? focus.pageVersion : 1,
+    expiresAt: new Date(Date.parse(at) + COMPANION_LEASE_DURATION_MS).toISOString()
+  };
+}
+
 function resolveCompanionMode({ state, humanPresence, agentPresence, agentEngagement, at }) {
   const effectiveMode = resolvePresenceMode({
     humanPresence,
@@ -614,6 +644,8 @@ export function createCompanionSessionHost({
           modelAvailable: value.gateway !== null,
           modelIdentity: value.gateway === null ? null : modelProviderId,
           modelStatus: value.gateway?.readStatus() ?? null,
+          lastConversation: snapshot.state.lastConversation ?? null,
+          lease: snapshot.state.lease ?? null,
           computerUseAvailable: computerUse !== null,
           executionMode:
             computerUseStatus?.activeSessionId === snapshot.sessionId &&
@@ -632,6 +664,51 @@ export function createCompanionSessionHost({
         };
       })
     };
+  }
+
+  // The 0.1 state already carries lastConversation, and the page replicates
+  // state. Writing the turn's outcome there is what makes a Companion-side
+  // conversation - answered or failed - visible on the linked page at all.
+  function recordConversation(linkSession, lastConversation) {
+    const snapshot = linkSession.authority.readSnapshot();
+    linkSession.authority.commit({
+      kind: "companion-conversation-recorded",
+      nextState: { ...snapshot.state, lastConversation },
+      sourceSurfaceId: snapshot.state.surface.primarySurfaceId,
+      at: now()
+    });
+    linkSession.snapshot = linkSession.authority.readSnapshot();
+  }
+
+  // The model's offers reach the page the same way a local agent's do: as
+  // cowork_offer_action calls the page pulls and runs. Without this the model
+  // could answer in the cockpit but never put anything on the page.
+  async function deliverOffers(linkSessionId, offers) {
+    const list = Array.isArray(offers) ? offers : [];
+    if (list.length === 0) return { offered: 0, rejected: 0, reason: null };
+    let offered = 0;
+    let rejected = 0;
+    let reason = null;
+    for (const offer of list) {
+      try {
+        await callAgentTool({
+          name: "cowork_offer_action",
+          arguments: {
+            capabilityId: offer.capabilityId,
+            targetId: offer.targetId,
+            value: offer.value,
+            summary: offer.summary
+          },
+          linkSessionId
+        });
+        offered += 1;
+      } catch (error) {
+        rejected += 1;
+        // The first reason is the useful one; the rest are usually the same.
+        reason ??= typeof error?.code === "string" ? error.code : "OFFER_DELIVERY_FAILED";
+      }
+    }
+    return { offered, rejected, reason };
   }
 
   async function submitModelTurn(linkSessionId, { turnId, input }) {
@@ -714,17 +791,41 @@ export function createCompanionSessionHost({
       turnId,
       sourceSurfaceId: linkSession.authority.readSnapshot().state.surface.primarySurfaceId,
       input
-    }).then(async (reply) => {
-      linkSession.contextManager.appendTurn({
-        turnId: `assistant:${turnId}`,
-        role: "assistant",
-        text: typeof reply?.message === "string" ? reply.message : JSON.stringify(reply),
-        at: now(),
-        causeRefs: [turnId]
-      });
-      await persistSessions();
-      return reply;
-    });
+    }).then(
+      async (reply) => {
+        linkSession.contextManager.appendTurn({
+          turnId: `assistant:${turnId}`,
+          role: "assistant",
+          text: typeof reply?.message === "string" ? reply.message : JSON.stringify(reply),
+          at: now(),
+          causeRefs: [turnId]
+        });
+        recordConversation(linkSession, {
+          human: transcript,
+          assistant: typeof reply?.message === "string" ? reply.message : "",
+          status: "responded"
+        });
+        await persistSessions();
+        // The reply stays exactly what the model said; where its offers landed
+        // is a separate fact and rides beside it.
+        return { reply, delivery: await deliverOffers(linkSessionId, reply?.offers) };
+      },
+      async (error) => {
+        // A model turn that failed has to look failed on both surfaces. It used
+        // to leave the human turn standing alone in the cockpit with no reply
+        // and no reason, which reads as "the model ignored me".
+        const code = typeof error?.code === "string" && error.code !== ""
+          ? error.code.slice(0, 40)
+          : "MODEL_TURN_FAILED";
+        recordConversation(linkSession, {
+          human: transcript,
+          assistant: typeof error?.message === "string" ? error.message.slice(0, 240) : "",
+          status: code
+        });
+        await persistSessions();
+        throw error;
+      }
+    );
     linkSession.submittedTurns.set(turnId, { signature, promise });
     return promise;
   }
@@ -795,12 +896,47 @@ export function createCompanionSessionHost({
     const snapshot = linkSession.authority.readSnapshot();
     const agentPresence = agentEngagement === "paused" ? "paused" : "active";
     const changedAt = now();
+    // The cockpit click on the model's seat IS the handover. The Companion is
+    // the session authority, so it mints the grant itself instead of sending
+    // the human back to the page for a button the cockpit does not have.
+    // Only leaving execution takes the job back and ends the grant: parking a
+    // model that was merely advising must not delete a grant someone else
+    // authorized.
+    const previousEngagement = readAgentEngagement(snapshot.state);
+    let lease = snapshot.state.lease ?? null;
+    if (previousEngagement === "collaborating" && agentEngagement !== "collaborating") {
+      lease = null;
+    }
+    if (agentEngagement === "collaborating") {
+      if (linkSession.lastPageContactAt === null) {
+        throw new CompanionHostError(
+          "PAGE_NOT_LINKED",
+          "Link a page first - the model has nothing to execute on",
+          409
+        );
+      }
+      // A grant that is already running is the grant; minting over it would
+      // silently rewrite a goal and budget a human already authorized.
+      lease = hasCurrentSoloLease(snapshot.state, changedAt)
+        ? snapshot.state.lease
+        : mintCompanionLease(snapshot.state, changedAt);
+      if (lease === null) {
+        throw new CompanionHostError(
+          "NO_FOCUSED_TARGET",
+          "Point the page at a field first - a grant needs a target to be about",
+          409
+        );
+      }
+    }
     const nextState = {
       ...snapshot.state,
+      lease,
       agentPresence,
       agentEngagement,
       effectiveMode: resolveCompanionMode({
-        state: snapshot.state,
+        // The grant that was just minted has to count towards the mode, or the
+        // cockpit would report the state it had a moment ago.
+        state: { ...snapshot.state, lease },
         humanPresence: snapshot.state.humanPresence,
         agentPresence,
         agentEngagement,
@@ -1018,8 +1154,11 @@ export function createCompanionSessionHost({
           });
           writeJson(response, 200, { status });
         } else if (uiTurnMatch) {
-          const reply = await submitModelTurn(decodeURIComponent(uiTurnMatch[1]), body);
-          writeJson(response, 200, { reply });
+          writeJson(
+            response,
+            200,
+            await submitModelTurn(decodeURIComponent(uiTurnMatch[1]), body)
+          );
         } else if (uiPresenceMatch) {
           const result = await updatePresence(
             decodeURIComponent(uiPresenceMatch[1]),
@@ -1052,7 +1191,12 @@ export function createCompanionSessionHost({
           : typeof error?.code === "string"
             ? error.code
             : "COMPANION_HOST_ERROR";
-        writeJson(response, status, { code });
+        // A bare code tells the human nothing to do about it. Every message
+        // here is one we wrote; no provider text is copied through.
+        writeJson(response, status, {
+          code,
+          message: typeof error?.message === "string" ? error.message.slice(0, 240) : ""
+        });
       }
       return;
     }

@@ -318,10 +318,11 @@ test("the Companion restores a joined session after its background host restarts
     const restartedHost = createCompanionSessionHost({
       allowedOrigins: [origin],
       port: 0,
-      sessionStorePath
+      sessionStorePath,
+      sendModelTurn: async () => ({ message: "Restored reply" })
     });
     try {
-      await restartedHost.listen();
+      const restartedAddress = await restartedHost.listen();
       assert.equal(restartedHost.sessionCount(), 1);
       assert.equal(
         restartedHost.readSnapshot("persistent-link").sessionId,
@@ -336,6 +337,25 @@ test("the Companion restores a joined session after its background host restarts
         restartedHost.readContext("persistent-link").recentTurns[0].turnId,
         "turn-1"
       );
+
+      // A restored session is held while no page speaks to us. Handing the job
+      // to the model there would be a handover to nobody, so the cockpit says
+      // what is missing rather than reporting a model that executes.
+      const restartedOrigin =
+        `http://${restartedAddress.hostname}:${restartedAddress.port}`;
+      const unlinked = await fetch(
+        `${restartedOrigin}/cowork/v1/ui/sessions/persistent-link/engagement`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: restartedOrigin },
+          body: JSON.stringify({ agentEngagement: "collaborating" })
+        }
+      );
+      assert.equal(unlinked.status, 409);
+      assert.deepEqual(await unlinked.json(), {
+        code: "PAGE_NOT_LINKED",
+        message: "Link a page first - the model has nothing to execute on"
+      });
     } finally {
       await restartedHost.close();
     }
@@ -397,7 +417,10 @@ test("the Companion routes Cowork-owned turns through one shared Model Gateway",
       turnId: "human-turn-1",
       input: { transcript: "Please continue." }
     });
-    assert.deepEqual(reply, { message: "I can continue with the focused field." });
+    assert.deepEqual(reply, {
+      reply: { message: "I can continue with the focused field." },
+      delivery: { offered: 0, rejected: 0, reason: null }
+    });
     assert.equal(modelRequests.length, 1);
     assert.equal(modelRequests[0].context.recentTurns.at(-1).text, "Please continue.");
     assert.deepEqual(
@@ -407,7 +430,8 @@ test("the Companion routes Cowork-owned turns through one shared Model Gateway",
     assert.deepEqual(host.readModelStatus("model-link"), {
       activeTurnId: null,
       queuedTurns: 0,
-      completedTurns: 1
+      completedTurns: 1,
+      failedTurns: 0
     });
   } finally {
     await host.close();
@@ -497,6 +521,7 @@ test("the loopback host serves a movable reference surface for the shared sessio
     );
     assert.equal(replyResponse.status, 200);
     assert.deepEqual(await replyResponse.json(), {
+      delivery: { offered: 0, rejected: 0, reason: null },
       reply: { message: "Shared Companion reply" }
     });
   } finally {
@@ -581,12 +606,27 @@ test("the movable cockpit commits model engagement and fails closed while paused
       { turnId: "paused-turn", input: { transcript: "Do not run." } }
     );
     assert.equal(pausedTurn.status, 409);
-    assert.deepEqual(await pausedTurn.json(), { code: "MODEL_PAUSED" });
+    assert.deepEqual(await pausedTurn.json(), {
+      code: "MODEL_PAUSED",
+      message: "The Companion model is paused"
+    });
     assert.equal(modelRequests, 0);
+
+    // The seat click is the handover, and a grant is about something. With no
+    // field pointed at, the cockpit says so instead of granting into thin air.
+    const unfocused = await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "collaborating" }
+    );
+    assert.equal(unfocused.status, 409);
+    assert.deepEqual(await unfocused.json(), {
+      code: "NO_FOCUSED_TARGET",
+      message: "Point the page at a field first - a grant needs a target to be about"
+    });
 
     assert.equal((await postUi(
       "/cowork/v1/ui/sessions/cockpit-link/engagement",
-      { agentEngagement: "collaborating" }
+      { agentEngagement: "observing" }
     )).status, 200);
     assert.equal((await postUi(
       "/cowork/v1/ui/sessions/cockpit-link/presence",
@@ -601,21 +641,57 @@ test("the movable cockpit commits model engagement and fails closed while paused
       "away presence without a delegated work lease must not look like agent solo"
     );
 
-    const beforeLease = host.readSnapshot("cockpit-link");
+    // The page speaks and points at a field. Now the same click is a real
+    // handover, and the Companion mints the grant itself - no trip back to
+    // the page for a button the cockpit does not have.
+    await link.pullDeltas({ linkSessionId: "cockpit-link", afterRevision: 0 });
+    const beforeFocus = host.readSnapshot("cockpit-link");
     await host.commitSession("cockpit-link", {
-      kind: "solo-lease-authorized",
+      kind: "focus-changed",
       nextState: {
-        ...beforeLease.state,
-        lease: {
-          leaseId: "cockpit-solo-lease",
-          goal: "Continue the bounded form task",
-          expiresAt: "2026-08-31T12:05:00.000Z"
+        ...beforeFocus.state,
+        focus: {
+          targetId: "form-field:email",
+          pageVersion: 3,
+          focus: { label: "Email", kind: "pointer" },
+          capabilityIds: ["form.set_value", "form.explain_field"]
         }
       },
-      expectedRevision: beforeLease.revision,
-      sourceSurfaceId: beforeLease.state.surface.primarySurfaceId,
+      expectedRevision: beforeFocus.revision,
+      sourceSurfaceId: beforeFocus.state.surface.primarySurfaceId,
       at: now
     });
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "collaborating" }
+    )).status, 200);
+    state = (await fetch(`${companionOrigin}/cowork/v1/ui/state`).then(
+      (response) => response.json()
+    )).sessions[0];
+    assert.equal(state.lease.goal, "Work on Email");
+    assert.equal(state.lease.origin, "human-click");
+    assert.equal(state.lease.maxCalls, 2);
+    assert.deepEqual(state.lease.allowedTargetIds, ["form-field:email"]);
+    assert.deepEqual(state.lease.allowedCapabilityIds, ["form.set_value"]);
+    assert.equal(state.workMode.authority, "model");
+    assert.equal(state.workMode.authorityLapsed, false);
+
+    // Clicking the seat off execution hands the job back and ends the grant.
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "observing" }
+    )).status, 200);
+    state = (await fetch(`${companionOrigin}/cowork/v1/ui/state`).then(
+      (response) => response.json()
+    )).sessions[0];
+    assert.equal(state.lease, null);
+    assert.equal(state.workMode.model.canExecute, false);
+    assert.equal(state.workMode.authorityLapsed, false);
+
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "collaborating" }
+    )).status, 200);
     await postUi(
       "/cowork/v1/ui/sessions/cockpit-link/presence",
       { humanPresence: "present" }
@@ -795,7 +871,10 @@ test("the local cockpit alone switches one session into verified profiled Comput
 
     const untrusted = await postExecution({ enabled: true, humanGesture: false });
     assert.equal(untrusted.status, 400);
-    assert.deepEqual(await untrusted.json(), { code: "HUMAN_ACTIVATION_REQUIRED" });
+    assert.deepEqual(await untrusted.json(), {
+      code: "HUMAN_ACTIVATION_REQUIRED",
+      message: "Only a deliberate local cockpit gesture can change Computer Use"
+    });
     assert.equal(calls.length, 0);
 
     assert.equal((await postExecution({ enabled: true, humanGesture: true })).status, 200);
@@ -938,5 +1017,107 @@ test("the UI state reports the Computer Use fallback before any page connects", 
     assert.equal(state.computerUseAvailable, true);
   } finally {
     await withAdapter.close();
+  }
+});
+
+test("a model offer reaches the linked page and a failed turn says so on both surfaces", async () => {
+  const origin = "https://forms.example";
+  let nextReply = {
+    message: "I can fill the email field.",
+    speak: "",
+    offers: [{
+      capabilityId: "form.set_value",
+      targetId: "form-field:email",
+      value: "ada@example.test",
+      summary: "Set Email to ada@example.test"
+    }],
+    omittedOffers: 0
+  };
+  const host = createCompanionSessionHost({
+    allowedOrigins: [origin],
+    port: 0,
+    createLinkSessionId: () => "offer-link",
+    sendModelTurn: async () => {
+      if (nextReply instanceof Error) throw nextReply;
+      return nextReply;
+    }
+  });
+  const address = await host.listen();
+  try {
+    const authority = createCoworkSessionAuthority({
+      sessionId: "offer-session",
+      initialState: {
+        humanPresence: "present",
+        agentPresence: "active",
+        effectiveMode: "cowork"
+      },
+      primarySurface: { surfaceId: "formbuilder:embedded", kind: "embedded" }
+    });
+    const link = createHttpCompanionLink({
+      endpoint: `http://${address.hostname}:${address.port}/cowork/v1`,
+      fetchImpl: (url, init) => fetch(url, {
+        ...init,
+        headers: { ...init.headers, origin }
+      })
+    });
+    const snapshot = authority.readSnapshot();
+    await link.join({
+      hello: createCompanionHello({
+        sessionId: snapshot.sessionId,
+        surfaceId: "formbuilder:embedded",
+        revision: snapshot.revision,
+        origin
+      }),
+      snapshot
+    });
+
+    // The page's relay loop: it pulls what waits for it and answers.
+    const ranOnPage = [];
+    const relay = setInterval(async () => {
+      for (const request of await link.pullAgentRequests({ linkSessionId: "offer-link" })) {
+        ranOnPage.push(request);
+        await link.reportAgentResult({
+          linkSessionId: "offer-link",
+          requestId: request.requestId,
+          result: { offerId: "offer-1" }
+        });
+      }
+    }, 20);
+
+    const answered = await host.submitModelTurn("offer-link", {
+      turnId: "offer-turn",
+      input: { transcript: "Fill in the form fields please." }
+    });
+    assert.deepEqual(answered.delivery, { offered: 1, rejected: 0, reason: null });
+    assert.equal(ranOnPage.length, 1);
+    assert.equal(ranOnPage[0].name, "cowork_offer_action");
+    assert.equal(ranOnPage[0].arguments.value, "ada@example.test");
+    assert.equal(
+      host.readSnapshot("offer-link").state.lastConversation.status,
+      "responded"
+    );
+
+    // Now the same turn fails. It must not read as if the human said nothing.
+    nextReply = Object.assign(
+      new Error("The model spent all 500 answer tokens thinking and returned no reply."),
+      { code: "MODEL_THOUGHT_PAST_ITS_BUDGET" }
+    );
+    await assert.rejects(() => host.submitModelTurn("offer-link", {
+      turnId: "failing-turn",
+      input: { transcript: "Fill in the form fields please." }
+    }));
+    clearInterval(relay);
+
+    const failedState = host.readSnapshot("offer-link").state.lastConversation;
+    assert.equal(failedState.status, "MODEL_THOUGHT_PAST_ITS_BUDGET");
+    assert.match(failedState.assistant, /thinking/);
+    assert.deepEqual(host.readModelStatus("offer-link"), {
+      activeTurnId: null,
+      queuedTurns: 0,
+      completedTurns: 1,
+      failedTurns: 1
+    });
+  } finally {
+    await host.close();
   }
 });

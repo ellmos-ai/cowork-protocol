@@ -273,8 +273,22 @@ async function pullAllCompanionDeltas() {
     hasMore = batch.hasMore;
   }
   session = adoptSessionState(companionReplicaSnapshot.state);
+  showCompanionConversation(session.lastConversation);
   render();
   return readCurrentSessionSnapshot();
+}
+
+// While the Companion holds the model seat the human types over there, so the
+// page must show that conversation - including a turn that failed, which
+// otherwise vanishes and leaves the page looking like nothing was asked.
+function showCompanionConversation(lastConversation) {
+  if (!lastConversation || lastConversation.status === "pending") return;
+  const speaker = lastConversation.status === "responded"
+    ? "Model"
+    : `Model failed (${lastConversation.status})`;
+  $("#transcript").textContent =
+    `You: ${lastConversation.human}
+${speaker}: ${lastConversation.assistant}`;
 }
 
 function reportCompanionSurfaceVisibility(visibility) {
@@ -630,7 +644,8 @@ async function openInCompanion() {
     companionRelayStop = startCompanionAgentRelay({
       link,
       linkSessionId: acknowledgement.linkSessionId,
-      handlers: coworkToolHandlers
+      handlers: coworkToolHandlers,
+      syncDeltas: () => pullAllCompanionDeltas()
     });
     session = adoptSessionState(companionReplicaSnapshot.state);
     let visibilityWarning = null;
@@ -1803,16 +1818,19 @@ async function builderHandover({ humanPresence, batch }) {
   render();
 }
 
+// Returns whether the job was actually handed over: mintDemoLease() refuses
+// without a pointed-at field and a stated goal, and the caller has to know
+// that rather than assume it worked.
 function startAway(duration) {
   if (builderFocus !== null || builderCowork?.readActiveGrant()) {
     void builderHandover({
       humanPresence: duration === "long" ? "afk-long" : "afk-short",
       batch: true
     });
-    return;
+    return true;
   }
   const lease = mintDemoLease();
-  if (lease === null) return;
+  if (lease === null) return false;
   const at = new Date().toISOString();
   leaseCallsUsed = 0;
   commitSession(
@@ -1828,6 +1846,7 @@ function startAway(duration) {
   );
   setStatus("The model works alone only inside the displayed two-minute field lease.");
   render();
+  return true;
 }
 
 // Hand the job over and stay: the everyday case - you say what to do, the
@@ -1835,10 +1854,10 @@ function startAway(duration) {
 function handOverWhileWatching() {
   if (builderFocus !== null || builderCowork?.readActiveGrant()) {
     void builderHandover({ humanPresence: "present", batch: false });
-    return;
+    return true;
   }
   const lease = mintDemoLease();
-  if (lease === null) return;
+  if (lease === null) return false;
   const status = statusForWorkModeChoice("sparring-model", session);
   leaseCallsUsed = 0;
   commitSession(
@@ -1851,6 +1870,7 @@ function handOverWhileWatching() {
   );
   render();
   setStatus(`${$("#mode-detail").textContent} ${$("#authority-label").textContent}.`);
+  return true;
 }
 
 function executeSoloAction({ capabilityId, targetId, value }) {
@@ -1991,7 +2011,38 @@ function cycleActorStatus(side) {
   render();
 }
 
+// Choosing "sparring-model" in the work-mode select is a wish: it says what
+// the human would like and still snaps back without a grant. Pressing the
+// model's seat is not a wish, it is the gesture - a trusted click by the
+// person who holds the authority, on the actor they are handing the job to.
+// So the seat mints the grant the "Hand over, I'll watch" button mints, and
+// the next press takes the job back. The select keeps its snap-back; nothing
+// here weakens the rule that the model executes only inside a grant.
 function cycleModelCockpit() {
+  if (session.workMode.model.canExecute) {
+    returnHuman();
+    return;
+  }
+  const requested = nextActorStatus(session.workMode.model);
+  if (requested.availability === "here" && requested.role === "executing") {
+    // This step is reached from standby or away, so the model has to come in
+    // before anything can be handed to it - both handover paths refuse a model
+    // that is not here. Doing it first also gives the honest fallback for free:
+    // if no grant can be minted we are already on advising, which is where the
+    // status cycle was heading anyway, and the reason stays on screen.
+    commitSession("model-status-changed", transitionShowcaseSession(session, {
+      type: "SET_STATUS",
+      model: { availability: "here", role: "advising", area: session.model.area }
+    }));
+    const handedOver = session.workMode.human.availability === "here"
+      ? handOverWhileWatching()
+      : startAway(session.humanPresence === "afk-long" ? "long" : "short");
+    if (handedOver) return;
+    const reason = $("#system-status").textContent;
+    render();
+    setStatus(`${reason} The model is advising instead.`);
+    return;
+  }
   cycleActorStatus("model");
 }
 

@@ -165,17 +165,20 @@ function render(state) {
   $("#relay-detail").textContent = connected
     ? presentation.modeDetail
     : "Waiting for one shared session";
-  // A model set to execute without a current grant is the one state worth
-  // spelling out: the cockpit says why the click right did not move.
+  // The seat click is the handover, so the cockpit names the grant that click
+  // minted - goal, budget, expiry - and says how to take the job back.
   const workMode = currentSession?.workMode ?? IDLE_WORK_MODE;
+  const lease = currentSession?.lease ?? null;
   $("#cockpit-status").textContent = connected
     ? currentSession?.computerUseAbortMessage
       ? `Computer Use stopped: ${currentSession.computerUseAbortMessage}`
       : computerUseActive
         ? "The red model pointer marks profile-filtered system control. Click again to stop."
-        : workMode.authorityLapsed === true
-          ? `${presentation.authorityLabel}. The model needs a current grant with goal, budget and expiry before it can execute.`
-          : `${presentation.authorityLabel}. ${presentation.roleDetail}`
+        : workMode.model?.canExecute && lease !== null
+          ? `${presentation.authorityLabel}. Grant "${lease.goal}", up to ${lease.maxCalls} actions, until ${formatContact(lease.expiresAt)}. Click the model's seat to take the job back.`
+          : workMode.authorityLapsed === true
+            ? `${presentation.authorityLabel}. Click the model's seat to hand the job over - that click mints the grant with goal, budget and expiry.`
+            : `${presentation.authorityLabel}. ${presentation.roleDetail}`
     : "Connect a page to awaken the relay.";
   $("#relay-core").title = presentation.areaLabel;
 
@@ -194,13 +197,31 @@ function render(state) {
 
   const turns = currentSession?.context?.recentTurns ?? [];
   $("#context-budget").textContent = `${turns.length} recent turn${turns.length === 1 ? "" : "s"}`;
-  $("#turns").replaceChildren(...turns.map((turn) => {
+  const entries = turns.map((turn) => ({
+    role: turn.role === "assistant" ? "Model" : "Human",
+    className: turn.role,
+    text: turn.text
+  }));
+  // A turn the model failed leaves no assistant turn behind, so the list used
+  // to end on the human's line as if nothing had been asked. Say what failed.
+  const lastConversation = currentSession?.lastConversation ?? null;
+  if (
+    lastConversation !== null &&
+    !["responded", "pending"].includes(lastConversation.status)
+  ) {
+    entries.push({
+      role: `Failed · ${lastConversation.status}`,
+      className: "failed",
+      text: lastConversation.assistant || "The model turn did not produce a reply."
+    });
+  }
+  $("#turns").replaceChildren(...entries.map((entry) => {
     const item = document.createElement("li");
-    item.className = turn.role;
+    item.className = entry.className;
     const role = document.createElement("strong");
-    role.textContent = turn.role === "assistant" ? "Model" : "Human";
+    role.textContent = entry.role;
     const text = document.createElement("span");
-    text.textContent = turn.text;
+    text.textContent = entry.text;
     item.append(role, text);
     return item;
   }));
@@ -248,7 +269,11 @@ async function postControl(kind, body) {
       }
     );
     const result = await response.json();
-    if (!response.ok) throw new Error(result.code ?? "CONTROL_UPDATE_FAILED");
+    if (!response.ok) {
+      throw new Error(
+        [result.code ?? "CONTROL_UPDATE_FAILED", result.message].filter(Boolean).join(" - ")
+      );
+    }
     $("#status").textContent = "Collaboration state shared.";
   } catch (error) {
     $("#status").textContent = error.message;
@@ -275,11 +300,21 @@ function cycleHumanPresence() {
   });
 }
 
-function cycleModelEngagement() {
+// Clicking the model's seat toward "collaborating" is the handover, and the
+// host mints the grant for it. When it cannot - no page linked, no field
+// pointed at - the seat must not stall on the status it is already in, or the
+// model could never be woken again. It moves on to the status this Companion
+// can deliver, and the refusal stays on screen as the reason.
+async function cycleModelEngagement() {
   if (!currentSession?.modelAvailable) return;
-  return postControl("engagement", {
-    agentEngagement: nextValue(MODEL_STATES, currentSession.agentEngagement)
-  });
+  const wanted = nextValue(MODEL_STATES, currentSession.agentEngagement);
+  await postControl("engagement", { agentEngagement: wanted });
+  if (wanted !== "collaborating" || currentSession?.agentEngagement === "collaborating") {
+    return;
+  }
+  const refusal = $("#status").textContent;
+  await postControl("engagement", { agentEngagement: nextValue(MODEL_STATES, wanted) });
+  $("#status").textContent = `${refusal} The model is advising instead.`;
 }
 
 async function toggleComputerUse(event) {
@@ -336,9 +371,19 @@ $("#conversation-form").addEventListener("submit", async (event) => {
       }
     );
     const result = await response.json();
-    if (!response.ok) throw new Error(result.code ?? "MODEL_TURN_FAILED");
+    if (!response.ok) {
+      throw new Error(
+        [result.code ?? "MODEL_TURN_FAILED", result.message].filter(Boolean).join(" - ")
+      );
+    }
     $("#conversation-input").value = "";
-    $("#status").textContent = result.reply.message ?? "Reply received.";
+    const delivery = result.delivery ?? { offered: 0, rejected: 0, reason: null };
+    const placed = delivery.offered > 0
+      ? ` ${delivery.offered} suggestion${delivery.offered === 1 ? "" : "s"} are waiting on the page for your click.`
+      : delivery.rejected > 0
+        ? ` ${delivery.rejected} suggestion${delivery.rejected === 1 ? "" : "s"} could not reach the page (${delivery.reason}).`
+        : "";
+    $("#status").textContent = `${result.reply.message ?? "Reply received."}${placed}`;
     speech(result.reply.message ?? "");
   } catch (error) {
     $("#status").textContent = error.message;

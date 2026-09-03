@@ -69,6 +69,37 @@ The Companion displays the configured `COWORK_MODEL` identifier in its model
 seat. Model endpoint, key and reasoning settings remain host-owned startup
 configuration; the browser surface does not receive them.
 
+### Reasoning models (Ollama qwen3.x, gpt-oss)
+
+A reasoning model answers in two parts: hidden thinking and the reply text.
+`max_tokens` covers both, so a small answer budget can be spent entirely on
+thinking and come back with an empty reply. Measured here against
+`qwen3.8:27b-mlx` on 2026-09-04, with the Companion's real gateway packet:
+
+| Request | Result |
+|---|---|
+| `max_tokens: 500`, no reasoning level | 35.1 s, `finish_reason: length`, 2,136 reasoning characters, empty reply |
+| `reasoning_effort: "none"` | 12.4 s, 126 completion tokens, valid JSON reply |
+
+The Companion handles this itself: when no reasoning level is configured and a
+turn comes back with nothing but thinking, it retries that turn once with
+`reasoning_effort: "none"` and prints
+`[cowork] MODEL_THOUGHT_PAST_ITS_BUDGET: ...` so the retry is never silent. To
+skip the wasted first attempt, or to keep the thinking and pay for it, set the
+level and budget yourself:
+
+```powershell
+# Fastest for Ollama reasoning models: no thinking, no retry.
+$env:COWORK_MODEL_REASONING_EFFORT='none'
+# Or keep the thinking and give it room (64..2000, default 500).
+$env:COWORK_MODEL_MAX_TOKENS='1500'
+```
+
+`"think": false` does **not** work on the `/v1/chat/completions` endpoint;
+`reasoning_effort` does. An explicitly configured level is never downgraded by
+the retry - the turn fails with `MODEL_THOUGHT_PAST_ITS_BUDGET` instead, and
+that code and sentence reach the cockpit and the linked page.
+
 Computer Use is optional and lazy. No Open Compute process starts until the
 human presses its cockpit switch. By default the Companion launches the
 Git-hosted `open-compute[mcp,local,uia]` MCP server through `uvx` with

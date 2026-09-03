@@ -158,6 +158,7 @@ same function.
 | Trigger | Effect |
 | --- | --- |
 | Click a figure | cycles that partner's status: `here-executing` → `here-advising` → `standby` → `away` → … |
+| Click the model's seat toward `executing` | **is the handover**: the surface mints the grant, and the next click on that seat takes the job back |
 | Pick a mode | `statusForWorkModeChoice()` sets both partners' status and carries the areas over |
 | A prompt, typed or spoken | mints a grant for that job, so the model executes and the human watches |
 | Focus a field | sets the human's area, which is also what decides whether doubling is possible |
@@ -168,6 +169,31 @@ same function.
 Clicking a figure is how you change your partner's status, because the person
 clicking is always the human: clicking the model figure parks or wakes the
 model, clicking your own figure says whether you are executing or advising.
+
+### The seat click is the authorization; the mode picker is a wish
+
+Both can ask for the same state, and they answer differently on purpose.
+
+Choosing `sparring-model` in the mode picker says what you would like. Without a
+grant it snaps back to the mode in force and the surface names what is missing -
+a selection is not an authorization, and the security core above does not bend
+for a dropdown.
+
+Pressing the model's seat is not a selection. It is a trusted click by the
+person who holds the authority, on the actor they are handing the job to, and
+that gesture is exactly what a grant records. So the seat mints one: the goal
+from the focused target, the same call budget and expiry the surface's
+hand-over button uses, and a visible line saying so. Nothing executes outside a
+grant either way; the two paths differ in who authored the gesture.
+
+- **Embedded panel** - human here: hand over and watch. Human away: the away
+  path, model solo inside the lease. Either way the next press returns the job.
+- **Desktop Companion** - the Companion is the Session Authority, so it mints
+  the grant itself instead of sending you back to the page. With no page linked
+  it says `PAGE_NOT_LINKED`; with no field pointed at, `NO_FOCUSED_TARGET`. A
+  grant is about something, and it will not invent what.
+- **Browser extension** - mints no grant, so its seat skips `executing` and says
+  why. Same rule, applied where no authority record can exist.
 
 ## What did not change
 
