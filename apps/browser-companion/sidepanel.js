@@ -1,6 +1,7 @@
 import {
   buildCockpitPresentation
 } from "./modules/apps/browser-companion/src/cockpit-presentation.js";
+import { CLARIFY_STEPS } from "./modules/packages/reference-ui/src/index.js";
 
 const $ = (selector) => document.querySelector(selector);
 const root = $(".cowork-cockpit");
@@ -30,15 +31,16 @@ function setNotice(message, milliseconds = 3500) {
   $("#status").textContent = message;
 }
 
+// The two status variables per actor are the whole input; the work mode and
+// the click right follow from them. There is no action-rights setting to read.
 function presentationInput(state) {
   return {
-    enabled: state?.enabled === true,
     mode: state?.mode ?? "off",
     executionMode: state?.executionMode ?? "structured",
-    humanPresence: state?.humanPresence ?? "present",
-    agentEngagement:
-      state?.agentEngagement ?? (state?.enabled === true ? "collaborating" : "paused"),
-    soloLeaseValid: state?.soloLeaseValid === true,
+    human: state?.human ?? { availability: "here", role: "acting" },
+    model: state?.model ?? { availability: "away", role: "observing" },
+    allowParallel: state?.allowParallel === true,
+    modelAuthorityValid: state?.modelAuthorityValid !== false,
     contextLevel: Number.isInteger(state?.contextLevel) ? state.contextLevel : 0
   };
 }
@@ -61,19 +63,20 @@ function render(state) {
   $("#connection-lamp").setAttribute("aria-label", presentation.routeLabel);
   $("#human-label").textContent = presentation.humanLabel;
   $("#model-label").textContent = presentation.modelLabel;
+  // Pressed means "taking part": here, whichever role.
   $("#human-control").setAttribute(
     "aria-pressed",
-    String(presentation.humanState === "present")
+    String(presentation.humanState.startsWith("here"))
   );
   $("#model-control").setAttribute(
     "aria-pressed",
-    String(presentation.modelState === "collaborating")
+    String(presentation.modelState.startsWith("here"))
   );
   $("#mode").textContent = presentation.modeLabel;
   $("#relay-core").setAttribute("aria-label", presentation.modeLabel);
   $("#relay-label").textContent = presentation.modeLabel;
-  $("#relay-detail").textContent = presentation.relayDetail;
-  $("#relay-detail").title = presentation.relayDetail;
+  $("#relay-detail").textContent = presentation.modeDetail;
+  $("#relay-detail").title = `${presentation.authorityLabel}. ${presentation.taskDetail}`;
   $("#route-explainer").textContent = presentation.routeExplainer;
   $("#seat-note").textContent = presentation.seatNote;
 
@@ -136,6 +139,18 @@ async function refresh() {
   }
 }
 
+// Every visible status word comes from packages/reference-ui.
+$("#clarify-steps").replaceChildren(
+  ...CLARIFY_STEPS.map((step) => {
+    const item = document.createElement("span");
+    const dot = document.createElement("i");
+    dot.setAttribute("aria-hidden", "true");
+    item.append(dot, step.label);
+    item.title = step.question;
+    return item;
+  })
+);
+
 $("#model-control").addEventListener("click", async (event) => {
   if (event.isTrusted) await operate({ type: "cowork:sidepanel:cycle-model" });
 });
@@ -158,13 +173,10 @@ async function requestContext(event) {
 $("#context-gauge").addEventListener("click", requestContext);
 $("#context-action").addEventListener("click", requestContext);
 
-$("#handoff-action").addEventListener("click", async (event) => {
-  if (!event.isTrusted) return;
-  if (currentState?.soloLeaseValid !== true) {
-    setNotice(ERROR_MESSAGES.SOLO_LEASE_REQUIRED);
-    return;
-  }
-  await operate({ type: "cowork:sidepanel:cycle-human" });
+// Like Speak, this key explains a capability the extension does not have: no
+// Session Authority here grants a solo lease, so it never performs a handoff.
+$("#handoff-action").addEventListener("click", (event) => {
+  if (event.isTrusted) setNotice(ERROR_MESSAGES.SOLO_LEASE_REQUIRED);
 });
 
 $("#voice-action").addEventListener("click", (event) => {

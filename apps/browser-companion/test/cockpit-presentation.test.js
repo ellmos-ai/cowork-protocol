@@ -2,39 +2,51 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  ACTOR_STATUS_CYCLE,
   buildCockpitPresentation,
-  nextHumanPresence,
-  nextModelEngagement
+  nextActorStatus
 } from "../src/cockpit-presentation.js";
+
+const HERE_ACTING = { availability: "here", role: "acting" };
+const HERE_OBSERVING = { availability: "here", role: "observing" };
+const STANDBY = { availability: "standby", role: "observing" };
+const AWAY = { availability: "away", role: "observing" };
 
 function build(overrides = {}) {
   return buildCockpitPresentation({
-    enabled: true,
     mode: "native-cowork",
     executionMode: "structured",
-    humanPresence: "present",
-    agentEngagement: "collaborating",
-    soloLeaseValid: false,
+    human: HERE_ACTING,
+    model: HERE_OBSERVING,
+    allowParallel: false,
+    modelAuthorityValid: true,
     contextLevel: 0,
     ...overrides
   });
 }
 
-test("the cockpit turns live when human and model collaborate", () => {
+test("both here and the human acting means the human holds the click right", () => {
   assert.deepEqual(build(), {
     route: "native",
     routeLabel: "Native Cowork",
     executionMode: "structured",
     executionLabel: "Structured actions",
     computerUseActive: false,
-    humanState: "present",
-    humanLabel: "You are here",
-    modelState: "collaborating",
-    modelLabel: "Model collaborating",
-    effectiveMode: "cowork",
-    modeLabel: "Working together",
-    relayState: "live",
-    relayDetail: "Ideas and actions relay through the page",
+    providerId: "cowork-reference-ui",
+    mode: "cowork",
+    authority: "human",
+    modeLabel: "Together · you act",
+    modeDetail: "You click. The model watches and suggests.",
+    relayState: "watching",
+    humanState: "here-acting",
+    humanLabel: "You are working",
+    humanTone: "green",
+    modelState: "here-observing",
+    modelLabel: "Model is advising",
+    modelTone: "green",
+    taskLabel: "Advise",
+    taskDetail: "Explains and proposes. Nothing changes without your click.",
+    authorityLabel: "You hold the click right",
     routeExplainer:
       "Native — this page speaks Cowork Protocol. This panel relays the page's own tools; " +
       "offers appear in the page's Cowork panel and are clicked there.",
@@ -51,80 +63,88 @@ test("the panel never claims a model seat it does not have", () => {
   assert.match(webmcp.routeExplainer, /^WebMCP — the page exposes WebMCP tools/);
   assert.match(webmcp.seatNote, /^Model seat: none\./);
   assert.match(webmcp.seatNote, /npm run start:companion-host/);
-  assert.equal(webmcp.relayState, "live");
-  assert.equal(webmcp.relayDetail, "Ready to relay — no model connected in this extension");
 
   const bridge = build({ mode: "legacy-host-companion" });
   assert.match(bridge.routeExplainer, /^Bridge — no protocol on this page/);
   assert.equal(bridge.seatNote, webmcp.seatNote);
-  assert.equal(bridge.relayDetail, "Ready to relay — no model connected in this extension");
 });
 
 test("an unattached panel explains how to attach instead of naming a seat", () => {
-  const presentation = build({ enabled: false, mode: "off", agentEngagement: "paused" });
+  const presentation = build({ mode: "off", model: AWAY });
   assert.equal(
     presentation.routeExplainer,
     "Not attached. Click the toolbar icon on a page to attach this panel."
   );
   assert.equal(presentation.seatNote, "No page attached.");
-  assert.equal(presentation.relayDetail, "Model is paused");
+  assert.equal(presentation.modelState, "away");
+  assert.equal(presentation.taskLabel, "Disconnected");
 });
 
-test("the relay detail follows the relay state, not the route, once work is scoped", () => {
-  assert.equal(
-    build({ agentEngagement: "observing" }).relayDetail,
-    "Model reads and explains only"
-  );
-  assert.equal(
-    build({ humanPresence: "afk-short", soloLeaseValid: true }).relayDetail,
-    "Scoped solo work is flowing to the model"
-  );
-  assert.equal(
-    build({ mode: "legacy-host-companion", humanPresence: "afk-short" }).relayDetail,
-    "No collaboration turn is active"
-  );
+test("the hand on the mouse wins when both act and parallel work is not allowed", () => {
+  const conflict = build({ model: HERE_ACTING });
+  assert.equal(conflict.mode, "cowork");
+  assert.equal(conflict.authority, "human");
+  assert.equal(conflict.modelState, "here-observing");
+  assert.equal(conflict.modeLabel, "Together · you act");
+
+  const parallel = build({ model: HERE_ACTING, allowParallel: true });
+  assert.equal(parallel.mode, "parallel");
+  assert.equal(parallel.authority, "both");
+  assert.equal(parallel.modeLabel, "Both at once");
+  assert.equal(parallel.authorityLabel, "Both hold the click right");
+  assert.equal(parallel.relayState, "live");
 });
 
-test("observing is an explain-only engagement, not a second presence value", () => {
-  const presentation = build({ agentEngagement: "observing" });
-  assert.equal(presentation.modelState, "observing");
-  assert.equal(presentation.modelLabel, "Model observing");
-  assert.equal(presentation.effectiveMode, "cowork");
-  assert.equal(presentation.modeLabel, "Model watching");
-  assert.equal(presentation.relayState, "watching");
+test("observing is advising: it comments and proposes, it does not click", () => {
+  const advising = build();
+  assert.equal(advising.modelState, "here-observing");
+  assert.equal(advising.modelLabel, "Model is advising");
+  assert.equal(advising.taskLabel, "Advise");
+  assert.equal(advising.relayState, "watching");
+
+  const modelActs = build({ human: HERE_OBSERVING, model: HERE_ACTING });
+  assert.equal(modelActs.mode, "cowork");
+  assert.equal(modelActs.authority, "model");
+  assert.equal(modelActs.modeLabel, "Together · model acts");
+  assert.equal(modelActs.relayState, "live");
+  assert.equal(modelActs.authorityLabel, "The model holds the click right");
 });
 
-test("a paused model makes the present human the only worker", () => {
-  const presentation = build({ enabled: false, mode: "off", agentEngagement: "paused" });
+test("a standby model makes the present human the only worker", () => {
+  const presentation = build({ mode: "off", model: STANDBY });
   assert.equal(presentation.route, "off");
-  assert.equal(presentation.effectiveMode, "human-solo");
-  assert.equal(presentation.modelState, "paused");
+  assert.equal(presentation.mode, "human-solo");
+  assert.equal(presentation.modelState, "standby");
+  assert.equal(presentation.modeLabel, "You work alone");
   assert.equal(presentation.relayState, "dormant");
+  assert.equal(presentation.taskLabel, "Stand by");
 });
 
-test("brief human absence becomes agent solo only with a real lease", () => {
-  const solo = build({ humanPresence: "afk-short", soloLeaseValid: true });
-  assert.equal(solo.humanState, "afk-short");
+test("absence becomes model solo only with a valid authority record", () => {
+  const solo = build({ human: STANDBY, model: HERE_ACTING });
+  assert.equal(solo.humanState, "standby");
   assert.equal(solo.humanLabel, "You are briefly away");
-  assert.equal(solo.effectiveMode, "agent-solo");
+  assert.equal(solo.mode, "model-solo");
+  assert.equal(solo.modeLabel, "Model works alone");
   assert.equal(solo.relayState, "to-model");
 
-  const refused = build({ humanPresence: "afk-short", soloLeaseValid: false });
-  assert.equal(refused.effectiveMode, "idle");
+  const refused = build({
+    human: STANDBY,
+    model: HERE_ACTING,
+    modelAuthorityValid: false
+  });
+  assert.equal(refused.mode, "idle");
+  assert.equal(refused.modelState, "here-observing");
   assert.equal(refused.relayState, "dormant");
 });
 
-test("long absence and a paused model stay visibly idle", () => {
-  const presentation = build({
-    enabled: false,
-    mode: "off",
-    humanPresence: "afk-long",
-    agentEngagement: "paused"
-  });
-  assert.equal(presentation.humanState, "afk-long");
+test("long absence and a disconnected model stay visibly idle", () => {
+  const presentation = build({ mode: "off", human: AWAY, model: AWAY });
+  assert.equal(presentation.humanState, "away");
   assert.equal(presentation.humanLabel, "You are away");
-  assert.equal(presentation.effectiveMode, "idle");
-  assert.equal(presentation.modeLabel, "Both paused");
+  assert.equal(presentation.mode, "idle");
+  assert.equal(presentation.modeLabel, "Nobody is acting");
+  assert.equal(presentation.authorityLabel, "Nobody holds the click right");
 });
 
 test("connector and context instruments expose only bounded real levels", () => {
@@ -149,17 +169,18 @@ test("computer use is a separate expensive execution signal, never a connector a
 });
 
 test("unknown actor states fail closed instead of inventing a visual mode", () => {
-  assert.throws(() => build({ humanPresence: "maybe" }), /human presence/);
-  assert.throws(() => build({ agentEngagement: "background" }), /model engagement/);
+  assert.throws(() => build({ human: { availability: "maybe", role: "acting" } }), /actor status/);
+  assert.throws(() => build({ model: { availability: "here", role: "background" } }), /actor status/);
 });
 
-test("actor clicks cycle through the visible state language in a stable order", () => {
-  assert.equal(nextModelEngagement("collaborating"), "observing");
-  assert.equal(nextModelEngagement("observing"), "paused");
-  assert.equal(nextModelEngagement("paused"), "collaborating");
-  assert.equal(nextHumanPresence("present"), "afk-short");
-  assert.equal(nextHumanPresence("afk-short"), "afk-long");
-  assert.equal(nextHumanPresence("afk-long"), "present");
-  assert.throws(() => nextModelEngagement("unknown"), /model engagement/);
-  assert.throws(() => nextHumanPresence("unknown"), /human presence/);
+test("a figure click cycles the four statuses in a stable order", () => {
+  assert.deepEqual(ACTOR_STATUS_CYCLE, [HERE_ACTING, HERE_OBSERVING, STANDBY, AWAY]);
+  assert.deepEqual(nextActorStatus(HERE_ACTING), HERE_OBSERVING);
+  assert.deepEqual(nextActorStatus(HERE_OBSERVING), STANDBY);
+  assert.deepEqual(nextActorStatus(STANDBY), AWAY);
+  assert.deepEqual(nextActorStatus(AWAY), HERE_ACTING);
+  // Availability alone identifies an actor that is not here, whatever role a
+  // caller passes with it.
+  assert.deepEqual(nextActorStatus({ availability: "standby", role: "acting" }), AWAY);
+  assert.throws(() => nextActorStatus({ availability: "unknown" }), /actor status/);
 });

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { CLARIFY_STEPS } from "../src/index.js";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../../..");
 
@@ -13,6 +14,13 @@ const surfaces = [
   "apps/formbuilder-showcase/index.html",
   "apps/browser-companion/sidepanel.html",
   "apps/desktop-companion/ui/index.html"
+];
+
+// Each surface holds the Clarify bar and fills it from the shared vocabulary.
+const clarifyRenderers = [
+  "apps/formbuilder-showcase/src/app.js",
+  "apps/browser-companion/sidepanel.js",
+  "apps/desktop-companion/ui/app.js"
 ];
 
 test("every Cowork surface uses the selected Dialogue and Relay identity", async () => {
@@ -28,11 +36,26 @@ test("every Cowork surface uses the selected Dialogue and Relay identity", async
     assert.match(html, /data-cowork-brand="dialogue-relay"/, surface);
     assert.match(html, /class="cowork-brand-mark"/, surface);
     assert.match(html, /cowork-dialogue-mark\.svg/, surface);
-    assert.match(
-      html,
-      /class="protocol-rhythm"[\s\S]*Point[\s\S]*Offer[\s\S]*Click[\s\S]*Verify/,
-      surface
-    );
+    assert.match(html, /class="protocol-rhythm" id="clarify-steps"/, surface);
+  }
+});
+
+test("every Cowork surface fills the Clarify bar from the shared vocabulary", async () => {
+  assert.equal(CLARIFY_STEPS.length, 4);
+  assert.deepEqual(
+    CLARIFY_STEPS.map((step) => step.id),
+    ["status", "mode", "attention", "task"]
+  );
+
+  for (const renderer of clarifyRenderers) {
+    const script = await source(renderer);
+    // The words live in packages/reference-ui, never in a surface. A surface
+    // that spelled its own steps would drift away from the other two.
+    assert.match(script, /CLARIFY_STEPS/, renderer);
+    assert.match(script, /clarify-steps/, renderer);
+    for (const step of CLARIFY_STEPS) {
+      assert.doesNotMatch(script, new RegExp(`["\`']${step.label}["\`']`), renderer);
+    }
   }
 });
 

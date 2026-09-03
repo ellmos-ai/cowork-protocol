@@ -883,3 +883,185 @@ export function buildContextExpansion(input) {
     }
   };
 }
+
+/* ------------------------------------------------------------------ *
+ * Work-mode matrix (v0.2)
+ *
+ * One pure function replaces the old split between "presence" and a
+ * separately chosen "action mode". Two variables per actor decide
+ * everything else:
+ *
+ *   availability - here | standby | away   (can this actor take part?)
+ *   role         - acting | observing      (what does it do while here?)
+ *
+ * The work mode, who holds authority, and therefore who may click are
+ * derived. Action rights are never chosen on their own; see
+ * docs/work-modes.md.
+ * ------------------------------------------------------------------ */
+
+const AVAILABILITY_VALUES = new Set(["here", "standby", "away"]);
+const ROLE_VALUES = new Set(["acting", "observing"]);
+
+const LEGACY_HUMAN_AVAILABILITY = Object.freeze({
+  present: "here",
+  "afk-short": "standby",
+  "afk-long": "away"
+});
+const LEGACY_HUMAN_PRESENCE = Object.freeze({
+  here: "present",
+  standby: "afk-short",
+  away: "afk-long"
+});
+
+function readActor(actor, side) {
+  const availability = actor?.availability;
+  const role = actor?.role ?? "observing";
+  if (!AVAILABILITY_VALUES.has(availability)) {
+    throw new CoworkProtocolError(
+      side === "human" ? "INVALID_HUMAN_PRESENCE" : "INVALID_AGENT_PRESENCE",
+      `Unknown ${side} availability: ${availability}`
+    );
+  }
+  if (!ROLE_VALUES.has(role)) {
+    throw new CoworkProtocolError(
+      side === "human" ? "INVALID_HUMAN_PRESENCE" : "INVALID_AGENT_PRESENCE",
+      `Unknown ${side} role: ${role}`
+    );
+  }
+  return { availability, role };
+}
+
+/**
+ * Resolve the whole collaboration state from the four status variables.
+ *
+ * `modelAuthorityValid` is the model's authority record (the solo lease or
+ * delegation grant). A model set to `acting` without a valid record falls
+ * back to advising - the record is the evidence, the role is only the intent.
+ *
+ * Conflict rule: if both actors act and simultaneous work is not allowed,
+ * the human keeps authority. A hand on the mouse always wins.
+ */
+export function resolveWorkMode(input) {
+  const human = readActor(input?.human, "human");
+  const model = readActor(input?.model, "model");
+  const allowParallel = input?.allowParallel === true;
+  const modelAuthorityValid = input?.modelAuthorityValid !== false;
+
+  const humanActs = human.availability === "here" && human.role === "acting";
+  const modelWantsToAct = model.availability === "here" && model.role === "acting";
+  const modelActs = modelWantsToAct && modelAuthorityValid;
+  const authorityLapsed = modelWantsToAct && !modelAuthorityValid;
+
+  let mode;
+  let authority;
+  let humanRole = human.availability === "here" ? human.role : "observing";
+  let modelRole = model.availability === "here"
+    ? modelActs ? "acting" : "observing"
+    : "observing";
+
+  if (humanActs && modelActs) {
+    if (allowParallel) {
+      mode = "parallel";
+      authority = "both";
+    } else {
+      mode = "cowork";
+      authority = "human";
+      modelRole = "observing";
+    }
+  } else if (humanActs) {
+    mode = model.availability === "here" ? "cowork" : "human-solo";
+    authority = "human";
+  } else if (modelActs) {
+    mode = human.availability === "here" ? "cowork" : "model-solo";
+    authority = "model";
+  } else {
+    mode = "idle";
+    authority = "none";
+  }
+
+  const rights = (side, role) => {
+    const available = (side === "human" ? human : model).availability === "here";
+    const execute = authority === side || authority === "both";
+    return Object.freeze({
+      availability: (side === "human" ? human : model).availability,
+      role,
+      canExecute: execute,
+      canPropose: available && !execute
+    });
+  };
+
+  return Object.freeze({
+    mode,
+    authority,
+    allowParallel,
+    authorityLapsed,
+    human: rights("human", humanRole),
+    model: rights("model", modelRole)
+  });
+}
+
+/** Does this actor hold the click/execute right in the resolved state? */
+export function hasAuthority(workMode, side) {
+  return workMode?.authority === side || workMode?.authority === "both";
+}
+
+/**
+ * Bridge to the 0.1 wire vocabulary. Presence events, solo leases and the
+ * nine WebMCP tools keep their published shapes; only the UI reasons in the
+ * matrix above.
+ */
+export function toLegacyPresence(workMode) {
+  const modelActive =
+    workMode.model.availability === "here" &&
+    (workMode.model.role === "acting" || workMode.model.canPropose);
+  const humanPresence = LEGACY_HUMAN_PRESENCE[workMode.human.availability];
+  const agentPresence = modelActive ? "active" : "paused";
+  return Object.freeze({
+    humanPresence,
+    agentPresence,
+    agentEngagement:
+      workMode.model.availability === "here"
+        ? workMode.model.role === "acting"
+          ? "collaborating"
+          : "observing"
+        : "paused",
+    // Derived from the 0.1 values themselves, so a 0.1 consumer that
+    // re-resolves the mode always agrees with us. The finer distinctions of
+    // the matrix (who holds authority, both-at-once, nobody acting) live in
+    // `workMode`, not on the 0.1 wire.
+    effectiveMode: resolvePresenceMode({
+      humanPresence,
+      agentPresence,
+      leaseValid: workMode.mode === "model-solo"
+    }),
+    workMode: workMode.mode
+  });
+}
+
+/** Read 0.1 presence values back into the matrix inputs. */
+export function fromLegacyPresence({ humanPresence, agentPresence, agentEngagement }) {
+  const availability = LEGACY_HUMAN_AVAILABILITY[humanPresence];
+  if (availability === undefined) {
+    throw new CoworkProtocolError(
+      "INVALID_HUMAN_PRESENCE",
+      `Unknown human presence: ${humanPresence}`
+    );
+  }
+  // The 0.1 wire carries one "who is working" bit, and it sits on the agent:
+  // `collaborating` means the model works, anything else means the human does.
+  // Plain 0.1 cowork (no engagement field) is the offer-and-click rhythm, so
+  // the human holds the click right there.
+  const engagement = agentEngagement ?? (agentPresence === "paused" ? "paused" : "observing");
+  return Object.freeze({
+    human: Object.freeze({
+      availability,
+      role:
+        availability === "here" && engagement !== "collaborating" ? "acting" : "observing"
+    }),
+    model: Object.freeze(
+      engagement === "paused"
+        ? { availability: "standby", role: "observing" }
+        : { availability: "here", role: engagement === "collaborating" ? "acting" : "observing" }
+    )
+  });
+}

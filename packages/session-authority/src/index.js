@@ -627,7 +627,10 @@ export function createSessionBriefing({
       agent: boundedText(state.agentPresence, 40),
       mode: boundedText(state.effectiveMode, 40)
     },
-    actionMode: boundedText(state.actionMode, 40),
+    // The model's job follows from the work mode and who holds the click
+    // right; there is no separate action-rights value to brief.
+    workMode: boundedText(state.workMode?.mode, 40),
+    authority: boundedText(state.workMode?.authority, 40),
     goal: boundedText(state.lease?.goal ?? "", 120),
     focus:
       focus === null

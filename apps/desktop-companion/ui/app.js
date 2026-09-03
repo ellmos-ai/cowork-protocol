@@ -1,8 +1,19 @@
-import { buildCollaborationPresentation } from "./reference-ui.js";
+import { buildWorkModePresentation, CLARIFY_STEPS } from "./reference-ui.js";
 
 const $ = (selector) => document.querySelector(selector);
+// The 0.1 wire carries availability for the human and availability+role for
+// the model. Cycling these is cycling the matrix; the Companion offers no
+// separate action-rights switch, the click right follows from the status.
 const HUMAN_STATES = ["present", "afk-short", "afk-long"];
 const MODEL_STATES = ["collaborating", "observing", "paused"];
+const IDLE_WORK_MODE = Object.freeze({
+  mode: "idle",
+  authority: "none",
+  allowParallel: false,
+  authorityLapsed: false,
+  human: Object.freeze({ availability: "here", role: "observing" }),
+  model: Object.freeze({ availability: "away", role: "observing" })
+});
 const COCKPIT_BACKGROUND_KEY = "cowork.companion.cockpit-background.v1";
 const DEFAULT_COCKPIT_BACKGROUND = "#f8f1e4";
 let currentSession = null;
@@ -69,25 +80,13 @@ function formatContact(isoText) {
   return Number.isNaN(at.getTime()) ? "unknown time" : at.toLocaleTimeString();
 }
 
-function relayDetail(presentation, connected) {
-  if (!connected) return "Waiting for one shared session";
-  if (presentation.relayState === "live") return "Both seats active";
-  if (presentation.relayState === "watching") return "Model listens; actions withheld";
-  if (presentation.relayState === "to-model") return "Delegated lease carries the work";
-  if (presentation.humanState !== "present") return "No solo lease; model waits";
-  return "Model is paused";
-}
-
 function render(state) {
   currentSession = state.sessions[0] ?? null;
   const connected = Boolean(currentSession);
-  const humanPresence = currentSession?.humanPresence ?? "present";
-  const agentEngagement = currentSession?.agentEngagement ?? "paused";
-  const presentation = buildCollaborationPresentation({
-    humanPresence,
-    agentEngagement,
-    effectiveMode: currentSession?.effectiveMode ?? "human-solo"
-  });
+  // The host resolves the matrix; this surface only renders it.
+  const presentation = buildWorkModePresentation(
+    currentSession?.workMode ?? IDLE_WORK_MODE
+  );
   const cockpit = $(".companion-cockpit");
 
   const pageLinked = connected && Boolean(currentSession.lastPageContactAt);
@@ -137,31 +136,28 @@ function render(state) {
   $("#model-identity").title = currentSession?.modelIdentity
     ? `Current model: ${modelIdentity}`
     : modelIdentity;
+  // Pressed means "taking part": here, whichever role.
   $("#human-control").setAttribute(
     "aria-pressed",
-    String(presentation.humanState === "present")
+    String(presentation.humanState.startsWith("here"))
   );
   $("#model-control").setAttribute(
     "aria-pressed",
-    String(presentation.modelState === "collaborating")
+    String(presentation.modelState.startsWith("here"))
   );
   $("#relay-core").setAttribute("aria-label", presentation.modeLabel);
   $("#relay-label").textContent = presentation.modeLabel;
-  $("#relay-detail").textContent = relayDetail(presentation, connected);
+  // Connection state and work mode are different questions - the connection
+  // chip above answers the first, this line the second.
+  $("#relay-detail").textContent = connected
+    ? presentation.modeDetail
+    : "Waiting for one shared session";
   $("#cockpit-status").textContent = connected
     ? currentSession?.computerUseAbortMessage
       ? `Computer Use stopped: ${currentSession.computerUseAbortMessage}`
       : computerUseActive
-      ? "The red model pointer marks profile-filtered system control. Click again to stop."
-      : presentation.relayState === "live"
-      ? "Cowork is live. Click either figure to change who participates."
-      : presentation.relayState === "watching"
-        ? "The model can discuss context but will not act."
-        : presentation.relayState === "to-model"
-          ? "You are away; the model follows the bounded delegated lease."
-          : humanPresence === "present"
-            ? "You work alone while the model is paused."
-            : "Your absence is shared; without a lease the model waits."
+        ? "The red model pointer marks profile-filtered system control. Click again to stop."
+        : `${presentation.authorityLabel}. ${presentation.taskDetail}`
     : "Connect a page to awaken the relay.";
 
   const pageVisibility = currentSession?.applicationSurfaceVisibility ?? "unknown";
@@ -190,8 +186,10 @@ function render(state) {
     return item;
   }));
 
+  // Derived from the matrix, not from a rights setting: a model that is here
+  // can be addressed, whether it acts or advises.
   const modelInputEnabled = Boolean(
-    currentSession?.modelAvailable && agentEngagement !== "paused"
+    currentSession?.modelAvailable && presentation.modelState.startsWith("here")
   );
   $("#human-control").disabled = !connected || controlBusy;
   $("#model-control").disabled = !currentSession?.modelAvailable || controlBusy;
@@ -234,6 +232,18 @@ async function postControl(kind, body) {
     await refresh();
   }
 }
+
+// Every visible status word comes from packages/reference-ui.
+$("#clarify-steps").replaceChildren(
+  ...CLARIFY_STEPS.map((step) => {
+    const item = document.createElement("span");
+    const dot = document.createElement("i");
+    dot.setAttribute("aria-hidden", "true");
+    item.append(dot, step.label);
+    item.title = step.question;
+    return item;
+  })
+);
 
 function cycleHumanPresence() {
   if (!currentSession) return;

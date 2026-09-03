@@ -1,27 +1,29 @@
+// Four work modes, each reached through the two status variables per actor -
+// there is no action-rights control left to set separately.
 const EXPECTED_STATES = Object.freeze([
   Object.freeze({
-    humanState: "present",
-    modelState: "collaborating",
+    humanState: "here-observing",
+    modelState: "here-acting",
     relayState: "live",
-    modeLabel: "Working together"
+    modeLabel: "Together · model acts"
   }),
   Object.freeze({
-    humanState: "present",
-    modelState: "observing",
-    relayState: "watching",
-    modeLabel: "Model watching"
-  }),
-  Object.freeze({
-    humanState: "present",
-    modelState: "paused",
-    relayState: "dormant",
-    modeLabel: "Human working solo"
-  }),
-  Object.freeze({
-    humanState: "afk-short",
-    modelState: "collaborating",
+    humanState: "away",
+    modelState: "here-acting",
     relayState: "to-model",
-    modeLabel: "Model working solo"
+    modeLabel: "Model works alone"
+  }),
+  Object.freeze({
+    humanState: "here-acting",
+    modelState: "here-observing",
+    relayState: "watching",
+    modeLabel: "Together · you act"
+  }),
+  Object.freeze({
+    humanState: "here-acting",
+    modelState: "standby",
+    relayState: "dormant",
+    modeLabel: "You work alone"
   })
 ]);
 const EXPECTED_KEYBOARD_ORDER = Object.freeze([

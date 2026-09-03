@@ -16,8 +16,7 @@ function humanChange(overrides = {}) {
 function validInput(overrides = {}) {
   return {
     change: humanChange(),
-    actionMode: "explain",
-    agentPresence: "active",
+    advising: true,
     label: "Email address",
     required: true,
     emptyRequiredOtherCount: 1,
@@ -25,9 +24,11 @@ function validInput(overrides = {}) {
   };
 }
 
-// --- GAP-06: appears on a human change, in Advise ("explain") mode. ---
+// --- GAP-06: appears on a human change while the model is advising.
+// "Advising" is the merged explain+suggest state: commenting and proposing
+// are one role, not two selectable action modes. ---
 
-test("returns a comment for a human-sourced change while in explain (advise) mode", () => {
+test("returns a comment for a human-sourced change while the model is advising", () => {
   const comment = adviseCommentForHumanChange(validInput());
   assert.equal(typeof comment, "string");
   assert.ok(comment.length > 0);
@@ -52,20 +53,18 @@ test("describes an optional field differently from a required one", () => {
   assert.doesNotMatch(comment, /required field/);
 });
 
-// --- Must NOT appear: agent-caused change, non-advise mode, paused agent, silence. ---
+// --- Must NOT appear: agent-caused change, a model that is not advising
+// (it holds the click right, or is on standby / disconnected), silence. ---
 
 test("returns null for an agent-caused change - only human changes get a comment", () => {
   assert.equal(adviseCommentForHumanChange(validInput({ change: humanChange({ source: "agent" }) })), null);
 });
 
-test("returns null outside explain (advise) mode", () => {
-  for (const actionMode of ["suggest", "delegated", "paused"]) {
-    assert.equal(adviseCommentForHumanChange(validInput({ actionMode })), null);
-  }
-});
-
-test("returns null while the agent is paused, even in explain mode", () => {
-  assert.equal(adviseCommentForHumanChange(validInput({ agentPresence: "paused" })), null);
+test("returns null while the model is not advising", () => {
+  // false covers every non-advising case at once: the model holds the click
+  // right (cowork-model, parallel, model-solo) or it is standby / away.
+  assert.equal(adviseCommentForHumanChange(validInput({ advising: false })), null);
+  assert.equal(adviseCommentForHumanChange(validInput({ advising: undefined })), null);
 });
 
 test("returns null when there is no change at all (silence or an unchanged value)", () => {

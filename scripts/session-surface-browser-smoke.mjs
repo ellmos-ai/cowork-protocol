@@ -460,7 +460,7 @@ try {
       relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null,
       label: document.querySelector("#model-label")?.textContent ?? null
     }))()`,
-    (value) => value?.modelState === "observing" && value?.relayState === "watching"
+    (value) => value?.modelState === "here-observing" && value?.relayState === "watching"
   );
   await captureFrame(
     companionWindowCall,
@@ -476,7 +476,7 @@ try {
       relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null,
       inputDisabled: document.querySelector("#conversation-input")?.disabled ?? null
     }))()`,
-    (value) => value?.modelState === "paused" && value?.inputDisabled === true
+    (value) => value?.modelState === "standby" && value?.inputDisabled === true
   );
   await captureFrame(
     companionWindowCall,
@@ -488,7 +488,7 @@ try {
   await waitForValue(
     companionWindowCall,
     `document.querySelector(".companion-cockpit")?.dataset.modelState ?? null`,
-    (value) => value === "collaborating"
+    (value) => value === "here-acting"
   );
   await trustedClick(companionWindowCall, "#human-control");
   const awayWithoutLease = await waitForValue(
@@ -498,7 +498,7 @@ try {
       relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null,
       detail: document.querySelector("#relay-detail")?.textContent ?? null
     }))()`,
-    (value) => value?.humanState === "afk-short" && value?.relayState === "dormant"
+    (value) => value?.humanState === "standby" && value?.relayState === "dormant"
   );
   await captureFrame(
     companionWindowCall,
@@ -509,7 +509,7 @@ try {
   await waitForValue(
     companionWindowCall,
     `document.querySelector(".companion-cockpit")?.dataset.humanState ?? null`,
-    (value) => value === "afk-long"
+    (value) => value === "away"
   );
   await trustedClick(companionWindowCall, "#human-control");
   await waitForValue(
@@ -518,7 +518,7 @@ try {
       humanState: document.querySelector(".companion-cockpit")?.dataset.humanState ?? null,
       relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null
     }))()`,
-    (value) => value?.humanState === "present" && value?.relayState === "live"
+    (value) => value?.humanState === "here-observing" && value?.relayState === "live"
   );
   const beforeDelegation = companionHost.readSnapshot("browser-surface-link");
   const delegatedAt = new Date();
@@ -545,7 +545,7 @@ try {
       relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null,
       label: document.querySelector("#relay-label")?.textContent ?? null
     }))()`,
-    (value) => value?.humanState === "afk-short" && value?.relayState === "to-model"
+    (value) => value?.humanState === "standby" && value?.relayState === "to-model"
   );
   await captureFrame(
     companionWindowCall,
@@ -556,13 +556,13 @@ try {
   await waitForValue(
     companionWindowCall,
     `document.querySelector(".companion-cockpit")?.dataset.humanState ?? null`,
-    (value) => value === "afk-long"
+    (value) => value === "away"
   );
   await trustedClick(companionWindowCall, "#human-control");
   await waitForValue(
     companionWindowCall,
     `document.querySelector(".companion-cockpit")?.dataset.humanState ?? null`,
-    (value) => value === "present"
+    (value) => value === "here-observing"
   );
   await evaluateValue(companionWindowCall, `(() => {
     document.querySelector("#conversation-input").value = "Continue in the Companion.";
@@ -578,41 +578,49 @@ try {
     (value) => value?.status === "Shared browser smoke reply" && value.turnCount === 2
   );
 
-  if (
-    initial.integration?.presentation?.mode !== "protocol-and-ui" ||
-    initial.integration?.presentation?.pageUiProviderId !== "cowork-reference-ui" ||
-    detached.snapshot.sessionId !== initial.snapshot.sessionId ||
-    restored.snapshot.sessionId !== initial.snapshot.sessionId ||
-    detached.snapshot.revision <= initial.snapshot.revision ||
-    restored.snapshot.revision <= detached.snapshot.revision ||
-    detached.mainPanelAbsent !== true ||
-    detached.buttonLabel !== "Dock in page" ||
-    restored.buttonLabel !== "Detach" ||
-    companion.collapsed !== true ||
-    companion.conversationDisabled !== true ||
-    companionSnapshot?.revision !== resumed.snapshot.revision ||
-    companionSnapshot?.state?.surface?.kind !== "desktop" ||
-    visibleCompanion.providerId !== "cowork-reference-ui" ||
-    visibleCompanion.title !== "Desktop Companion" ||
-    visibleCompanion.mode !== "Working together" ||
-    visibleCompanion.applicationSurface !== "Page active" ||
-    visibleCompanion.humanState !== "present" ||
-    visibleCompanion.modelState !== "collaborating" ||
-    visibleCompanion.modelIdentity !== "preferred-model" ||
-    visibleCompanion.relayState !== "live" ||
-    visibleCompanion.cockpitVisible !== true ||
-    visibleCompanion.horizontalOverflow > 0 ||
-    observingCompanion.label !== "Model observing" ||
-    pausedCompanion.relayState !== "dormant" ||
-    awayWithoutLease.detail !== "No solo lease; model waits" ||
-    delegatedSolo.modelState !== "collaborating" ||
-    delegatedSolo.label !== "Model working solo" ||
-    visibleCompanion.audioControlCount !== 3 ||
-    chosenBackground.color !== "#eaf2ff" ||
-    restoredBackground.color !== "#eaf2ff" ||
-    companionConversation.turnCount !== 2
-  ) {
-    throw new Error("Detached surface did not preserve one versioned Cowork session");
+  // Named expectations: a smoke that only says "something is wrong" costs an
+  // hour of bisecting. Each row names the claim it stands for.
+  const expectations = [
+    ["integration mode", initial.integration?.presentation?.mode, "protocol-and-ui"],
+    ["page UI provider", initial.integration?.presentation?.pageUiProviderId, "cowork-reference-ui"],
+    ["detached session id", detached.snapshot.sessionId, initial.snapshot.sessionId],
+    ["restored session id", restored.snapshot.sessionId, initial.snapshot.sessionId],
+    ["detach raises the revision", detached.snapshot.revision > initial.snapshot.revision, true],
+    ["restore raises the revision", restored.snapshot.revision > detached.snapshot.revision, true],
+    ["main panel is gone while detached", detached.mainPanelAbsent, true],
+    ["detached button label", detached.buttonLabel, "Dock in page"],
+    ["restored button label", restored.buttonLabel, "Detach"],
+    ["page panel collapses for the Companion", companion.collapsed, true],
+    ["page conversation is disabled", companion.conversationDisabled, true],
+    ["companion snapshot revision", companionSnapshot?.revision, resumed.snapshot.revision],
+    ["companion surface kind", companionSnapshot?.state?.surface?.kind, "desktop"],
+    ["companion UI provider", visibleCompanion.providerId, "cowork-reference-ui"],
+    ["companion title", visibleCompanion.title, "Desktop Companion"],
+    ["companion work mode", visibleCompanion.mode, "Together · model acts"],
+    ["companion application surface", visibleCompanion.applicationSurface, "Page active"],
+    ["human status", visibleCompanion.humanState, "here-observing"],
+    ["model status", visibleCompanion.modelState, "here-acting"],
+    ["model identity", visibleCompanion.modelIdentity, "preferred-model"],
+    ["relay state", visibleCompanion.relayState, "live"],
+    ["cockpit is visible", visibleCompanion.cockpitVisible, true],
+    ["no horizontal overflow", visibleCompanion.horizontalOverflow <= 0, true],
+    ["advising label", observingCompanion.label, "Model is advising"],
+    ["standby relay", pausedCompanion.relayState, "dormant"],
+    ["away without authority", awayWithoutLease.detail, "No one holds the click right right now."],
+    ["delegated solo status", delegatedSolo.modelState, "here-acting"],
+    ["delegated solo label", delegatedSolo.label, "Model works alone"],
+    ["audio controls", visibleCompanion.audioControlCount, 3],
+    ["chosen background", chosenBackground.color, "#eaf2ff"],
+    ["restored background", restoredBackground.color, "#eaf2ff"],
+    ["companion turns", companionConversation.turnCount, 2]
+  ];
+  const broken = expectations.filter(([, actual, expected]) => actual !== expected);
+  if (broken.length > 0) {
+    throw new Error(
+      `Detached surface did not preserve one versioned Cowork session: ${broken
+        .map(([claim, actual, expected]) => `${claim} is ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`)
+        .join("; ")}`
+    );
   }
 
   console.log(JSON.stringify({

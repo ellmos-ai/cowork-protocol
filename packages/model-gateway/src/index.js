@@ -51,7 +51,10 @@ function sessionProjection(snapshot) {
     primarySurfaceId: state.surface?.primarySurfaceId,
     surfaceKind: state.surface?.kind,
     focus: state.focus ?? null,
-    actionMode: state.actionMode ?? null,
+    // What the model may do is derived from the work mode, not chosen
+    // separately - see docs/work-modes.md.
+    workMode: state.workMode?.mode ?? null,
+    authority: state.workMode?.authority ?? null,
     lease: state.lease ?? null
   };
 }

@@ -613,25 +613,21 @@ try {
     `document.querySelectorAll("#receipt-list .feedback-recorded").length === 1`
   ));
 
-  await evaluateValue(call, `(() => {
-    const select = document.querySelector("#action-mode");
-    select.value = "delegated";
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-    return select.value;
-  })()`);
+  // Handing the work over is the grant itself now: there is no separate
+  // action-rights select to switch first.
   await dispatchTrustedClick(call, 'document.querySelector("#away-short")', "Briefly away");
   states.push(await auditRenderedState(
     call,
     "agent-solo",
-    `document.querySelector("#mode-badge")?.textContent.trim() === "Model working solo" && document.querySelector("#human-label")?.textContent.includes("away")`
+    `document.querySelector("#mode-badge")?.textContent.trim() === "Model works alone" && document.querySelector("#human-label")?.textContent.includes("away")`
   ));
 
   await dispatchTrustedClick(call, 'document.querySelector("#return-human")', "Human return");
-  await dispatchTrustedClick(call, 'document.querySelector("#toggle-agent")', "Pause agent");
+  await dispatchTrustedClick(call, 'document.querySelector("#toggle-agent")', "Pause model");
   states.push(await auditRenderedState(
     call,
     "human-solo",
-    `document.querySelector("#mode-badge")?.textContent.trim() === "Human working solo" && document.querySelector("#agent-label")?.textContent.includes("paused")`
+    `document.querySelector("#mode-badge")?.textContent.trim() === "You work alone" && document.querySelector("#agent-label")?.textContent.includes("standby")`
   ));
 
   await dispatchTrustedClick(call, 'document.querySelector("#talk")', "Push to talk");

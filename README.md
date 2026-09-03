@@ -4,7 +4,7 @@ Cowork Protocol is a small collaboration contract for people and web agents. It 
 
 > Native when available. Bridged when necessary.
 
-**[Try the live showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/)** · **[Watch the demo video](https://youtu.be/9CJehV7Bugk)** · [Architecture](docs/architecture.md) · [Evidence ledger](docs/evidence.md) · [Pre-existing and new work](PREEXISTING-AND-NEW.md)
+**[Try the live showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/)** · **[Watch the demo video](https://youtu.be/9CJehV7Bugk)** · [Architecture](docs/architecture.md) · [Work modes](docs/work-modes.md) · [Evidence ledger](docs/evidence.md) · [Pre-existing and new work](PREEXISTING-AND-NEW.md)
 
 [![Cowork Protocol architecture: human and preferred model collaborate through any compatible UI, the provider-neutral protocol core and three bounded connector paths](design/architecture-overview.png)](docs/architecture.md)
 
@@ -57,8 +57,11 @@ The agent reads a structured `cowork_read_focus` tool instead of guessing from t
 - **Offers that cannot authorize themselves.** An agent proposes an exact visible
   value; only a real human click applies it, and every change comes back as a
   causal, latest-only receipt with click-authenticated feedback.
-- **Presence and scoped solo work.** Explicit work modes plus fail-closed leases
-  that are versioned, budgeted and expiring, so "away" never means "unattended".
+- **One work-mode matrix instead of two settings.** Two status variables per
+  actor - availability and role - derive the work mode and, with it, the click
+  right. Nothing chooses action rights separately. Scoped solo work still needs a
+  fail-closed lease that is versioned, budgeted and expiring, so "away" never
+  means "unattended". See [docs/work-modes.md](docs/work-modes.md).
 - **One conversation across surfaces.** Page panel, extension Side Panel and
   desktop Companion share a single versioned session; an optional same-origin
   model host attaches a preferred model while endpoint and key stay on the
@@ -68,8 +71,8 @@ The agent reads a structured `cowork_read_focus` tool instead of guessing from t
   without WebMCP — every step reports its reduced guarantees instead of pretending
   they are equal.
 - **A working showcase, not a mock.** The FormBuilder journey runs the real
-  contracts end to end: attention lens, action rights, offers, receipts,
-  feedback, presence, solo leases and typed or spoken conversation.
+  contracts end to end: attention lens, work modes, offers, receipts, feedback,
+  authority handover, solo leases and typed or spoken conversation.
 
 The component-level detail behind each point is in
 [docs/architecture.md](docs/architecture.md) and in the [Packages](#packages)
@@ -203,7 +206,7 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 - `cowork_read_focus` returns the current character-bounded focus packet.
 - `cowork_request_context` returns one reasoned, target-bound related-context level capped at 1,200 adapter characters.
 - `cowork_offer_action` creates a visible offer; it never authorizes or executes the change.
-- `cowork_read_presence` returns the explicit human/agent work mode.
+- `cowork_read_presence` returns the explicit human/agent work mode in the published 0.1 vocabulary; the derived matrix state is carried alongside it.
 - `cowork_execute_solo` executes only inside a valid, scoped and unexpired solo lease.
 - `cowork_read_changes` returns only the latest digest-based causal change while the lens is enabled.
 - `cowork_read_feedback` returns only the latest bounded, click-authenticated human evaluation.
@@ -220,8 +223,9 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 - `packages/integration-contract` — declares provider-neutral protocol hosts,
   replaceable surface clients and the three operator-controlled page-UI modes.
 - `packages/reference-ui` — shared Cowork reference-surface identity, human/model
-  icons and presence/mode presentation consumed by both FormBuilder Embed and
-  the extension Side Panel.
+  icons and the single work-mode vocabulary (status labels, mode labels, the four
+  Clarify steps) consumed by FormBuilder Embed, the extension Side Panel and the
+  Desktop Companion. No surface writes its own status wording.
 - `packages/session-authority` — owns versioned collaboration snapshots, bounded deltas, exact-revision surface handoffs and compact optional model briefings shared across Cowork surfaces.
 - `packages/companion-link` — performs a loopback-only, exact-revision
   Companion join and ordered delta acknowledgement.
@@ -242,7 +246,7 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 - `apps/desktop-companion` — persistent loopback-only Session Authority with a
   movable reference window, shared model conversation, audio controls and a
   Windows presence tray.
-- `apps/formbuilder-showcase` — visible reference journey for focus, offer, confirmation, causal receipt, feedback, presence, solo lease and audio controls.
+- `apps/formbuilder-showcase` — visible reference journey for focus, offer, confirmation, causal receipt, feedback, work modes, solo lease and audio controls.
 - `apps/formbuilder-showcase/src/form-engine.mjs` — attributed web-only FormBuilder engine for required-field validation and JSON response export.
 - `apps/formbuilder-showcase/src/form-builder.mjs`, `fodt-export.mjs`, `builder-view.js` — the new, Cowork-free FormBuilder Studio product (design a form from a palette, fill it in, export schema/response/printable `.fodt`); see [`apps/formbuilder-showcase/INTEGRATION.md`](apps/formbuilder-showcase/INTEGRATION.md) for how it was then connected to Cowork on top.
 - `apps/formbuilder-showcase/src/builder-cowork.js`, `builder-cowork-ui.js` — the Builder's one Cowork integration point: three canvas capabilities (`form-add-field`, `form-update-field`, `form-move-field`) offered, clicked and verified through the same path as every other FormBuilder capability. No new WebMCP tool.

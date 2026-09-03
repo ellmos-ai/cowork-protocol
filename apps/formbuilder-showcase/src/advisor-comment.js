@@ -18,23 +18,23 @@ const COMMENT_LIMIT = 350;
  * Never fires for:
  * - an agent-caused change (`change.source !== "human"`) - only a human's
  *   own action is ever commented on;
- * - any action mode other than "explain" - the one mode where the model
- *   only watches and explains, never offers or acts (GAP-06's "Advise" role);
- * - a paused agent;
+ * - a model that is not advising (`advising === false`): it either holds the
+ *   click right itself, or it is on standby / disconnected. Advising is the
+ *   merged explain+suggest state - commenting and proposing are one role;
  * - silence or an unchanged value (`change` is null - the caller already
  *   never creates a ChangeEvent for those, so this is a defensive check).
  */
 export function adviseCommentForHumanChange({
   change,
-  actionMode,
-  agentPresence,
+  advising,
   label,
   required,
   emptyRequiredOtherCount
 }) {
   if (!change || change.source !== "human") return null;
-  if (actionMode !== "explain") return null;
-  if (agentPresence === "paused") return null;
+  // `advising` is workMode.model.canPropose: the model is here and does not
+  // hold the click right, so its job is to explain and propose.
+  if (advising !== true) return null;
   if (typeof label !== "string" || label.length === 0) return null;
 
   let comment;

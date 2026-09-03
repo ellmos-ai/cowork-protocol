@@ -18,7 +18,7 @@ function createAuthority(overrides = {}) {
       humanPresence: "present",
       agentPresence: "active",
       effectiveMode: "cowork",
-      actionMode: "suggest",
+      workMode: { mode: "cowork", authority: "human" },
       lease: null
     },
     primarySurface: {
@@ -136,6 +136,10 @@ test("a model briefing carries continuity without page HTML or full history", ()
   });
 
   assert.equal(briefing.focus.targetId, "form-field:full-name");
+  // The model is briefed on what it may do, and that follows from the work
+  // mode plus who holds the click right - never from a separate setting.
+  assert.equal(briefing.workMode, "cowork");
+  assert.equal(briefing.authority, "human");
   assert.deepEqual(briefing.pendingOfferIds, ["offer-2", "offer-3", "offer-4"]);
   assert.equal(Object.hasOwn(briefing, "html"), false);
   assert.equal(JSON.stringify(briefing).length <= 1_200, true);

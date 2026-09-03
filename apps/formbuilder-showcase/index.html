@@ -79,7 +79,7 @@
       </section>
     </section>
 
-    <aside class="cowork-panel" aria-labelledby="panel-title" data-cowork-brand="dialogue-relay" data-cowork-surface="embedded" data-human-state="present" data-model-state="collaborating" data-relay-state="live">
+    <aside class="cowork-panel" aria-labelledby="panel-title" data-cowork-brand="dialogue-relay" data-cowork-surface="embedded" data-human-state="here-acting" data-model-state="here-observing" data-relay-state="watching">
       <div class="panel-topline">
         <div class="cowork-lockup">
           <img class="cowork-brand-mark" src="../../packages/reference-ui/assets/cowork-dialogue-mark.svg" alt="">
@@ -96,9 +96,7 @@
         </div>
       </div>
 
-      <div class="protocol-rhythm" aria-label="Cowork interaction rhythm">
-        <span><i aria-hidden="true"></i>Point</span><span><i aria-hidden="true"></i>Offer</span><span><i aria-hidden="true"></i>Click</span><span><i aria-hidden="true"></i>Verify</span>
-      </div>
+      <div class="protocol-rhythm" id="clarify-steps" aria-label="What this panel clarifies"></div>
       <p class="microcopy extension-note" id="extension-note" role="status" hidden></p>
 
       <section class="embedded-collaboration-deck" aria-labelledby="embedded-collaboration-title">
@@ -110,7 +108,7 @@
           <span class="mode-chip" id="embedded-mode-chip">Working together</span>
         </div>
         <div class="actor-stage">
-          <button class="presence-person actor-control actor-human is-active" id="human-seat" type="button" aria-label="Change your presence" aria-pressed="true" aria-describedby="human-label">
+          <button class="presence-person actor-control actor-human is-active" id="human-seat" type="button" aria-label="Change your status" aria-pressed="true" aria-describedby="human-label">
             <span class="actor-medallion">
               <span class="actor-aura" aria-hidden="true"></span>
               <span class="seat-icon human-seat" aria-hidden="true">
@@ -123,7 +121,7 @@
               </span>
               <span class="state-badge human-badge" aria-hidden="true"></span>
             </span>
-            <span class="actor-copy"><small>You</small><strong id="human-label">You are here</strong></span>
+            <span class="actor-copy"><small>You</small><strong id="human-label">You are working</strong></span>
           </button>
 
           <div id="embedded-relay-core" class="embedded-relay-core" role="status" aria-live="polite" aria-label="Working together">
@@ -139,7 +137,7 @@
             <span id="embedded-relay-detail">Ideas and actions relay both ways</span>
           </div>
 
-          <button class="presence-person actor-control actor-model is-active" id="model-seat" type="button" aria-label="Change model engagement" aria-pressed="true" aria-describedby="agent-label">
+          <button class="presence-person actor-control actor-model is-active" id="model-seat" type="button" aria-label="Change what the model does" aria-pressed="true" aria-describedby="agent-label">
             <span class="actor-medallion">
               <span class="actor-aura" aria-hidden="true"></span>
               <span class="seat-icon model-seat" aria-hidden="true">
@@ -158,7 +156,7 @@
               </span>
               <span class="state-badge model-badge" aria-hidden="true"></span>
             </span>
-            <span class="actor-copy"><small>Model</small><strong id="agent-label">Model collaborating</strong></span>
+            <span class="actor-copy"><small>Model</small><strong id="agent-label">Model is advising</strong></span>
           </button>
         </div>
       </section>
@@ -223,21 +221,30 @@
         <p class="microcopy advisor-comment" id="advisor-comment" role="status" hidden></p>
       </section>
 
-      <section class="panel-section" aria-labelledby="action-heading">
+      <section class="panel-section" aria-labelledby="work-mode-heading">
         <div class="section-row">
-          <h3 id="action-heading"><span class="section-icon" aria-hidden="true">◇</span>Action rights</h3>
+          <h3 id="work-mode-heading"><span class="section-icon" aria-hidden="true">◇</span><span id="work-mode-heading-text"></span></h3>
           <label class="compact-select">
-            <span class="visually-hidden">Action mode</span>
-            <select id="action-mode">
-              <option value="explain">Explain only</option>
-              <option value="suggest" selected>Suggest with click</option>
-              <option value="delegated">Delegated lease</option>
-              <option value="paused">Paused</option>
-            </select>
+            <span class="visually-hidden" id="work-mode-select-label"></span>
+            <select id="work-mode"></select>
           </label>
         </div>
+        <label class="check-row">
+          <input id="allow-parallel" type="checkbox">
+          <span>Allow both at once</span>
+        </label>
+        <p class="microcopy" id="mode-detail"></p>
+        <p class="microcopy" id="authority-label"></p>
+      </section>
+
+      <section class="panel-section" aria-labelledby="task-heading">
+        <div class="section-row">
+          <h3 id="task-heading"><span class="section-icon" aria-hidden="true">◆</span><span id="task-heading-text"></span></h3>
+          <span class="badge" id="task-badge"></span>
+        </div>
+        <p class="microcopy" id="task-detail"></p>
         <div id="offer-list" class="offer-list" aria-live="polite">
-          <p class="empty-state">Agent proposals will appear here as clickable offers.</p>
+          <p class="empty-state">Model proposals will appear here as clickable offers.</p>
         </div>
         <button class="demo-button" id="demo-offer" type="button">Create local demo offer</button>
       </section>

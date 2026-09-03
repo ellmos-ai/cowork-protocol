@@ -5,9 +5,17 @@ import {
   buildPanelViewModel,
   buildReceiptViewModels,
   nextActionOfferExpiry,
-  prepareVisibleActionOffer
+  prepareVisibleActionOffer,
+  workModeChoiceId
 } from "../src/view-model.js";
 import { createShowcaseSession, transitionShowcaseSession } from "../src/session.js";
+
+function sessionWith(status) {
+  return transitionShowcaseSession(createShowcaseSession(), {
+    type: "SET_STATUS",
+    ...status
+  });
+}
 import { CoworkProtocolError } from "../../../packages/core/src/index.js";
 
 test("invalid visible offers throw the protocol's real error type", () => {
@@ -76,7 +84,7 @@ test("visible offer limits count Unicode code points like the WebMCP schema", ()
   );
 });
 
-test("the panel view model exposes mode, token budget and at most three action chips", () => {
+test("the panel view model reads its every word from the work-mode presentation", () => {
   const initial = createShowcaseSession();
   assert.deepEqual(
     buildPanelViewModel({
@@ -86,20 +94,26 @@ test("the panel view model exposes mode, token budget and at most three action c
       capabilityLevel: "unavailable"
     }),
     {
-      modeLabel: "Cowork",
+      providerId: "cowork-reference-ui",
+      mode: "cowork",
+      authority: "human",
+      modeLabel: "Together \u00b7 you act",
+      modeDetail: "You click. The model watches and suggests.",
+      relayState: "watching",
+      humanState: "here-acting",
+      humanLabel: "You are working",
+      humanBadge: "\u25cf",
       humanTone: "green",
-      humanLabel: "Human present",
-      agentLabel: "Agent active",
-      collaboration: {
-        humanState: "present",
-        humanLabel: "You are here",
-        humanBadge: "●",
-        modelState: "collaborating",
-        modelLabel: "Model collaborating",
-        modelBadge: "✓",
-        modeLabel: "Working together",
-        relayState: "live"
-      },
+      modelState: "here-observing",
+      modelLabel: "Model is advising",
+      modelBadge: "\u25c9",
+      modelTone: "green",
+      taskLabel: "Advise",
+      taskDetail: "Explains and proposes. Nothing changes without your click.",
+      authorityLabel: "You hold the click right",
+      choiceId: "cowork-human",
+      allowParallel: false,
+      authorityLapsed: false,
       capabilityLabel: "WebMCP off in this browser",
       focusLabel: "Point to or select a form field",
       contextLabel: "No context sent",
@@ -107,8 +121,39 @@ test("the panel view model exposes mode, token budget and at most three action c
       actionChips: []
     }
   );
+});
 
-  const away = transitionShowcaseSession(initial, {
+test("an advising model may propose at most three offers at once", () => {
+  const offer = (offerId, value) => ({
+    offerId,
+    pageVersion: 1,
+    capabilityId: "form.set_value",
+    targetId: "form-field:name",
+    proposedArguments: { value },
+    summary: `Set ${value}`,
+    expiresAt: "2026-08-30T10:02:00.000Z"
+  });
+
+  const view = buildPanelViewModel({
+    session: createShowcaseSession(),
+    focusPacket: {
+      focus: { label: "Full Name" },
+      metrics: { contextCharacters: 14 }
+    },
+    offers: [offer("1", "Lukas"), offer("2", "Ada"), offer("3", "Grace"), offer("4", "Never rendered")],
+    capabilityLevel: "native",
+    now: "2026-08-30T10:01:00.000Z",
+    pageVersion: 1
+  });
+
+  assert.equal(view.capabilityLabel, "Native WebMCP");
+  assert.equal(view.focusLabel, "Full Name");
+  assert.equal(view.contextLabel, "14 context characters");
+  assert.deepEqual(view.actionChips.map((chip) => chip.offerId), ["1", "2", "3"]);
+});
+
+test("a model working alone holds the click right and proposes nothing", () => {
+  const away = transitionShowcaseSession(createShowcaseSession(), {
     type: "HUMAN_AWAY",
     duration: "long",
     lease: {
@@ -117,65 +162,37 @@ test("the panel view model exposes mode, token budget and at most three action c
     },
     now: "2026-08-30T10:00:00.000Z"
   });
-  const focusPacket = {
-    focus: { label: "Full Name" },
-    metrics: { contextCharacters: 14 }
-  };
-  const offers = [
-    {
-      offerId: "1",
-      pageVersion: 1,
-      capabilityId: "form.set_value",
-      targetId: "form-field:name",
-      proposedArguments: { value: "Lukas" },
-      summary: "Set the name",
-      expiresAt: "2026-08-30T10:02:00.000Z"
-    },
-    {
-      offerId: "2",
-      pageVersion: 1,
-      capabilityId: "form.clear_value",
-      targetId: "form-field:name",
-      proposedArguments: { value: "" },
-      summary: "Clear the field",
-      expiresAt: "2026-08-30T10:02:00.000Z"
-    },
-    {
-      offerId: "3",
-      pageVersion: 1,
-      capabilityId: "form.set_value",
-      targetId: "form-field:name",
-      proposedArguments: { value: "Ada" },
-      summary: "Set another value",
-      expiresAt: "2026-08-30T10:02:00.000Z"
-    },
-    {
-      offerId: "4",
-      pageVersion: 1,
-      capabilityId: "form.set_value",
-      targetId: "form-field:name",
-      proposedArguments: { value: "Must not be rendered" },
-      summary: "Must not be rendered",
-      expiresAt: "2026-08-30T10:02:00.000Z"
-    }
-  ];
 
   const view = buildPanelViewModel({
     session: away,
-    focusPacket,
-    offers,
+    focusPacket: { focus: { label: "Full Name" }, metrics: { contextCharacters: 14 } },
+    offers: [
+      {
+        offerId: "1",
+        pageVersion: 1,
+        capabilityId: "form.set_value",
+        targetId: "form-field:name",
+        proposedArguments: { value: "Lukas" },
+        summary: "Set the name",
+        expiresAt: "2026-08-30T10:02:00.000Z"
+      }
+    ],
     capabilityLevel: "native",
     now: "2026-08-30T10:01:00.000Z",
     pageVersion: 1
   });
-  assert.equal(view.modeLabel, "Agent solo");
+
+  assert.equal(view.mode, "model-solo");
+  assert.equal(view.modeLabel, "Model works alone");
+  assert.equal(view.choiceId, "model-solo");
+  assert.equal(view.humanState, "away");
   assert.equal(view.humanTone, "red");
-  assert.equal(view.capabilityLabel, "Native WebMCP");
-  assert.equal(view.focusLabel, "Full Name");
-  assert.equal(view.contextLabel, "14 context characters");
+  assert.equal(view.taskLabel, "Work");
+  assert.equal(view.soloAllowed, true);
   assert.deepEqual(
-    view.actionChips.map((chip) => chip.offerId),
-    ["1", "2", "3"]
+    view.actionChips,
+    [],
+    "the actor holding the click right acts; it does not propose"
   );
 });
 
@@ -220,7 +237,7 @@ test("action chips expose the exact proposed value and exclude read-only capabil
   ]);
 });
 
-test("action modes expose only the rights they actually enforce", () => {
+test("work modes expose only the rights they actually enforce", () => {
   const offer = {
     offerId: "set-1",
     pageVersion: 1,
@@ -230,9 +247,9 @@ test("action modes expose only the rights they actually enforce", () => {
     summary: "Set the name",
     expiresAt: "2026-08-30T10:02:00.000Z"
   };
-  const build = (actionMode) =>
+  const build = (session) =>
     buildPanelViewModel({
-      session: { ...createShowcaseSession(), actionMode },
+      session,
       focusPacket: null,
       offers: [offer],
       capabilityLevel: "native",
@@ -240,14 +257,62 @@ test("action modes expose only the rights they actually enforce", () => {
       pageVersion: 1
     });
 
-  assert.equal(build("suggest").actionChips.length, 1);
-  assert.equal(build("suggest").soloAllowed, false);
-  assert.equal(build("delegated").actionChips.length, 0);
-  assert.equal(build("delegated").soloAllowed, true);
-  assert.equal(build("explain").actionChips.length, 0);
-  assert.equal(build("explain").soloAllowed, false);
-  assert.equal(build("paused").actionChips.length, 0);
-  assert.equal(build("paused").soloAllowed, false);
+  const advising = build(createShowcaseSession());
+  assert.equal(advising.choiceId, "cowork-human");
+  assert.equal(advising.actionChips.length, 1);
+  assert.equal(advising.soloAllowed, false);
+
+  const modelActs = build(
+    sessionWith({
+      human: { availability: "here", role: "observing" },
+      model: { availability: "here", role: "acting" }
+    })
+  );
+  assert.equal(modelActs.choiceId, "cowork-model");
+  assert.equal(modelActs.actionChips.length, 0);
+  assert.equal(modelActs.soloAllowed, true);
+
+  const parallel = build(
+    sessionWith({
+      human: { availability: "here", role: "acting" },
+      model: { availability: "here", role: "acting" },
+      allowParallel: true
+    })
+  );
+  assert.equal(parallel.choiceId, "parallel");
+  assert.equal(parallel.actionChips.length, 0);
+  assert.equal(parallel.soloAllowed, true);
+
+  const standby = build(sessionWith({ model: { availability: "standby", role: "observing" } }));
+  assert.equal(standby.choiceId, "human-solo");
+  assert.equal(standby.taskLabel, "Stand by");
+  assert.equal(standby.actionChips.length, 0);
+  assert.equal(standby.soloAllowed, false);
+
+  const disconnected = build(sessionWith({ model: { availability: "away", role: "observing" } }));
+  assert.equal(disconnected.taskLabel, "Disconnected");
+  assert.equal(disconnected.actionChips.length, 0);
+  assert.equal(disconnected.soloAllowed, false);
+
+  const nobody = build(
+    sessionWith({
+      human: { availability: "here", role: "observing" },
+      model: { availability: "here", role: "observing" }
+    })
+  );
+  assert.equal(nobody.choiceId, "idle");
+  assert.equal(nobody.authorityLabel, "Nobody holds the click right");
+});
+
+test("the mode select shows the mode in force, not the one that was picked", () => {
+  // Both acting without an allowance: the conflict rule keeps the human in
+  // charge, so the select must snap back instead of claiming "Both at once".
+  const conflicted = sessionWith({
+    human: { availability: "here", role: "acting" },
+    model: { availability: "here", role: "acting" }
+  });
+  assert.equal(workModeChoiceId(conflicted.workMode), "cowork-human");
+  assert.equal(conflicted.workMode.allowParallel, false);
 });
 
 test("expired or stale action offers are absent from the human authorization surface", () => {

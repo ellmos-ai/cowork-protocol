@@ -1,5 +1,5 @@
-import { resolvePresenceMode } from "../../../packages/core/src/index.js";
-import { buildCollaborationPresentation } from "../../../packages/reference-ui/src/index.js";
+import { resolveWorkMode } from "../../../packages/core/src/index.js";
+import { buildWorkModePresentation } from "../../../packages/reference-ui/src/index.js";
 
 const NO_SEAT_NOTE =
   "Model seat: none. This extension has no model client, so nothing is proposed here " +
@@ -62,33 +62,31 @@ const CONTEXT_LABELS = Object.freeze([
   "One visual lens"
 ]);
 
-const HUMAN_SEQUENCE = Object.freeze(["present", "afk-short", "afk-long"]);
-const MODEL_SEQUENCE = Object.freeze(["collaborating", "observing", "paused"]);
+/**
+ * The four status states one actor cycles through when its figure is clicked.
+ * Availability plus role - there is no separate action-rights control, the
+ * work mode and the click right follow from these two variables alone.
+ */
+export const ACTOR_STATUS_CYCLE = Object.freeze([
+  Object.freeze({ availability: "here", role: "acting" }),
+  Object.freeze({ availability: "here", role: "observing" }),
+  Object.freeze({ availability: "standby", role: "observing" }),
+  Object.freeze({ availability: "away", role: "observing" })
+]);
 
-function nextInSequence(value, sequence, label) {
-  const index = sequence.indexOf(value);
-  if (index < 0) throw new TypeError(`Cockpit requires a valid ${label}`);
-  return sequence[(index + 1) % sequence.length];
-}
-
-export function nextHumanPresence(current) {
-  return nextInSequence(current, HUMAN_SEQUENCE, "human presence");
-}
-
-export function nextModelEngagement(current) {
-  return nextInSequence(current, MODEL_SEQUENCE, "model engagement");
-}
-
-function relayDetailFor(route, relayState, effectiveMode) {
-  if (relayState === "live") {
-    return route === "native"
-      ? "Ideas and actions relay through the page"
-      : "Ready to relay — no model connected in this extension";
-  }
-  if (relayState === "watching") return "Model reads and explains only";
-  if (relayState === "to-model") return "Scoped solo work is flowing to the model";
-  if (effectiveMode === "human-solo") return "Model is paused";
-  return "No collaboration turn is active";
+/**
+ * Next status in the cycle. Pass the *resolved* actor (workMode.human /
+ * .model), not the stored one: once the conflict rule has taken the model's
+ * authority away, the figure must cycle on from what the panel shows.
+ */
+export function nextActorStatus(actor) {
+  const index = ACTOR_STATUS_CYCLE.findIndex(
+    (candidate) =>
+      candidate.availability === actor?.availability &&
+      (actor.availability !== "here" || candidate.role === actor.role)
+  );
+  if (index < 0) throw new TypeError("Cockpit requires a valid actor status");
+  return ACTOR_STATUS_CYCLE[(index + 1) % ACTOR_STATUS_CYCLE.length];
 }
 
 export function buildCockpitPresentation(input) {
@@ -105,33 +103,29 @@ export function buildCockpitPresentation(input) {
     throw new TypeError("Cockpit requires a bounded context level");
   }
 
-  const agentPresence = input.agentEngagement === "paused" ? "paused" : "active";
-  const effectiveMode = resolvePresenceMode({
-    humanPresence: input.humanPresence,
-    agentPresence,
-    leaseValid: input.soloLeaseValid === true
-  });
-  let collaboration;
+  let workMode;
   try {
-    collaboration = buildCollaborationPresentation({
-      humanPresence: input.humanPresence,
-      agentEngagement: input.agentEngagement,
-      effectiveMode
+    workMode = resolveWorkMode({
+      human: input.human,
+      model: input.model,
+      allowParallel: input.allowParallel === true,
+      modelAuthorityValid: input.modelAuthorityValid !== false
     });
   } catch (error) {
-    if (!HUMAN_SEQUENCE.includes(input?.humanPresence)) {
-      throw new TypeError("Cockpit requires a valid human presence", { cause: error });
-    }
-    throw new TypeError("Cockpit requires a valid model engagement", { cause: error });
+    throw new TypeError("Cockpit requires a valid actor status", { cause: error });
   }
-  const { humanBadge: _humanBadge, modelBadge: _modelBadge, ...actorPresentation } = collaboration;
+  // Badges are drawn from CSS so the state survives a missing font; every
+  // word comes from packages/reference-ui, none from this surface.
+  const {
+    humanBadge: _humanBadge,
+    modelBadge: _modelBadge,
+    ...presentation
+  } = buildWorkModePresentation(workMode);
 
   return {
     ...route,
     ...execution,
-    ...actorPresentation,
-    effectiveMode,
-    relayDetail: relayDetailFor(route.route, actorPresentation.relayState, effectiveMode),
+    ...presentation,
     contextLevel: input.contextLevel,
     contextLabel: CONTEXT_LABELS[input.contextLevel]
   };

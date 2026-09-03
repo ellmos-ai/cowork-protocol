@@ -33,7 +33,12 @@ import {
   copyIntegrationDeclaration,
   createProtocolHostDeclaration
 } from "../../../packages/integration-contract/src/index.js";
-import { REFERENCE_UI_PROVIDER_ID } from "../../../packages/reference-ui/src/index.js";
+import {
+  CLARIFY_STEPS,
+  REFERENCE_UI_PROVIDER_ID,
+  statusForWorkModeChoice,
+  WORK_MODE_CHOICES
+} from "../../../packages/reference-ui/src/index.js";
 import {
   createShowcaseSubmission,
   SHOWCASE_SCHEMA
@@ -41,9 +46,10 @@ import {
 import { initBuilderStudio } from "./builder-view.js";
 import { initBuilderCoworkUi } from "./builder-cowork-ui.js";
 import {
-  actionModeAllows,
+  adoptSessionState,
   buildLeaseExpiryEffect,
   createShowcaseSession,
+  nextActorStatus,
   nextLeaseExpiryDelay,
   transitionShowcaseSession
 } from "./session.js";
@@ -57,7 +63,8 @@ import {
   buildReceiptViewModels,
   currentActionOffers,
   nextActionOfferExpiry,
-  prepareVisibleActionOffer
+  prepareVisibleActionOffer,
+  workModeChoiceId
 } from "./view-model.js";
 import { createRecognitionSession, selectSpeechVoice } from "./speech-controller.js";
 import { replyToShowcaseTurn } from "./local-conversation.js";
@@ -91,6 +98,28 @@ const $ = (selector) =>
 $("#lease-microcopy").textContent =
   `This field-scoped demo lease lasts ${Math.round(LEASE_DURATION_MS / 60_000)} minutes, permits at most ${LEASE_MAX_CALLS} attempts, and ends after a verified page change. ` +
   `The Builder's own delegation (Build tab) lets you set your own call budget and duration.`;
+// Every visible word about status, mode and the model's job comes from
+// packages/reference-ui; this surface never writes its own status labels.
+$("#clarify-steps").replaceChildren(
+  ...CLARIFY_STEPS.map((step) => {
+    const item = document.createElement("span");
+    const dot = document.createElement("i");
+    dot.setAttribute("aria-hidden", "true");
+    item.append(dot, step.label);
+    item.title = step.question;
+    return item;
+  })
+);
+const [, MODE_STEP, , TASK_STEP] = CLARIFY_STEPS;
+$("#work-mode-heading-text").textContent = MODE_STEP.label;
+$("#work-mode-select-label").textContent = MODE_STEP.question;
+$("#task-heading-text").textContent = TASK_STEP.label;
+$("#work-mode").replaceChildren(
+  ...WORK_MODE_CHOICES.map((choice) => new Option(choice.label, choice.id))
+);
+const workModeLabel = (choiceId) =>
+  WORK_MODE_CHOICES.find((choice) => choice.id === choiceId)?.label ?? String(choiceId);
+
 const fields = [...document.querySelectorAll(".form-field[data-field-id]")];
 const schemaFields = new Map(
   SHOWCASE_SCHEMA.form.elements.map((field) => [field.id, field])
@@ -164,7 +193,7 @@ async function pullAllCompanionDeltas() {
     });
     hasMore = batch.hasMore;
   }
-  session = companionReplicaSnapshot.state;
+  session = adoptSessionState(companionReplicaSnapshot.state);
   render();
   return readCurrentSessionSnapshot();
 }
@@ -394,7 +423,7 @@ async function openInCompanion() {
       link,
       linkSessionId: acknowledgement.linkSessionId
     };
-    session = companionReplicaSnapshot.state;
+    session = adoptSessionState(companionReplicaSnapshot.state);
     let visibilityWarning = null;
     try {
       await reportCompanionSurfaceVisibility(document.visibilityState);
@@ -832,25 +861,16 @@ function render() {
     now,
     pageVersion
   });
-  const collaboration = view.collaboration;
-  $("#mode-badge").textContent = collaboration.modeLabel;
-  $("#embedded-mode-chip").textContent = collaboration.modeLabel;
-  $("#human-label").textContent = collaboration.humanLabel;
-  $("#agent-label").textContent = collaboration.modelLabel;
-  $("#embedded-relay-label").textContent = collaboration.modeLabel;
-  $("#embedded-relay-detail").textContent = collaboration.relayState === "live"
-    ? "Ideas and actions relay both ways"
-    : collaboration.relayState === "watching"
-      ? "Model reads and explains only"
-      : collaboration.relayState === "to-model"
-        ? "Scoped solo work flows to the model"
-        : collaboration.modeLabel === "Human working solo"
-          ? "Model is paused"
-          : "No collaboration turn is active";
-  $("#embedded-relay-core").setAttribute("aria-label", collaboration.modeLabel);
-  coworkPanel.dataset.humanState = collaboration.humanState;
-  coworkPanel.dataset.modelState = collaboration.modelState;
-  coworkPanel.dataset.relayState = collaboration.relayState;
+  $("#mode-badge").textContent = view.modeLabel;
+  $("#embedded-mode-chip").textContent = view.modeLabel;
+  $("#human-label").textContent = view.humanLabel;
+  $("#agent-label").textContent = view.modelLabel;
+  $("#embedded-relay-label").textContent = view.modeLabel;
+  $("#embedded-relay-detail").textContent = view.modeDetail;
+  $("#embedded-relay-core").setAttribute("aria-label", view.modeLabel);
+  coworkPanel.dataset.humanState = view.humanState;
+  coworkPanel.dataset.modelState = view.modelState;
+  coworkPanel.dataset.relayState = view.relayState;
   $("#focus-label").textContent = view.focusLabel;
   $("#context-label").textContent = view.contextLabel;
   $("#capability-badge").textContent = view.capabilityLabel;
@@ -887,29 +907,32 @@ function render() {
   $("#send-conversation").disabled = companionConnected || conversationBusy;
   $("#talk").disabled = companionConnected;
   $("#toggle-agent").textContent =
-    session.agentPresence === "paused" ? "Resume agent" : "Pause agent";
-  $("#action-mode").value = session.actionMode;
+    session.model.availability === "here" ? "Pause model" : "Resume model";
+  $("#work-mode").value = view.choiceId;
+  $("#allow-parallel").checked = view.allowParallel;
+  $("#mode-detail").textContent = view.modeDetail;
+  $("#authority-label").textContent = view.authorityLabel;
+  $("#task-badge").textContent = view.taskLabel;
+  $("#task-detail").textContent = view.taskDetail;
 
+  const humanHere = view.humanState.startsWith("here");
+  const modelHere = view.modelState.startsWith("here");
   const humanSeat = $("#human-seat");
-  humanSeat.classList.toggle("is-active", session.humanPresence === "present");
-  humanSeat.classList.toggle("is-away", session.humanPresence !== "present");
+  humanSeat.classList.toggle("is-active", humanHere);
+  humanSeat.classList.toggle("is-away", !humanHere);
   humanSeat.dataset.presenceTone = view.humanTone;
-  humanSeat.setAttribute("aria-pressed", String(collaboration.humanState === "present"));
+  humanSeat.setAttribute("aria-pressed", String(humanHere));
   const modelSeatButton = $("#model-seat");
-  modelSeatButton.classList.toggle("is-active", session.agentPresence !== "paused");
-  modelSeatButton.classList.toggle("is-paused", session.agentPresence === "paused");
-  modelSeatButton.setAttribute(
-    "aria-pressed",
-    String(collaboration.modelState === "collaborating")
-  );
+  modelSeatButton.classList.toggle("is-active", modelHere);
+  modelSeatButton.classList.toggle("is-paused", !modelHere);
+  modelSeatButton.setAttribute("aria-pressed", String(modelHere));
   renderOffers(view);
   renderReceipts();
-  // GAP-06: a silent advisory line, gated live on the current mode/presence
-  // (not only at the moment the comment was created) so pausing the agent or
-  // leaving Explain mode hides it immediately, matching "aus wenn der Agent
-  // pausiert ist" even for a comment shown earlier.
-  const advisorVisible =
-    advisorComment !== null && session.actionMode === "explain" && session.agentPresence !== "paused";
+  // GAP-06: a silent advisory line, gated live on the current work mode (not
+  // only at the moment the comment was created) so putting the model on
+  // standby - or handing it the click right - hides it immediately, even for
+  // a comment shown earlier.
+  const advisorVisible = advisorComment !== null && session.workMode.model.canPropose;
   $("#advisor-comment").hidden = !advisorVisible;
   if (advisorVisible) $("#advisor-comment").textContent = advisorComment;
 }
@@ -1066,8 +1089,11 @@ function applyControlValue(control, nextValue, cause) {
 }
 
 function createVisibleOffer({ capabilityId, targetId, value, summary }) {
-  if (session.agentPresence === "paused" || !actionModeAllows(session.actionMode, "offer")) {
-    throw new CoworkProtocolError("SESSION_PAUSED", "Agent actions are paused");
+  if (!session.workMode.model.canPropose) {
+    throw new CoworkProtocolError(
+      "SESSION_PAUSED",
+      "The model is not advising here, so it cannot propose an action"
+    );
   }
   if (!focusPacket || targetId !== focusPacket.targetId) {
     throw new CoworkProtocolError("STALE_FOCUS", "Offer target is not the current focus");
@@ -1152,8 +1178,8 @@ function addDemoOffer() {
 }
 
 function executeOffer(event, offer) {
-  if (session.agentPresence === "paused" || !actionModeAllows(session.actionMode, "offer")) {
-    setStatus("SESSION_PAUSED: this action mode does not allow offer execution.");
+  if (!session.workMode.model.canPropose) {
+    setStatus("SESSION_PAUSED: the model is not advising, so there is no proposal to authorize.");
     render();
     return;
   }
@@ -1230,10 +1256,9 @@ function executeOffer(event, offer) {
   }
 }
 
-function startAway(duration, { authorizeDelegated = false } = {}) {
-  const actionMode = authorizeDelegated ? "delegated" : session.actionMode;
-  if (session.agentPresence === "paused" || !actionModeAllows(actionMode, "solo")) {
-    setStatus("SESSION_PAUSED: switch Action rights to Delegated lease before going away.");
+function startAway(duration) {
+  if (session.model.availability !== "here") {
+    setStatus("SESSION_PAUSED: bring the model back in before handing the work over.");
     return;
   }
   if (!focusPacket) {
@@ -1264,7 +1289,7 @@ function startAway(duration, { authorizeDelegated = false } = {}) {
   leaseCallsUsed = 0;
   commitSession(
     "human-away",
-    transitionShowcaseSession({ ...session, actionMode }, {
+    transitionShowcaseSession(session, {
       type: "HUMAN_AWAY",
       duration,
       lease,
@@ -1272,15 +1297,15 @@ function startAway(duration, { authorizeDelegated = false } = {}) {
     }),
     { causeRefs: [`lease:${lease.leaseId}`], at: new Date(now).toISOString() }
   );
-  setStatus("Agent Solo is active only inside the displayed two-minute field lease.");
+  setStatus("The model works alone only inside the displayed two-minute field lease.");
   render();
 }
 
 function executeSoloAction({ capabilityId, targetId, value }) {
-  if (session.agentPresence === "paused" || !actionModeAllows(session.actionMode, "solo")) {
+  if (!session.workMode.model.canExecute) {
     throw new CoworkProtocolError(
       "SESSION_PAUSED",
-      "Agent Solo requires the Delegated lease action mode"
+      "Solo work requires the click right; hand the work over first"
     );
   }
   if (!session.lease) {
@@ -1368,38 +1393,44 @@ function returnHuman() {
 
 function toggleAgent() {
   const transitionType =
-    session.agentPresence === "paused" ? "AGENT_RESUMED" : "AGENT_PAUSED";
-  const actionMode = transitionType === "AGENT_RESUMED"
-    ? session.actionMode === "paused" ? "suggest" : session.actionMode
-    : "paused";
+    session.model.availability === "here" ? "AGENT_PAUSED" : "AGENT_RESUMED";
   commitSession(
     transitionType === "AGENT_RESUMED" ? "agent-resumed" : "agent-paused",
-    transitionShowcaseSession({ ...session, actionMode }, { type: transitionType })
+    transitionShowcaseSession(session, { type: transitionType })
   );
-  setStatus(session.agentPresence === "paused" ? "Agent paused. Human Solo is active." : "Agent resumed.");
+  setStatus(
+    session.model.availability === "here"
+      ? "Model back in. It advises again."
+      : `Model on standby. ${workModeLabel(workModeChoiceId(session.workMode))}.`
+  );
+  render();
+}
+
+// One figure, one actor, four states: here-acting, here-observing, standby,
+// away. The cycle starts from the *resolved* status, so a model whose
+// authority the conflict rule already took moves on from what is displayed.
+function cycleActorStatus(side) {
+  const requested = nextActorStatus(session.workMode[side]);
+  commitSession(
+    `${side}-status-changed`,
+    transitionShowcaseSession(session, { type: "SET_STATUS", [side]: requested }),
+    { payload: { side, ...requested } }
+  );
+  const resolved = session.workMode[side];
+  setStatus(
+    resolved.availability === requested.availability && resolved.role === requested.role
+      ? `${workModeLabel(workModeChoiceId(session.workMode))}.`
+      : "Both cannot act at once here. The hand on the mouse keeps the click right."
+  );
   render();
 }
 
 function cycleModelCockpit() {
-  if (session.agentPresence === "paused") {
-    toggleAgent();
-    return;
-  }
-  if (session.actionMode === "explain") {
-    toggleAgent();
-    return;
-  }
-  commitSession("model-observing", { ...session, actionMode: "explain" }, {
-    payload: { actionMode: "explain", source: "model-actor" }
-  });
-  setStatus("Model observing: focus and explanations remain available; action offers are off.");
-  render();
+  cycleActorStatus("model");
 }
 
 function cycleHumanCockpit() {
-  if (session.humanPresence === "present") startAway("short", { authorizeDelegated: true });
-  else if (session.humanPresence === "afk-short") startAway("long", { authorizeDelegated: true });
-  else returnHuman();
+  cycleActorStatus("human");
 }
 
 function collectFormValues() {
@@ -1587,8 +1618,7 @@ for (const field of fields) {
     const schemaField = schemaFields.get(field.dataset.fieldId);
     const nextAdvisorComment = adviseCommentForHumanChange({
       change,
-      actionMode: session.actionMode,
-      agentPresence: session.agentPresence,
+      advising: session.workMode.model.canPropose,
       label: schemaField?.label,
       required: schemaField?.required === true,
       emptyRequiredOtherCount: [...schemaFields.values()].filter(
@@ -1641,18 +1671,47 @@ $("#change-causality").addEventListener("change", (event) => {
   setStatus(event.target.checked ? "Change and causality lens enabled." : "Change and causality lens disabled.");
 });
 
-$("#action-mode").addEventListener("change", (event) => {
-  const actionMode = event.target.value;
-  let nextSession = { ...session, actionMode };
-  if (actionMode === "paused" && session.agentPresence !== "paused") {
-    nextSession = transitionShowcaseSession(nextSession, { type: "AGENT_PAUSED" });
-  } else if (actionMode !== "paused" && session.agentPresence === "paused") {
-    nextSession = transitionShowcaseSession(nextSession, { type: "AGENT_RESUMED" });
-  }
-  commitSession("action-mode-changed", nextSession, {
-    payload: { actionMode: event.target.value }
-  });
-  setStatus(`Action mode changed to ${event.target.selectedOptions[0].text}.`);
+$("#work-mode").addEventListener("change", (event) => {
+  const choiceId = event.target.value;
+  const picked = statusForWorkModeChoice(choiceId, session);
+  commitSession(
+    "work-mode-changed",
+    transitionShowcaseSession(session, {
+      type: "SET_STATUS",
+      human: picked.human,
+      model: picked.model,
+      // The checkbox owns simultaneity. Picking "Both at once" while it is
+      // off must fall to the conflict rule visibly, not switch it on.
+      allowParallel: picked.allowParallel && $("#allow-parallel").checked
+    }),
+    { payload: { choiceId } }
+  );
+  const resolved = workModeChoiceId(session.workMode);
+  setStatus(
+    resolved === choiceId
+      ? `${workModeLabel(choiceId)}.`
+      : `${workModeLabel(choiceId)} is not in force: ${workModeLabel(resolved)}. ` +
+        (session.workMode.authorityLapsed
+          ? "The model needs a granted job (Handoff) before it can work alone."
+          : 'Switch on "Allow both at once" to work simultaneously.')
+  );
+  render();
+});
+
+$("#allow-parallel").addEventListener("change", (event) => {
+  commitSession(
+    "parallel-changed",
+    transitionShowcaseSession(session, {
+      type: "SET_STATUS",
+      allowParallel: event.target.checked
+    }),
+    { payload: { allowParallel: event.target.checked } }
+  );
+  setStatus(
+    event.target.checked
+      ? "Both may act at the same time, on separate targets."
+      : "Simultaneous work is off. The hand on the mouse keeps the click right."
+  );
   render();
 });
 

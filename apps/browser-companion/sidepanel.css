@@ -112,12 +112,14 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.025em; }
 .human-head, .human-body { fill: #fff8ea; stroke: #0a5e52; stroke-width: 2; }
 .human-hair { fill: #075e52; }
 .human-badge::before { content: "●"; }
-.cowork-cockpit[data-human-state="afk-short"] .actor-human { --actor-state-color: #8d5c0c; color: var(--state-away); }
-.cowork-cockpit[data-human-state="afk-short"] .human-figure { transform: translateX(3px); }
-.cowork-cockpit[data-human-state="afk-short"] .human-badge::before { content: "◷"; }
-.cowork-cockpit[data-human-state="afk-long"] .actor-human { --actor-state-color: #a53227; color: var(--state-paused); opacity: .62; }
-.cowork-cockpit[data-human-state="afk-long"] .actor-human .actor-aura { border-style: dashed; box-shadow: none; }
-.cowork-cockpit[data-human-state="afk-long"] .human-badge::before { content: "↗"; }
+.cowork-cockpit[data-human-state="here-observing"] .actor-human { --actor-state-color: #176baf; color: var(--state-observe); }
+.cowork-cockpit[data-human-state="here-observing"] .human-badge::before { content: "◉"; }
+.cowork-cockpit[data-human-state="standby"] .actor-human { --actor-state-color: #8d5c0c; color: var(--state-away); }
+.cowork-cockpit[data-human-state="standby"] .human-figure { transform: translateX(3px); }
+.cowork-cockpit[data-human-state="standby"] .human-badge::before { content: "◷"; }
+.cowork-cockpit[data-human-state="away"] .actor-human { --actor-state-color: #a53227; color: var(--state-paused); opacity: .62; }
+.cowork-cockpit[data-human-state="away"] .actor-human .actor-aura { border-style: dashed; box-shadow: none; }
+.cowork-cockpit[data-human-state="away"] .human-badge::before { content: "↗"; }
 
 .actor-model { --actor-state-color: #a53227; color: var(--state-paused); }
 .model-figure .medallion-field { fill: #edfdf9; }
@@ -125,17 +127,22 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.025em; }
 .model-screen { fill: #08776e; }
 .model-eye { fill: white; }
 .model-mouth, .model-antenna, .model-arm, .model-leg { fill: none; stroke: #0b4e4a; stroke-linecap: round; stroke-width: 3; }
-.model-badge::before { content: "Ⅱ"; }
-.cowork-cockpit[data-model-state="collaborating"] .actor-model { --actor-state-color: #087c75; color: var(--state-active); }
-.cowork-cockpit[data-model-state="collaborating"] .model-badge::before { content: "✓"; }
-.cowork-cockpit[data-model-state="observing"] .actor-model { --actor-state-color: #176baf; color: var(--state-observe); }
-.cowork-cockpit[data-model-state="observing"] .model-screen { fill: #176baf; }
-.cowork-cockpit[data-model-state="observing"] .model-arm { opacity: .45; }
-.cowork-cockpit[data-model-state="observing"] .model-badge::before { content: "◉"; }
-.cowork-cockpit[data-model-state="paused"] .actor-model { opacity: .58; }
-.cowork-cockpit[data-model-state="paused"] .actor-model .actor-aura { border-style: dashed; box-shadow: none; }
-.cowork-cockpit[data-model-state="paused"] .model-figure { filter: grayscale(.9); }
-.cowork-cockpit[data-model-state="paused"] .model-eye { transform: scaleY(.25); transform-origin: center; }
+.model-badge::before { content: "○"; }
+.cowork-cockpit[data-model-state="here-acting"] .actor-model { --actor-state-color: #087c75; color: var(--state-active); }
+.cowork-cockpit[data-model-state="here-acting"] .model-badge::before { content: "✓"; }
+.cowork-cockpit[data-model-state="here-observing"] .actor-model { --actor-state-color: #176baf; color: var(--state-observe); }
+.cowork-cockpit[data-model-state="here-observing"] .model-screen { fill: #176baf; }
+.cowork-cockpit[data-model-state="here-observing"] .model-arm { opacity: .45; }
+.cowork-cockpit[data-model-state="here-observing"] .model-badge::before { content: "◉"; }
+.cowork-cockpit[data-model-state="standby"] .actor-model { --actor-state-color: #8d5c0c; color: var(--state-away); opacity: .72; }
+.cowork-cockpit[data-model-state="standby"] .actor-model .actor-aura { border-style: dashed; box-shadow: none; }
+.cowork-cockpit[data-model-state="standby"] .model-figure { filter: grayscale(.7); }
+.cowork-cockpit[data-model-state="standby"] .model-eye { transform: scaleY(.25); transform-origin: center; }
+.cowork-cockpit[data-model-state="standby"] .model-badge::before { content: "Ⅱ"; }
+.cowork-cockpit[data-model-state="away"] .actor-model { opacity: .58; }
+.cowork-cockpit[data-model-state="away"] .actor-model .actor-aura { border-style: dashed; box-shadow: none; }
+.cowork-cockpit[data-model-state="away"] .model-figure { filter: grayscale(.9); }
+.cowork-cockpit[data-model-state="away"] .model-eye { transform: scaleY(.25); transform-origin: center; }
 
 .relay-core { min-width: 0; text-align: center; }
 .relay-core svg { display: block; width: 100%; max-height: 76px; overflow: visible; }
@@ -180,10 +187,11 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.025em; }
 .dock-key span { max-width: 100%; overflow: hidden; color: var(--ink-strong); font-size: 8px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
 .dock-key.is-restricted { color: #8b8379; background: #f4f0e8; box-shadow: none; }
 .dock-key.model-power { color: var(--state-active); }
-.cowork-cockpit[data-model-state="paused"] .dock-key.model-power { color: var(--state-paused); }
+.cowork-cockpit[data-model-state="away"] .dock-key.model-power { color: var(--state-paused); }
 
-.protocol-rhythm { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 8px; color: var(--ink-muted); font-size: 7px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
-.protocol-rhythm i { width: 9px; height: 1px; background: var(--line-gold); }
+.protocol-rhythm { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 8px; color: var(--ink-muted); font-size: 7px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+.protocol-rhythm span { min-width: 0; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.protocol-rhythm i { display: inline-block; width: 4px; height: 4px; margin-right: 3px; border-radius: 50%; background: var(--line-gold); vertical-align: middle; }
 
 @keyframes relay-flow { to { stroke-dashoffset: -38; } }
 @keyframes relay-awake { 50% { transform: scale(1.13) rotate(8deg); filter: drop-shadow(0 0 5px #f2c65b); } }

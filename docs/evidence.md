@@ -396,6 +396,63 @@ rendered states with 0 unsupported backgrounds, 0 failures and a minimum
 contrast of 4.57; the native companion smoke still reports 9 WebMCP tools; the
 Pages artifact is 35 files (after the two allowlist fixes 02c27e1 and 12c6d50, which ship model-seat.js, builder-model-suggester.js and openai-compatible.js) and the extension artifact 21. All nine Chrome 152 browser smokes exit 0 on this tree, measured before the two allowlist commits, which touch only scripts/build-pages.mjs.
 
+### Work-mode matrix (0.2)
+
+The interaction rhythm *Point / Offer / Click / Verify* and the separate
+"Action rights" selector are gone. Both mixed the two participants: the rhythm
+described one scripted exchange rather than the session's state, and a paused
+model was reachable through two controls that could disagree. In their place,
+`resolveWorkMode()` in `packages/core/src/index.js` derives the work mode, the
+authority holder and every action right from two status variables per actor -
+`availability` (here / standby / away) and `role` (acting / observing) - plus one
+explicit switch for simultaneous work. Authority *is* the click right:
+`canExecute` means holding it, `canPropose` means being present without it. The
+old `explain` and `suggest` action modes turned out to be one state and are now
+one (`observing` = advising); `delegated` became the model holding authority and
+`paused` became model standby. Where both actors are set to act and
+simultaneous work is not allowed, the human keeps authority and the model falls
+back to advising - the return path of the typical session, not an invented
+tie-break. A model set to act while the human is away still needs a valid
+authority record (the solo lease); without it `resolveWorkMode` reports
+`authorityLapsed` and the model advises instead of acting. The full concept,
+including the old-to-new mapping, is `docs/work-modes.md`, with a one-page German
+summary in `docs/work-modes.de.md`.
+
+The 0.1 wire is unchanged: presence events, offers, authorizations, receipts,
+leases, grants and the nine native WebMCP tools keep their published shapes.
+`toLegacyPresence()` derives the legacy `effectiveMode` from the legacy values it
+just produced, so a 0.1 consumer that re-resolves the mode always agrees; a
+regression test asserts that agreement for every matrix cell.
+
+All three surfaces now read their wording from one vocabulary in
+`packages/reference-ui/src/index.js` (`CLARIFY_STEPS`, `buildWorkModePresentation`,
+`WORK_MODE_CHOICES`, `statusForWorkModeChoice`), and a test asserts that no
+surface script spells a status label itself. The four-step Clarify bar replaced
+the rhythm bar in all three. Two findings surfaced during the rebuild and were
+fixed rather than worked around: the browser extension's handoff control could
+never mint a lease and therefore never perform a handoff, so it is now an
+honest hint control; and `fromLegacyPresence()` initially forced a present human
+into the acting role, which made "model acts while the human watches"
+unreachable from 0.1 input and rendered two Companion states identically - the
+0.1 wire carries its single "who is working" bit on the agent, and the bridge
+now reads it there.
+
+Measured on this tree with Chrome 152.0.7977.65: 434 unit tests pass (417
+before, +8 for the matrix, +9 across the surfaces and the shared vocabulary);
+all nine browser smokes exit 0; the showcase exposes 44 interactive controls, 44
+uniquely named AX nodes, 44 tab stops and 44 focus-visible controls (21 buttons,
+9 textboxes, 4 comboboxes, 4 checkboxes, 3 tabs, 2 spinbuttons, 1 link) with 0
+horizontal overflow - one more than the previous 43, because the removed
+action-rights selector was replaced by a work-mode selector and the simultaneous
+switch is new; the pixel-contrast audit resolves 1633 visible text items across
+11 rendered states with 0 unsupported backgrounds, 0 failures and a minimum
+contrast of 4.57; the native companion smoke still reports 9 WebMCP tools; the
+cockpit smoke shows four distinct work modes across four states (previously
+three of them varied only the model) with the keyboard path unchanged at 9
+controls and no horizontal overflow at 320, 390 and 480 px; the Pages artifact
+is 35 files and the extension artifact 21, and every relative import in both
+build outputs resolves against the artifact itself.
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;

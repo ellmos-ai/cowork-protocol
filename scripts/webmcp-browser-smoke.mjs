@@ -650,11 +650,6 @@ try {
       .dispatchEvent(new PointerEvent("pointerenter", { bubbles: true }));
   })()`);
   await new Promise((resolve) => setTimeout(resolve, 50));
-  await evaluateValue(call, `(() => {
-    const select = document.querySelector("#action-mode");
-    select.value = "delegated";
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  })()`);
   await dispatchTrustedClick(call, 'document.querySelector("#away-short")', "Briefly away, granting a solo lease");
   await new Promise((resolve) => setTimeout(resolve, 50));
   const presenceExecution = await evaluateValue(
@@ -689,13 +684,11 @@ try {
     );
   }
 
-  // --- GAP-06: the model comments on a human's own change, only in Explain
-  // (advise) mode, and the comment hides live the moment that mode ends. ---
-  await evaluateValue(call, `(() => {
-    const select = document.querySelector("#action-mode");
-    select.value = "explain";
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  })()`);
+  // --- GAP-06: the model comments on a human's own change while it is
+  // advising - explaining and proposing are one state now - and the comment
+  // hides live the moment the model stops advising. After the return above
+  // the human holds the click right and the model advises, so no mode switch
+  // is needed to reach that state.
   await evaluateValue(call, `(() => {
     const textarea = document.querySelector("#access-needs");
     textarea.value = "Please provide a ramp.";
@@ -710,16 +703,52 @@ try {
     throw new Error(`Expected a visible advisor comment naming the changed field: ${JSON.stringify(advisorObserved)}`);
   }
   await evaluateValue(call, `(() => {
-    const select = document.querySelector("#action-mode");
-    select.value = "suggest";
+    const select = document.querySelector("#work-mode");
+    select.value = "human-solo";
     select.dispatchEvent(new Event("change", { bubbles: true }));
   })()`);
   await new Promise((resolve) => setTimeout(resolve, 50));
   const advisorHiddenAfterModeChange = await evaluateValue(call, `document.querySelector("#advisor-comment")?.hidden`);
   if (advisorHiddenAfterModeChange !== true) {
-    throw new Error("Expected the advisor comment to hide live once Explain mode ends");
+    throw new Error("Expected the advisor comment to hide live once the model stops advising");
   }
   observed.advisorComment = advisorObserved;
+
+  // --- Simultaneous work is opt-in: picking "Both at once" while the
+  // allowance is off must fall to the conflict rule visibly (the select snaps
+  // back to the mode in force), and must reach "parallel" once it is on. ---
+  const pickWorkMode = (choiceId) => `(() => {
+    const select = document.querySelector("#work-mode");
+    select.value = ${JSON.stringify(choiceId)};
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    return {
+      selected: select.value,
+      modeBadge: document.querySelector("#mode-badge")?.textContent?.trim() ?? null,
+      status: document.querySelector("#system-status")?.textContent ?? null,
+      allowParallel: document.querySelector("#allow-parallel")?.checked ?? null
+    };
+  })()`;
+  const refusedParallel = await evaluateValue(call, pickWorkMode("parallel"));
+  if (
+    refusedParallel.selected !== "cowork-human" ||
+    refusedParallel.allowParallel !== false ||
+    !refusedParallel.status?.includes("Allow both at once")
+  ) {
+    throw new Error(
+      `Both at once must be refused and explained while the allowance is off: ${JSON.stringify(refusedParallel)}`
+    );
+  }
+  await dispatchTrustedClick(call, 'document.querySelector("#allow-parallel")', "Allow both at once");
+  const grantedParallel = await evaluateValue(call, pickWorkMode("parallel"));
+  if (
+    grantedParallel.selected !== "parallel" ||
+    grantedParallel.modeBadge !== "Both at once"
+  ) {
+    throw new Error(
+      `Both at once must take effect once it is allowed: ${JSON.stringify(grantedParallel)}`
+    );
+  }
+  observed.parallelAllowance = { refusedParallel, grantedParallel };
 
   const summary = validateNativeWebMcpObservation(observed);
   const conversationSummary = validateConversationObservation(conversationObserved);
@@ -737,7 +766,8 @@ try {
     presenceReportedEffectiveMode: presenceExecution.packet?.effectiveMode,
     soloExecutionStatus: soloExecution.packet?.status,
     advisorCommentClaim: true,
-    advisorCommentHiddenOutsideExplainMode: advisorHiddenAfterModeChange
+    advisorCommentHiddenWhenModelStopsAdvising: advisorHiddenAfterModeChange,
+    parallelNeedsExplicitAllowanceClaim: true
   }, null, 2));
   socket.close();
 } finally {

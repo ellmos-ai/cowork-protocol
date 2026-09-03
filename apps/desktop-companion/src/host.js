@@ -8,7 +8,11 @@ import {
   createCoworkContextManager,
   restoreCoworkContextManager
 } from "../../../packages/context-manager/src/index.js";
-import { resolvePresenceMode } from "../../../packages/core/src/index.js";
+import {
+  fromLegacyPresence,
+  resolvePresenceMode,
+  resolveWorkMode
+} from "../../../packages/core/src/index.js";
 import { createCoworkModelGateway } from "../../../packages/model-gateway/src/index.js";
 import { restoreCoworkSessionAuthority } from "../../../packages/session-authority/src/index.js";
 
@@ -64,6 +68,25 @@ function resolveCompanionMode({ state, humanPresence, agentPresence, agentEngage
   return agentEngagement === "observing" && humanPresence !== "present"
     ? "idle"
     : effectiveMode;
+}
+
+/**
+ * The two status variables per actor, read back out of the 0.1 presence values
+ * the Companion mutates on the replicated state. The Companion offers no
+ * simultaneous-work control, so it never claims one; the solo lease is the
+ * model's authority record while the human is gone.
+ */
+function resolveCompanionWorkMode({ state, agentEngagement, at }) {
+  return resolveWorkMode({
+    ...fromLegacyPresence({
+      humanPresence: state.humanPresence,
+      agentPresence: state.agentPresence,
+      agentEngagement
+    }),
+    allowParallel: false,
+    modelAuthorityValid:
+      state.humanPresence === "present" || hasCurrentSoloLease(state, at)
+  });
 }
 
 function assertLoopbackHostname(hostname) {
@@ -386,6 +409,9 @@ export function createCompanionSessionHost({
       computerUseAvailable: computerUse !== null,
       sessions: [...sessions].map(([linkSessionId, value]) => {
         const snapshot = value.authority.readSnapshot();
+        const agentEngagement = value.gateway === null
+          ? "paused"
+          : readAgentEngagement(snapshot.state);
         return {
           linkSessionId,
           sessionId: snapshot.sessionId,
@@ -395,10 +421,15 @@ export function createCompanionSessionHost({
           revision: snapshot.revision,
           humanPresence: snapshot.state.humanPresence,
           agentPresence: snapshot.state.agentPresence,
-          agentEngagement: value.gateway === null
-            ? "paused"
-            : readAgentEngagement(snapshot.state),
+          agentEngagement,
           effectiveMode: snapshot.state.effectiveMode,
+          // Derived for the cockpit: status, work mode and the click right in
+          // one shape. The wire above keeps its published 0.1 values.
+          workMode: resolveCompanionWorkMode({
+            state: snapshot.state,
+            agentEngagement,
+            at: now()
+          }),
           surfaceKind: snapshot.state.surface?.kind,
           applicationSurfaceVisibility:
             snapshot.state.applicationSurface?.visibility ?? "unknown",

@@ -167,13 +167,18 @@ async function keyboardOrder(call) {
   return order.filter(Boolean);
 }
 
+// The stub mirrors the shipped content runtime: it stores the two status
+// variables per actor and cycles a figure from the *resolved* status, so the
+// panel under test resolves the very same matrix the extension does.
 const fixtureSource = `(() => {
   const state = {
     enabled: true,
     mode: "legacy-host-companion",
     executionMode: "structured",
-    humanPresence: "present",
-    agentEngagement: "collaborating",
+    human: { availability: "here", role: "observing" },
+    model: { availability: "here", role: "acting" },
+    allowParallel: false,
+    modelAuthorityValid: true,
     soloLeaseValid: true,
     contextLevel: 0,
     focusLabel: "Point to a page control",
@@ -181,18 +186,41 @@ const fixtureSource = `(() => {
     statusText: "Cowork is active through the bounded bridge.",
     pendingOffer: { offerId: "offer-cockpit-proof", summary: "Apply suggested title: Team meetup registration" }
   };
-  const modelStates = ["collaborating", "observing", "paused"];
-  const humanStates = ["present", "afk-short", "afk-long"];
+  const cycle = [
+    { availability: "here", role: "acting" },
+    { availability: "here", role: "observing" },
+    { availability: "standby", role: "observing" },
+    { availability: "away", role: "observing" }
+  ];
+  // The conflict rule demotes a model that acts while the human acts, so the
+  // stub cycles on from what the panel shows, not from the stored intent.
+  const resolved = (side) => {
+    const actor = state[side];
+    if (actor.availability !== "here") return { availability: actor.availability, role: "observing" };
+    if (side === "model" && actor.role === "acting" && !state.allowParallel &&
+      state.human.availability === "here" && state.human.role === "acting") {
+      return { availability: "here", role: "observing" };
+    }
+    return actor;
+  };
+  const advance = (side) => {
+    const current = resolved(side);
+    const index = cycle.findIndex((candidate) => candidate.availability === current.availability &&
+      (current.availability !== "here" || candidate.role === current.role));
+    state[side] = cycle[(index + 1) % cycle.length];
+  };
   const envelope = () => ({ ok: true, result: { state: structuredClone(state) } });
   const sendMessage = async (message) => {
     if (message.type === "cowork:sidepanel:cycle-model") {
-      state.agentEngagement = modelStates[(modelStates.indexOf(state.agentEngagement) + 1) % modelStates.length];
-      state.enabled = state.agentEngagement !== "paused";
+      advance("model");
+      state.enabled = state.model.availability !== "away";
     } else if (message.type === "cowork:sidepanel:cycle-human") {
-      state.humanPresence = humanStates[(humanStates.indexOf(state.humanPresence) + 1) % humanStates.length];
+      advance("human");
     } else if (message.type === "cowork:sidepanel:toggle") {
       state.enabled = !state.enabled;
-      state.agentEngagement = state.enabled ? "collaborating" : "paused";
+      state.model = state.enabled
+        ? { availability: "here", role: "acting" }
+        : { availability: "away", role: "observing" };
     } else if (message.type === "cowork:sidepanel:read-focus") {
       state.focusLabel = "Selected: Registration title";
       state.focusDetail = "Stable field · text input";
@@ -277,27 +305,34 @@ try {
   await trustedClick(call, "#context-gauge");
   await waitForValue(call, "document.querySelector('#context-gauge')?.dataset.level", (value) => value === "1");
 
+  const humanState = "document.querySelector('.cowork-cockpit')?.dataset.humanState";
+  const modelState = "document.querySelector('.cowork-cockpit')?.dataset.modelState";
   const states = [];
   const screenshots = [];
-  states.push(await observeState(call));
-  screenshots.push(await captureFrame(call, "cockpit-01-cowork.png"));
 
-  await trustedClick(call, "#model-control");
-  await waitForValue(call, "document.querySelector('.cowork-cockpit')?.dataset.modelState", (value) => value === "observing");
+  // 1 - both here, the model acts while the human watches.
   states.push(await observeState(call));
-  screenshots.push(await captureFrame(call, "cockpit-02-observing.png"));
+  screenshots.push(await captureFrame(call, "cockpit-01-cowork-model.png"));
 
-  await trustedClick(call, "#model-control");
-  await waitForValue(call, "document.querySelector('.cowork-cockpit')?.dataset.modelState", (value) => value === "paused");
-  states.push(await observeState(call));
-  screenshots.push(await captureFrame(call, "cockpit-03-paused.png"));
-
-  await trustedClick(call, "#model-control");
-  await waitForValue(call, "document.querySelector('.cowork-cockpit')?.dataset.modelState", (value) => value === "collaborating");
+  // 2 - the human leaves; the lease keeps the model working alone.
   await trustedClick(call, "#human-control");
-  await waitForValue(call, "document.querySelector('.cowork-cockpit')?.dataset.humanState", (value) => value === "afk-short");
+  await waitForValue(call, humanState, (value) => value === "standby");
+  await trustedClick(call, "#human-control");
+  await waitForValue(call, humanState, (value) => value === "away");
   states.push(await observeState(call));
-  screenshots.push(await captureFrame(call, "cockpit-04-agent-solo.png"));
+  screenshots.push(await captureFrame(call, "cockpit-02-model-solo.png"));
+
+  // 3 - the human returns and the hand on the mouse takes the click right back.
+  await trustedClick(call, "#human-control");
+  await waitForValue(call, humanState, (value) => value === "here-acting");
+  states.push(await observeState(call));
+  screenshots.push(await captureFrame(call, "cockpit-03-cowork-human.png"));
+
+  // 4 - the model stands by; the human works alone.
+  await trustedClick(call, "#model-control");
+  await waitForValue(call, modelState, (value) => value === "standby");
+  states.push(await observeState(call));
+  screenshots.push(await captureFrame(call, "cockpit-04-human-solo.png"));
 
   const responsiveSamples = [];
   for (const viewport of [

@@ -44,8 +44,8 @@
 
       <section
         class="companion-cockpit"
-        data-human-state="present"
-        data-model-state="paused"
+        data-human-state="here-acting"
+        data-model-state="away"
         data-relay-state="dormant"
         data-execution-mode="structured"
         aria-labelledby="collaboration-title"
@@ -55,7 +55,7 @@
             <p class="eyebrow">Live collaboration</p>
             <h2 id="collaboration-title">Who works now?</h2>
           </div>
-          <span id="mode" class="mode">Human solo</span>
+          <span id="mode" class="mode">Nobody is acting</span>
         </div>
 
         <div class="actor-stage">
@@ -63,7 +63,7 @@
             id="human-control"
             class="actor-control actor-human"
             type="button"
-            aria-label="Change your presence"
+            aria-label="Change your status"
             aria-pressed="true"
             aria-describedby="human-label"
           >
@@ -79,7 +79,7 @@
               </span>
               <span class="state-badge human-badge" aria-hidden="true"></span>
             </span>
-            <span class="actor-copy"><small>You</small><strong id="human-label">You are here</strong></span>
+            <span class="actor-copy"><small>You</small><strong id="human-label">You are working</strong></span>
           </button>
 
           <div id="relay-core" class="relay-core" role="status" aria-live="polite" aria-label="Human working solo">
@@ -91,15 +91,15 @@
               <path class="relay-spark" d="m66 28 6 13 13 6-13 6-6 13-6-13-13-6 13-6Z"/>
               <circle class="relay-pulse" cx="18" cy="47" r="4"/>
             </svg>
-            <strong id="relay-label">Human solo</strong>
-            <span id="relay-detail">Model is paused</span>
+            <strong id="relay-label">Nobody is acting</strong>
+            <span id="relay-detail">Waiting for one shared session</span>
           </div>
 
           <button
             id="model-control"
             class="actor-control actor-model"
             type="button"
-            aria-label="Change model engagement"
+            aria-label="Change what the model does"
             aria-pressed="false"
             aria-describedby="model-label model-identity"
           >
@@ -123,7 +123,7 @@
             </span>
             <span class="actor-copy">
               <small>Model</small>
-              <strong id="model-label">Model paused</strong>
+              <strong id="model-label">Model disconnected</strong>
               <span id="model-identity" class="model-identity" title="No model connected">No model connected</span>
             </span>
           </button>
@@ -155,9 +155,7 @@
         <p id="cockpit-status" class="cockpit-status">Connect a page to awaken the relay.</p>
       </section>
 
-      <div class="protocol-rhythm" aria-label="Cowork interaction rhythm">
-        <span>Point</span><i aria-hidden="true"></i><span>Offer</span><i aria-hidden="true"></i><span>Click</span><i aria-hidden="true"></i><span>Verify</span>
-      </div>
+      <div class="protocol-rhythm" id="clarify-steps" aria-label="What this Companion clarifies"></div>
 
       <section class="status-card" aria-labelledby="session-heading">
         <div class="section-row">

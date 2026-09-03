@@ -1,11 +1,13 @@
 import { createLegacyHostCompanion } from "../../../packages/bridge/src/index.js";
-import { CoworkProtocolError } from "../../../packages/core/src/index.js";
+import {
+  CoworkProtocolError,
+  resolveWorkMode,
+  toLegacyPresence
+} from "../../../packages/core/src/index.js";
+import { buildWorkModePresentation } from "../../../packages/reference-ui/src/index.js";
 import { describeDomTarget, normalizeCompanionRequest } from "./protocol.js";
 import { createNativePageClient } from "./native-page-client.js";
-import {
-  nextHumanPresence,
-  nextModelEngagement
-} from "./cockpit-presentation.js";
+import { ACTOR_STATUS_CYCLE, nextActorStatus } from "./cockpit-presentation.js";
 
 const RESPONSE_SOURCE = "cowork-browser-companion";
 const TARGET_SELECTOR = [
@@ -69,8 +71,12 @@ export function installBrowserCompanion({ document, window, runtime }) {
   let pendingOfferContract = null;
   let runtimeMode = "off";
   let nativeDiscovery = null;
-  let humanPresence = "present";
-  let agentEngagement = "paused";
+  // Two status variables per actor. The work mode, who holds the click right
+  // and the 0.1 presence values on the wire are all derived from these.
+  let human = { availability: "here", role: "acting" };
+  let model = { availability: "away", role: "observing" };
+  // The extension offers no simultaneous-work control, so it never claims one.
+  const allowParallel = false;
   let soloLeaseValid = false;
   let contextLevel = 0;
   let focusLabel = "Point to a page control";
@@ -87,6 +93,21 @@ export function installBrowserCompanion({ document, window, runtime }) {
     childList: true,
     subtree: true
   });
+
+  // The lease is the model's authority record while the human is gone; with
+  // the human here their own presence is the live authority.
+  function modelAuthorityValid() {
+    return human.availability === "here" || soloLeaseValid;
+  }
+
+  function workMode() {
+    return resolveWorkMode({
+      human,
+      model,
+      allowParallel,
+      modelAuthorityValid: modelAuthorityValid()
+    });
+  }
 
   function publishSurfaceState() {
     try {
@@ -292,32 +313,40 @@ export function installBrowserCompanion({ document, window, runtime }) {
     return state();
   }
 
-  async function cycleModelEngagement() {
-    const next = nextModelEngagement(agentEngagement);
-    if (next === "paused") {
+  // Every status sentence comes from packages/reference-ui - this surface
+  // never writes status words of its own.
+  function statusSentence() {
+    return buildWorkModePresentation(workMode()).modeDetail;
+  }
+
+  async function cycleModelStatus() {
+    const next = nextActorStatus(workMode().model);
+    // "Away" is the one model status the extension can only reach by
+    // detaching: with no page connector there is nothing for a model to join.
+    if (next.availability === "away") {
       await setEnabled(false);
       return state();
     }
     if (!enabled) await setEnabled(true);
-    agentEngagement = next;
-    updateStatus(
-      next === "observing"
-        ? "Observe-only · reads stay available, action offers are blocked"
-        : "Model collaborating"
-    );
+    model = next;
+    updateStatus(statusSentence());
     return state();
   }
 
-  function cycleHumanPresence() {
-    const next = nextHumanPresence(humanPresence);
-    if (next !== "present" && !soloLeaseValid) {
-      throw new CoworkProtocolError(
-        "SOLO_LEASE_REQUIRED",
-        "Connect the Desktop Companion and approve a solo lease before leaving"
+  function cycleHumanStatus() {
+    const next = nextActorStatus(workMode().human);
+    // Leaving needs a solo lease no Session Authority in this extension can
+    // grant, so the figure wraps to the two statuses it really has instead of
+    // stranding you on the last one it could reach.
+    if (next.availability !== "here" && !soloLeaseValid) {
+      human = ACTOR_STATUS_CYCLE[0];
+      updateStatus(
+        "Leaving needs the Desktop Companion's solo lease; this extension cannot grant one."
       );
+      return state();
     }
-    humanPresence = next;
-    updateStatus(next === "present" ? "Human returned" : "Human presence updated");
+    human = next;
+    updateStatus(statusSentence());
     return state();
   }
 
@@ -334,7 +363,7 @@ export function installBrowserCompanion({ document, window, runtime }) {
     focusLabel = "Point to a page control";
     focusDetail = "No page content requested yet";
     if (enabled) {
-      agentEngagement = "collaborating";
+      model = { availability: "here", role: "acting" };
       try {
         nativeDiscovery = await nativePageClient.discover();
       } catch {
@@ -359,13 +388,14 @@ export function installBrowserCompanion({ document, window, runtime }) {
     } else {
       companion = null;
       runtimeMode = "off";
-      agentEngagement = "paused";
+      model = { availability: "away", role: "observing" };
       updateStatus("Off");
     }
     return state();
   }
 
   function state() {
+    const { workMode: _workMode, ...legacyPresence } = toLegacyPresence(workMode());
     return {
       protocolVersion: "0.1",
       enabled,
@@ -382,8 +412,12 @@ export function installBrowserCompanion({ document, window, runtime }) {
       surfaceLocation: "browser-side-panel",
       inPageUi: false,
       statusText,
-      humanPresence,
-      agentEngagement,
+      human,
+      model,
+      allowParallel,
+      modelAuthorityValid: modelAuthorityValid(),
+      // 0.1 wire mirrors, derived - never set by hand.
+      ...legacyPresence,
       soloLeaseValid,
       contextLevel,
       focusLabel,
@@ -444,10 +478,12 @@ export function installBrowserCompanion({ document, window, runtime }) {
       return;
     }
     try {
-      if (agentEngagement === "observing" && request.method === "offerAction") {
+      // An advising model still proposes - the human clicks. Only a model
+      // that is not here proposes nothing.
+      if (model.availability !== "here" && request.method === "offerAction") {
         throw new CoworkProtocolError(
           "SESSION_READ_ONLY",
-          "Observe-only mode blocks action offers"
+          "A model that is not here proposes nothing"
         );
       }
       const result = await companion.agent[request.method](request.arguments);
@@ -499,14 +535,14 @@ export function installBrowserCompanion({ document, window, runtime }) {
       return true;
     }
     if (message?.type === "cowork:cycle-model-engagement") {
-      cycleModelEngagement()
+      cycleModelStatus()
         .then((result) => sendResponse({ ok: true, state: result }))
         .catch((error) => sendResponse({ ok: false, error: codeOnly(error) }));
       return true;
     }
     if (message?.type === "cowork:cycle-human-presence") {
       try {
-        sendResponse({ ok: true, state: cycleHumanPresence() });
+        sendResponse({ ok: true, state: cycleHumanStatus() });
       } catch (error) {
         sendResponse({ ok: false, error: codeOnly(error) });
       }

@@ -1,8 +1,7 @@
 import { CoworkProtocolError } from "../../../packages/core/src/index.js";
-import { actionModeAllows } from "./session.js";
 import {
-  buildCollaborationPresentation,
-  buildReferenceSurfacePresentation
+  buildWorkModePresentation,
+  WORK_MODE_CHOICES
 } from "../../../packages/reference-ui/src/index.js";
 
 const CAPABILITY_LABELS = {
@@ -96,6 +95,18 @@ export function nextActionOfferExpiry(offers) {
   return expiries.length > 0 ? Math.min(...expiries) : null;
 }
 
+/**
+ * Which entry of WORK_MODE_CHOICES the resolved state actually is. The select
+ * shows the mode that is in force, not the one that was picked - so a choice
+ * the conflict rule overruled snaps back visibly instead of lying.
+ */
+export function workModeChoiceId(workMode) {
+  if (workMode?.mode !== "cowork") return workMode?.mode ?? null;
+  return workMode.authority === "model" ? "cowork-model" : "cowork-human";
+}
+
+export { WORK_MODE_CHOICES };
+
 export function buildPanelViewModel({
   session,
   focusPacket,
@@ -104,33 +115,25 @@ export function buildPanelViewModel({
   now,
   pageVersion
 }) {
-  const referenceSurface = buildReferenceSurfacePresentation(session);
-  const collaboration = buildCollaborationPresentation({
-    humanPresence: session.humanPresence,
-    agentEngagement:
-      session.agentPresence === "paused" || session.actionMode === "paused"
-        ? "paused"
-        : session.actionMode === "explain"
-          ? "observing"
-          : "collaborating",
-    effectiveMode: session.effectiveMode
-  });
+  const presentation = buildWorkModePresentation(session.workMode);
   const contextCharacters = focusPacket?.metrics?.contextCharacters;
+  // Rights are derived, never configured: the advisor proposes, the holder of
+  // the click right executes.
+  const canPropose = session.workMode.model.canPropose;
 
   return {
-    modeLabel: referenceSurface.modeLabel,
-    humanTone: referenceSurface.humanTone,
-    humanLabel: referenceSurface.humanLabel,
-    agentLabel: referenceSurface.agentLabel,
-    collaboration,
+    ...presentation,
+    choiceId: workModeChoiceId(session.workMode),
+    allowParallel: session.workMode.allowParallel,
+    authorityLapsed: session.workMode.authorityLapsed,
     capabilityLabel: CAPABILITY_LABELS[capabilityLevel],
     focusLabel: focusPacket?.focus?.label ?? "Point to or select a form field",
     contextLabel:
       contextCharacters === undefined
         ? "No context sent"
         : `${contextCharacters} context characters`,
-    soloAllowed: actionModeAllows(session.actionMode, "solo"),
-    actionChips: actionModeAllows(session.actionMode, "offer")
+    soloAllowed: session.workMode.model.canExecute,
+    actionChips: canPropose
       ? currentActionOffers({ offers, now, pageVersion })
           .slice(0, 3)
           .map(prepareVisibleActionOffer)

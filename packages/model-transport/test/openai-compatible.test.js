@@ -51,7 +51,8 @@ const gatewayTurn = {
     primarySurfaceId: "desktop:session-1",
     surfaceKind: "desktop",
     focus: null,
-    actionMode: "suggest",
+    workMode: "cowork",
+    authority: "human",
     lease: null
   },
   context: {

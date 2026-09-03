@@ -35,10 +35,12 @@ The current Windows prototype includes:
   rejected.
 
 Click the human figure to cycle present, briefly away and away longer. Click
-the model figure to cycle collaborating, observing and paused. An away human
-does not imply autonomous work: without a current bounded solo lease the relay
-shows `Model waiting`; with a lease it changes to `Model working solo` and
-flows toward the model.
+the model figure to cycle collaborating, observing and paused. Those are the
+0.1 presence values this Companion commits to the shared session; the cockpit
+renders the work mode they resolve to, in the same words every other Cowork
+surface uses. An away human does not imply autonomous work: without a current
+bounded solo lease the relay shows `Nobody is acting`; with a lease it changes
+to `Model works alone` and flows toward the model.
 
 Run it with an explicit comma-separated origin allowlist:
 

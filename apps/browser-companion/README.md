@@ -42,11 +42,19 @@ value matches.
 
 The Side Panel is a bright collaboration instrument rather than a generic chat
 sidebar. The human silhouette and friendly computer are the primary state
-controls. Clicking the model cycles `collaborating -> observing -> paused`;
-observing keeps read/explain access but blocks action offers. The relay emblem
-is animated in Cowork, directional during a valid solo lease and dormant when
-no joint turn is active. Human presence can change only when the Session
-Authority has granted the required solo lease.
+controls. Each figure carries two status variables - availability (`here`,
+`standby`, `away`) and role (`acting`, `observing`) - and a click cycles them
+as `here-acting -> here-observing -> standby -> away`. Everything else follows:
+the work mode, and with it who holds the click right. There is no separate
+action-rights setting.
+
+Observing means advising: the model still explains and still proposes, and your
+click is what changes anything. A model on standby proposes nothing. If both
+sides are set to act and simultaneous work is not allowed, the human keeps the
+click right - the hand on the mouse wins. The relay emblem is animated while a
+model acts, directional during a valid solo lease and dormant when nobody acts.
+Your own status can leave `here` only when the Session Authority has granted the
+required solo lease.
 
 Connector route and execution mode are separate. Native Cowork, native WebMCP
 and the bounded bridge use structured actions and show no synthetic model
@@ -56,8 +64,10 @@ the distinct model-pointer instrument with the persistent `Computer use` and
 
 Color is never the only status signal. Visible labels, character pose, aura
 shape, state badge and relay motion change together, and reduced-motion mode
-removes all animation. The same semantic presentation module drives the
-FormBuilder Embed, where the actor controls cycle through the same states.
+removes all animation. Every status word comes from the shared
+`packages/reference-ui` vocabulary - this panel writes none of its own - so the
+FormBuilder Embed and the Desktop Companion say the same thing about the same
+state.
 
 ## Build and load
 

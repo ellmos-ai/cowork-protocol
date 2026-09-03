@@ -348,7 +348,10 @@ try {
     );
   }
   const actorControlStates = [];
-  for (const expectedModelState of ["observing", "paused", "collaborating"]) {
+  // Availability + role, four states per figure. "here-acting" is not
+  // reachable for the model while the human is acting and simultaneous work
+  // is off - the conflict rule sends it back to advising, visibly.
+  for (const expectedModelState of ["standby", "away", "here-observing"]) {
     await dispatchTrustedClick(call, "#model-seat");
     const state = await evaluateValue(
       call,
@@ -360,7 +363,7 @@ try {
     actorControlStates.push(`model:${state}`);
   }
   await dispatchTrustedClick(call, "#full-name");
-  for (const expectedHumanState of ["afk-short", "afk-long", "present"]) {
+  for (const expectedHumanState of ["here-observing", "standby", "away"]) {
     await dispatchTrustedClick(call, "#human-seat");
     const state = await evaluateValue(
       call,
