@@ -64,6 +64,14 @@ export function createCompanionCliConfig({ env = process.env, cwd = process.cwd(
   if (Boolean(endpoint) !== Boolean(modelId)) {
     throw new Error("COWORK_MODEL_ENDPOINT and COWORK_MODEL must be configured together");
   }
+  // Reasoning models spend answer tokens on thinking, and how many varies per
+  // model, so the budget is a knob rather than a constant.
+  const maxTokens = env.COWORK_MODEL_MAX_TOKENS?.trim()
+    ? Number(env.COWORK_MODEL_MAX_TOKENS.trim())
+    : 500;
+  if (!Number.isInteger(maxTokens) || maxTokens < 64 || maxTokens > 2000) {
+    throw new Error("COWORK_MODEL_MAX_TOKENS must be an integer between 64 and 2000");
+  }
   const stateRoot = env.LOCALAPPDATA?.trim() || cwd;
   const sessionStorePath = env.COWORK_SESSION_STORE?.trim()
     ? path.resolve(env.COWORK_SESSION_STORE.trim())
@@ -79,7 +87,8 @@ export function createCompanionCliConfig({ env = process.env, cwd = process.cwd(
           endpoint,
           model: modelId,
           apiKey: env.COWORK_MODEL_API_KEY ?? "",
-          reasoningEffort: env.COWORK_MODEL_REASONING_EFFORT ?? ""
+          reasoningEffort: env.COWORK_MODEL_REASONING_EFFORT ?? "",
+          maxTokens
         }
       : null
   };

@@ -11,7 +11,11 @@ import { createMcpStdioClient } from "../../../packages/open-compute-adapter/src
 const config = createCompanionCliConfig();
 const sendModelTurn = config.model === null
   ? null
-  : createOpenAiCompatibleGatewaySender(config.model);
+  : createOpenAiCompatibleGatewaySender({
+      ...config.model,
+      // A retry the operator cannot see is a retry that hides a broken setup.
+      onNotice: ({ code, detail }) => console.warn(`[cowork] ${code}: ${detail}`)
+    });
 const computerUse = config.computerUse === null
   ? null
   : createOpenComputeAdapter({

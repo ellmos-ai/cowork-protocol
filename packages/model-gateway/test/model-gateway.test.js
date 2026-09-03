@@ -75,7 +75,8 @@ test("one gateway serializes concurrent turns and deduplicates a repeated turn i
   assert.deepEqual(gateway.readStatus(), {
     activeTurnId: null,
     queuedTurns: 0,
-    completedTurns: 2
+    completedTurns: 2,
+    failedTurns: 0
   });
 });
 

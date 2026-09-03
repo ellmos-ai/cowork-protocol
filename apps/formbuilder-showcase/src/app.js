@@ -221,8 +221,22 @@ async function pullAllCompanionDeltas() {
     hasMore = batch.hasMore;
   }
   session = adoptSessionState(companionReplicaSnapshot.state);
+  showCompanionConversation(session.lastConversation);
   render();
   return readCurrentSessionSnapshot();
+}
+
+// While the Companion holds the model seat the human types over there, so the
+// page must show that conversation - including a turn that failed, which
+// otherwise vanishes and leaves the page looking like nothing was asked.
+function showCompanionConversation(lastConversation) {
+  if (!lastConversation || lastConversation.status === "pending") return;
+  const speaker = lastConversation.status === "responded"
+    ? "Model"
+    : `Model failed (${lastConversation.status})`;
+  $("#transcript").textContent =
+    `You: ${lastConversation.human}
+${speaker}: ${lastConversation.assistant}`;
 }
 
 function reportCompanionSurfaceVisibility(visibility) {
@@ -572,7 +586,8 @@ async function openInCompanion() {
     companionRelayStop = startCompanionAgentRelay({
       link,
       linkSessionId: acknowledgement.linkSessionId,
-      handlers: coworkToolHandlers
+      handlers: coworkToolHandlers,
+      syncDeltas: () => pullAllCompanionDeltas()
     });
     session = adoptSessionState(companionReplicaSnapshot.state);
     let visibilityWarning = null;

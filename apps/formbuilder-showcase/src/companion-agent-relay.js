@@ -59,6 +59,11 @@ export function startCompanionAgentRelay({
   handlers,
   intervalMilliseconds = 500,
   isActive = () => globalThis.document?.visibilityState === "visible",
+  // The Companion is the session authority, and only this loop runs while the
+  // page waits. Without pulling deltas here the page never learns that the
+  // Companion minted a lease or that the model answered - the replica went
+  // stale until the next visibility change.
+  syncDeltas = async () => {},
   onError = () => {}
 }) {
   let draining = false;
@@ -75,6 +80,7 @@ export function startCompanionAgentRelay({
           ...settlement
         });
       }
+      await syncDeltas();
     } catch (error) {
       onError(error);
     } finally {

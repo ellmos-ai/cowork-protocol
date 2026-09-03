@@ -74,6 +74,29 @@ function normalizeModelGatewayTurn(input) {
   return JSON.parse(serialized);
 }
 
+/**
+ * A reasoning model answers in two parts: hidden thinking and the reply text.
+ * Only the second one crosses into a Cowork session, so `max_tokens` is not
+ * the bound on what the session receives - `normalizeConversationReply` is,
+ * and it caps the message at 350 characters. Measured against Ollama
+ * qwen3.8:27b-mlx on 2026-09-04: the Companion's real gateway packet spent all
+ * 500 tokens on 2,136 characters of reasoning, came back with
+ * finish_reason "length" and an empty content field, and every one of those
+ * turns died as "did not return a usable bounded reply".
+ */
+function thoughtPastItsBudget({ content, thoughtCharacters, finishReason }) {
+  return (
+    (typeof content !== "string" || content.trim() === "") &&
+    (thoughtCharacters > 0 || finishReason === "length")
+  );
+}
+
+/** Some models wrap their JSON in a Markdown fence even under json_object. */
+function parseJsonReply(text) {
+  const fenced = text.trim().match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  return JSON.parse(fenced ? fenced[1] : text);
+}
+
 function validEndpoint(value) {
   try {
     const url = new URL(value);
@@ -91,6 +114,7 @@ function createOpenAiCompatibleSender({
   maxTokens = 500,
   fetchImpl = globalThis.fetch,
   timeoutMs = 60000,
+  onNotice = () => {},
   normalizeInput
 }) {
   if (!validEndpoint(endpoint)) throw new TypeError("endpoint must be an HTTP(S) URL");
@@ -104,25 +128,21 @@ function createOpenAiCompatibleSender({
   ) {
     throw new TypeError("reasoningEffort must be empty, none, low, medium, high, or max");
   }
-  if (!Number.isInteger(maxTokens) || maxTokens < 64 || maxTokens > 500) {
-    throw new TypeError("maxTokens must be an integer between 64 and 500");
+  // The ceiling has to leave room for hidden reasoning tokens; what reaches
+  // the session stays bounded by normalizeConversationReply either way.
+  if (!Number.isInteger(maxTokens) || maxTokens < 64 || maxTokens > 2000) {
+    throw new TypeError("maxTokens must be an integer between 64 and 2000");
   }
+  if (typeof onNotice !== "function") throw new TypeError("onNotice must be a function");
   const boundedTimeout =
     Number.isInteger(timeoutMs) && timeoutMs >= 100 && timeoutMs <= 120000
       ? timeoutMs
       : 60000;
 
-  return async function sendTurn(input) {
-    let turn;
-    try {
-      turn = normalizeInput(input);
-    } catch (error) {
-      if (error instanceof ModelGatewayError) throw error;
-      throw new ModelGatewayError(
-        "INVALID_MODEL_TURN",
-        "The preferred-model transport rejected an invalid Cowork turn"
-      );
-    }
+  async function callProvider(turn, effort) {
+    // One timeout per HTTP request, not per sendTurn: a retry is a second
+    // request and deserves its own budget, or the fix would time out on a
+    // cold model the way the first attempt already did.
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), boundedTimeout);
     try {
@@ -141,23 +161,86 @@ function createOpenAiCompatibleSender({
             { role: "user", content: JSON.stringify(turn) }
           ],
           response_format: { type: "json_object" },
-          ...(reasoningEffort === "" ? {} : { reasoning_effort: reasoningEffort }),
+          ...(effort === "" ? {} : { reasoning_effort: effort }),
           max_tokens: maxTokens,
           temperature: 0.2
         })
       });
-      if (!response.ok) throw new Error("Upstream rejected request");
+      if (!response.ok) {
+        throw new ModelGatewayError(
+          "MODEL_GATEWAY_FAILED",
+          "The preferred model gateway rejected the request. Check COWORK_MODEL_ENDPOINT, COWORK_MODEL and the provider key."
+        );
+      }
       const payload = await response.json();
-      const content = payload?.choices?.[0]?.message?.content;
-      if (typeof content !== "string") throw new Error("Missing JSON reply");
-      return normalizeConversationReply(JSON.parse(content));
-    } catch {
+      const choice = payload?.choices?.[0];
+      const thought = choice?.message?.reasoning;
+      return {
+        content: choice?.message?.content ?? null,
+        thoughtCharacters: typeof thought === "string" ? thought.length : 0,
+        finishReason: typeof choice?.finish_reason === "string" ? choice.finish_reason : ""
+      };
+    } catch (error) {
+      if (error instanceof ModelGatewayError) throw error;
+      // Nothing of the provider's own words travels on: only our own sentence.
       throw new ModelGatewayError(
-        "MODEL_GATEWAY_FAILED",
-        "The preferred model gateway did not return a usable bounded reply"
+        "MODEL_GATEWAY_UNREACHABLE",
+        `The preferred model gateway did not answer within ${boundedTimeout} ms.`
       );
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+  return async function sendTurn(input) {
+    let turn;
+    try {
+      turn = normalizeInput(input);
+    } catch (error) {
+      if (error instanceof ModelGatewayError) throw error;
+      throw new ModelGatewayError(
+        "INVALID_MODEL_TURN",
+        "The preferred-model transport rejected an invalid Cowork turn"
+      );
+    }
+    let answer = await callProvider(turn, reasoningEffort);
+    if (thoughtPastItsBudget(answer) && reasoningEffort === "") {
+      // Disclosed, once, and only where no reasoning level was configured: a
+      // silent downgrade of an explicit "high" would be its own lie.
+      onNotice({
+        code: "MODEL_THOUGHT_PAST_ITS_BUDGET",
+        detail: `The model spent all ${maxTokens} answer tokens thinking. Retrying this turn once with reasoning_effort "none".`
+      });
+      answer = await callProvider(turn, "none");
+    }
+    if (thoughtPastItsBudget(answer)) {
+      throw new ModelGatewayError(
+        "MODEL_THOUGHT_PAST_ITS_BUDGET",
+        `The model spent all ${maxTokens} answer tokens thinking and returned no reply. Set COWORK_MODEL_REASONING_EFFORT=none or raise COWORK_MODEL_MAX_TOKENS.`
+      );
+    }
+    if (typeof answer.content !== "string" || answer.content.trim() === "") {
+      throw new ModelGatewayError(
+        "MODEL_REPLY_EMPTY",
+        "The preferred model returned no reply text for this turn."
+      );
+    }
+    let parsed;
+    try {
+      parsed = parseJsonReply(answer.content);
+    } catch {
+      throw new ModelGatewayError(
+        "MODEL_REPLY_NOT_JSON",
+        "The preferred model answered in prose. It must return one JSON object with message, speak and offers."
+      );
+    }
+    try {
+      return normalizeConversationReply(parsed);
+    } catch {
+      throw new ModelGatewayError(
+        "MODEL_REPLY_REJECTED",
+        "The model reply did not match the bounded Cowork reply shape (message, optional speak, up to three offers)."
+      );
     }
   };
 }
