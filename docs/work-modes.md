@@ -5,6 +5,11 @@ Verify* and the separate "Action rights" setting with three questions per
 partner. Nothing else is configured, and the work mode is only a name for a
 combination of answers.
 
+![Cowork Protocol work modes](../design/work-modes.png)
+
+Every cell above is resolved by `resolveWorkMode()`; the sections below say why
+each one reads the way it does.
+
 The old rhythm mixed the two participants into one line. "Point" is something a
 human does, "Offer" something a model does, "Click" a human again. It described
 one scripted exchange, not the state the session is in. And the same situation

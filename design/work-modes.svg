@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title description">
+  <title id="title">Cowork Protocol work modes</title>
+  <desc id="description">Each partner answers three questions: present, working on what, and in which role. The nine cells resolve those answers into a mode and say who holds the click right. A human who is here and executing meets a model that is here and executing inside a grant: the mode is Doubling and both may click when their areas differ, otherwise Sparring with the human holding the click. A human executing beside an advising model is Sparring with the human clicking; a model executing inside a grant beside an advising human is Sparring with the model clicking. When one partner steps back the mode becomes solo work for the other, and when neither executes the session is idle and nobody clicks. A model executes only inside a grant or lease; being present is never a substitute for that record. The typical journey runs from typing a job, through the model executing while the human advises, to the human stepping away and the model finishing alone, and back again on return.</desc>
+
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff7f6"/>
+      <stop offset="0.48" stop-color="#fffbfa"/>
+      <stop offset="1" stop-color="#fdeae8"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#241c15"/>
+    </marker>
+    <style>
+      .title { font: 800 46px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #241c15; letter-spacing: -1.4px; }
+      .subtitle { font: 400 21px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #584c43; }
+      .eyebrow { font: 800 15px ui-monospace, "SFMono-Regular", Consolas, monospace; letter-spacing: 2.1px; fill: #0a7a72; }
+      .axis { font: 700 19px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #241c15; }
+      .axis-sub { font: 400 15px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #6b5d53; }
+      .cell-title { font: 800 22px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #241c15; }
+      .cell-copy { font: 500 15px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #5d5047; }
+      .step-title { font: 750 17px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #241c15; }
+      .step-copy { font: 400 14px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #6b5d53; }
+      .rule { font: 600 18px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #b23a26; }
+      .footnote { font: 500 15px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #6b5d53; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" rx="30" fill="url(#background)"/>
+  <circle cx="1480" cy="80" r="180" fill="#ff8f7d" opacity="0.09"/>
+  <circle cx="110" cy="850" r="200" fill="#0a7a72" opacity="0.05"/>
+
+  <text x="60" y="58" class="eyebrow">WORK MODE MATRIX</text>
+  <text x="60" y="106" class="title">Who acts, who advises</text>
+  <text x="60" y="142" class="subtitle">Three questions per partner. The mode is only a name for the answers.</text>
+
+  <!-- Column headers: the model -->
+  <text x="356" y="196" class="eyebrow">MODEL</text>
+  <text x="356" y="228" class="axis">here · executing</text>
+  <text x="356" y="250" class="axis-sub">inside a grant</text>
+  <text x="756" y="228" class="axis">here · advising</text>
+  <text x="756" y="250" class="axis-sub">proposing, not clicking</text>
+  <text x="1156" y="228" class="axis">standby or away</text>
+  <text x="1156" y="250" class="axis-sub">not working, or no seat</text>
+
+  <!-- Row headers: the human -->
+  <text x="60" y="196" class="eyebrow">HUMAN</text>
+  <text x="60" y="306" class="axis">here · executing</text>
+  <text x="60" y="330" class="axis-sub">your hand on the mouse</text>
+  <text x="60" y="444" class="axis">here · advising</text>
+  <text x="60" y="468" class="axis-sub">watching, directing</text>
+  <text x="60" y="582" class="axis">standby or away</text>
+  <text x="60" y="606" class="axis-sub">stepped back or left</text>
+
+  <!-- Row 1: human here, executing -->
+  <rect x="356" y="264" width="384" height="124" rx="18" fill="#f4fbf9" stroke="#0a7a72" stroke-width="3"/>
+  <text x="380" y="306" class="cell-title">Doubling</text>
+  <text x="380" y="336" class="cell-copy">only when your areas differ · both click</text>
+  <text x="380" y="362" class="cell-copy">same or unknown area → Sparring, you click</text>
+
+  <rect x="756" y="264" width="384" height="124" rx="18" fill="#f4fbf9" stroke="#0a7a72" stroke-width="3"/>
+  <text x="780" y="306" class="cell-title">Sparring</text>
+  <text x="780" y="336" class="cell-copy">you execute, the model proposes</text>
+  <text x="780" y="362" class="cell-copy">you hold the click right</text>
+
+  <rect x="1156" y="264" width="384" height="124" rx="18" fill="#f4fbf9" stroke="#0a7a72" stroke-width="3"/>
+  <text x="1180" y="306" class="cell-title">You work alone</text>
+  <text x="1180" y="336" class="cell-copy">no model taking part</text>
+  <text x="1180" y="362" class="cell-copy">you hold the click right</text>
+
+  <!-- Row 2: human here, advising -->
+  <rect x="356" y="402" width="384" height="124" rx="18" fill="#fffbef" stroke="#e5be6b" stroke-width="3"/>
+  <text x="380" y="444" class="cell-title">Sparring</text>
+  <text x="380" y="474" class="cell-copy">the model executes, you direct</text>
+  <text x="380" y="500" class="cell-copy">the model holds the click right</text>
+
+  <rect x="756" y="402" width="384" height="124" rx="18" fill="#fbf8f6" stroke="#c4b5a6" stroke-width="2"/>
+  <text x="780" y="444" class="cell-title">Idle</text>
+  <text x="780" y="474" class="cell-copy">both present, neither executing</text>
+  <text x="780" y="500" class="cell-copy">nobody holds the click right</text>
+
+  <rect x="1156" y="402" width="384" height="124" rx="18" fill="#fbf8f6" stroke="#c4b5a6" stroke-width="2"/>
+  <text x="1180" y="444" class="cell-title">Idle</text>
+  <text x="1180" y="474" class="cell-copy">you are here but not executing</text>
+  <text x="1180" y="500" class="cell-copy">nobody holds the click right</text>
+
+  <!-- Row 3: human standby or away -->
+  <rect x="356" y="540" width="384" height="124" rx="18" fill="#fffbef" stroke="#e5be6b" stroke-width="3"/>
+  <text x="380" y="582" class="cell-title">Model works alone</text>
+  <text x="380" y="612" class="cell-copy">it finishes the granted job</text>
+  <text x="380" y="638" class="cell-copy">the model holds the click right</text>
+
+  <rect x="756" y="540" width="384" height="124" rx="18" fill="#fbf8f6" stroke="#c4b5a6" stroke-width="2"/>
+  <text x="780" y="582" class="cell-title">Idle</text>
+  <text x="780" y="612" class="cell-copy">nobody is executing</text>
+  <text x="780" y="638" class="cell-copy">nobody holds the click right</text>
+
+  <rect x="1156" y="540" width="384" height="124" rx="18" fill="#fbf8f6" stroke="#c4b5a6" stroke-width="2"/>
+  <text x="1180" y="582" class="cell-title">Idle</text>
+  <text x="1180" y="612" class="cell-copy">nobody is here</text>
+  <text x="1180" y="638" class="cell-copy">nobody holds the click right</text>
+
+  <!-- The journey -->
+  <text x="60" y="708" class="eyebrow">THE USUAL JOURNEY · NOTHING IS CONFIGURED, EACH STEP CHANGES ONE ANSWER</text>
+
+  <rect x="60" y="726" width="225" height="80" rx="16" fill="#fffefd" stroke="#d3c2ab" stroke-width="2"/>
+  <text x="82" y="762" class="step-title">You type a job</text>
+  <text x="82" y="786" class="step-copy">that mints the grant</text>
+  <path d="M285 766 H311" stroke="#241c15" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <rect x="311" y="726" width="225" height="80" rx="16" fill="#fffefd" stroke="#e5be6b" stroke-width="2"/>
+  <text x="333" y="762" class="step-title">Model executes</text>
+  <text x="333" y="786" class="step-copy">Hand over, I'll watch</text>
+  <path d="M536 766 H562" stroke="#241c15" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <rect x="562" y="726" width="225" height="80" rx="16" fill="#fffefd" stroke="#d3c2ab" stroke-width="2"/>
+  <text x="584" y="762" class="step-title">You step away</text>
+  <text x="584" y="786" class="step-copy">I'm briefly away</text>
+  <path d="M787 766 H813" stroke="#241c15" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <rect x="813" y="726" width="225" height="80" rx="16" fill="#fffefd" stroke="#e5be6b" stroke-width="2"/>
+  <text x="835" y="762" class="step-title">Model works alone</text>
+  <text x="835" y="786" class="step-copy">inside that grant only</text>
+  <path d="M1038 766 H1064" stroke="#241c15" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <rect x="1064" y="726" width="225" height="80" rx="16" fill="#fffefd" stroke="#d3c2ab" stroke-width="2"/>
+  <text x="1086" y="762" class="step-title">You return</text>
+  <text x="1086" y="786" class="step-copy">I'm back, or any click</text>
+  <path d="M1289 766 H1315" stroke="#241c15" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <rect x="1315" y="726" width="225" height="80" rx="16" fill="#fffefd" stroke="#0a7a72" stroke-width="2"/>
+  <text x="1337" y="762" class="step-title">You execute again</text>
+  <text x="1337" y="786" class="step-copy">the model advises</text>
+
+  <text x="60" y="848" class="rule">A model executes only inside a grant or lease — presence is never a substitute.</text>
+  <text x="60" y="876" class="footnote">Every cell resolved by resolveWorkMode() in packages/core · docs/work-modes.md · 2026-09-03</text>
+</svg>

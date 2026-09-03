@@ -127,6 +127,8 @@ The agent reads a structured `cowork_read_focus` tool instead of guessing from t
   only inside a versioned, budgeted, expiring grant or lease, so "away" never
   means "unattended" and a present human is never a substitute for the record.
   See [docs/work-modes.md](docs/work-modes.md).
+
+  [![The work-mode matrix: who is present, on what and in which role, and who holds the click right in each combination](design/work-modes.png)](docs/work-modes.md)
 - **One conversation across surfaces.** Page panel, extension Side Panel and
   desktop Companion share a single versioned session; an optional same-origin
   model host attaches a preferred model while endpoint and key stay on the

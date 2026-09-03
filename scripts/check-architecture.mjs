@@ -1,16 +1,23 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { resolveWorkMode } from "../packages/core/src/index.js";
 
 const architectureSvgUrl = new URL("../design/architecture-overview.svg", import.meta.url);
 const architecturePngUrl = new URL("../design/architecture-overview.png", import.meta.url);
 const architectureDocsUrl = new URL("../docs/architecture.md", import.meta.url);
+const workModesSvgUrl = new URL("../design/work-modes.svg", import.meta.url);
+const workModesPngUrl = new URL("../design/work-modes.png", import.meta.url);
+const workModesDocsUrl = new URL("../docs/work-modes.md", import.meta.url);
 const readmeUrl = new URL("../README.md", import.meta.url);
 
-const [svg, png, docs, readme] = await Promise.all([
+const [svg, png, docs, readme, modesSvg, modesPng, modesDocs] = await Promise.all([
   readFile(architectureSvgUrl, "utf8"),
   readFile(architecturePngUrl),
   readFile(architectureDocsUrl, "utf8"),
-  readFile(readmeUrl, "utf8")
+  readFile(readmeUrl, "utf8"),
+  readFile(workModesSvgUrl, "utf8"),
+  readFile(workModesPngUrl),
+  readFile(workModesDocsUrl, "utf8")
 ]);
 
 assert.match(svg, /role="img" aria-labelledby="title description"/);
@@ -50,6 +57,47 @@ assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
 assert.equal(png.readUInt32BE(16), 1800);
 assert.equal(png.readUInt32BE(20), 1050);
 
+// The work-mode diagram must not drift away from the resolver it illustrates.
+// Every mode the function can return has to be named in the picture, and the
+// picture may not invent one the function never produces.
+const producedModes = new Set();
+for (const humanAvailability of ["here", "standby", "away"])
+  for (const humanRole of ["executing", "advising"])
+    for (const modelAvailability of ["here", "standby", "away"])
+      for (const modelRole of ["executing", "advising"])
+        for (const modelAuthorityValid of [true, false])
+          for (const [humanArea, modelArea] of [["a", "a"], ["a", "b"], [null, null]])
+            producedModes.add(
+              resolveWorkMode({
+                human: { availability: humanAvailability, role: humanRole, area: humanArea },
+                model: { availability: modelAvailability, role: modelRole, area: modelArea },
+                modelAuthorityValid
+              }).mode
+            );
+
+const modeLabels = {
+  sparring: "Sparring",
+  doubling: "Doubling",
+  "human-solo": "You work alone",
+  "model-solo": "Model works alone",
+  idle: "Idle"
+};
+assert.deepEqual(
+  [...producedModes].sort(),
+  Object.keys(modeLabels).sort(),
+  "resolveWorkMode returned a mode the diagram does not know"
+);
+for (const label of Object.values(modeLabels)) assert.match(modesSvg, new RegExp(label));
+assert.match(modesSvg, /<title id="title">Cowork Protocol work modes<\/title>/);
+assert.match(modesSvg, /<desc id="description">[^<]{120,}<\/desc>/);
+assert.match(modesSvg, /A model executes only inside a grant or lease/);
+assert.match(modesSvg, /resolveWorkMode\(\) in packages\/core/);
+assert.match(modesDocs, /!\[Cowork Protocol work modes\]\(\.\.\/design\/work-modes\.png\)/);
+assert.match(readme, /\(design\/work-modes\.png\)/);
+assert.deepEqual([...modesPng.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+assert.equal(modesPng.readUInt32BE(16), 1600);
+assert.equal(modesPng.readUInt32BE(20), 900);
+
 console.log(
   JSON.stringify(
     {
@@ -62,6 +110,7 @@ console.log(
       ],
       providerNeutralSurfaceClaim: true,
       workModeMatrix: true,
+      workModeDiagramMatchesResolver: true,
       accessibleSvg: true,
       documented: true,
       png: { width: 1800, height: 1050 }
