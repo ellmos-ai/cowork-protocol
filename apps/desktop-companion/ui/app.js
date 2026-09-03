@@ -359,7 +359,8 @@ $("#conversation-form").addEventListener("submit", async (event) => {
   if (!currentSession || busy || transcript === "") return;
   busy = true;
   render({ sessions: [currentSession] });
-  $("#status").textContent = "Model working from the shared bounded context…";
+  $("#status").textContent =
+    "Model working from the shared bounded context… a local model that still has to load takes tens of seconds.";
   try {
     const response = await fetch(
       `/cowork/v1/ui/sessions/${encodeURIComponent(currentSession.linkSessionId)}/turns`,
