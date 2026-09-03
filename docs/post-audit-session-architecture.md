@@ -52,8 +52,9 @@ surfaces:
 3. **Cowork Extension UI** — an optional user-installed client and precision
    bridge. Its UI belongs in the browser-owned Side Panel; only its headless
    relay belongs next to the page. It must first consume native Cowork/WebMCP
-   and activate the bounded legacy adapter only when neither is available. The
-   both accepted browser slices now prove native Cowork consumption and the
+   and activate the bounded legacy adapter only when neither is available. Three
+   accepted browser slices now cover it: native Cowork consumption, the Cowork
+   tools the extension registers itself on a page that has none, and the
    separate no-WebMCP fallback.
 
 The current `apps/browser-companion` implements the third item as an MV3
