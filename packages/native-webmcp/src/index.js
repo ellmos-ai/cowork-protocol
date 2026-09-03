@@ -326,3 +326,35 @@ export async function registerNativeCoworkTools({
     throw error;
   }
 }
+
+/**
+ * The same nine tool definitions `registerNativeCoworkTools` publishes to
+ * `document.modelContext`, without their page-bound `execute`.
+ *
+ * Derived by running the registration above against a capturing context
+ * rather than by restating the schemas: a local agent reaching the Companion
+ * over MCP must see the identical names and input schemas as a browser agent
+ * reaching the page, and a second copy of the literals would drift the first
+ * time one side is edited.
+ */
+export async function coworkToolDefinitions() {
+  const definitions = [];
+  const present = () => ({});
+  await registerNativeCoworkTools({
+    modelContext: {
+      registerTool({ execute, ...definition }) {
+        definitions.push(definition);
+      }
+    },
+    readFocus: present,
+    requestContext: present,
+    offerAction: present,
+    readPresence: present,
+    executeSolo: present,
+    readChanges: present,
+    readFeedback: present,
+    readTurn: present,
+    replyTurn: present
+  });
+  return definitions;
+}

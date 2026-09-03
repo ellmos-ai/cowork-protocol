@@ -272,3 +272,14 @@ test("the cycle skips what this surface cannot grant instead of faking it", () =
   assert.deepEqual(nextAvailableStatus(HERE_EXECUTING, cannotLeave), HERE_ADVISING);
   assert.deepEqual(nextAvailableStatus(HERE_ADVISING, cannotLeave), HERE_EXECUTING);
 });
+
+test("registered Cowork tools name their own route and seat", () => {
+  const registered = build({ mode: "legacy-host-companion", toolsRegistered: true });
+  assert.equal(registered.route, "bridge-webmcp");
+  assert.equal(registered.routeLabel, "Bridge + WebMCP");
+  assert.match(registered.routeExplainer, /registered Cowork tools here/);
+  assert.match(registered.routeExplainer, /your click stays in this panel/);
+  // The tools are the extension's; the model still is not.
+  assert.match(registered.seatNote, /whichever WebMCP agent this browser attaches/);
+  assert.equal(build({ mode: "legacy-host-companion" }).route, "bridge");
+});

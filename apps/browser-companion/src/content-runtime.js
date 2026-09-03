@@ -71,6 +71,7 @@ export function installBrowserCompanion({ document, window, runtime }) {
   let pendingOfferContract = null;
   let runtimeMode = "off";
   let nativeDiscovery = null;
+  let toolsRegistered = false;
   // Three status variables per actor: who is here, what they are working on,
   // and whether they execute or advise. The work mode, the click right and
   // the 0.1 presence values on the wire are all derived from these.
@@ -375,6 +376,7 @@ export function installBrowserCompanion({ document, window, runtime }) {
     pendingOffer = null;
     pendingOfferContract = null;
     nativeDiscovery = null;
+    toolsRegistered = false;
     contextLevel = 0;
     focusLabel = "Point to a page control";
     focusDetail = "No page content requested yet";
@@ -385,29 +387,49 @@ export function installBrowserCompanion({ document, window, runtime }) {
       } catch {
         nativeDiscovery = null;
       }
-      if (
-        nativeDiscovery?.mode === "native-cowork" ||
-        nativeDiscovery?.mode === "native-webmcp"
-      ) {
-        runtimeMode = nativeDiscovery.mode;
+      if (nativeDiscovery?.mode === "native-cowork") {
+        runtimeMode = "native-cowork";
         companion = createNativeCompanion(nativeDiscovery);
-        updateStatus(
-          runtimeMode === "native-cowork"
-            ? `Native Cowork connected · ${nativeDiscovery.coworkToolCount} tools`
-            : `Native WebMCP detected · ${nativeDiscovery.tools.length} tools`
-        );
+        updateStatus(`Native Cowork connected · ${nativeDiscovery.coworkToolCount} tools`);
       } else {
+        // Every page without Cowork tools of its own gets the bounded bridge -
+        // including one that merely has other WebMCP tools, which previously
+        // produced a companion that could answer nothing.
         runtimeMode = "legacy-host-companion";
         companion = createCompanion();
-        updateStatus("Fallback enabled · point at a control");
+        // Registered tools must never route back through the page's WebMCP,
+        // or a tool would call itself; the bridge answers them directly.
+        toolsRegistered = await registerPageTools();
+        updateStatus(
+          toolsRegistered
+            ? "Cowork tools registered here · any WebMCP agent may read and propose"
+            : "Fallback enabled · point at a control"
+        );
       }
     } else {
       companion = null;
       runtimeMode = "off";
       model = { availability: "away", role: "advising" };
+      try {
+        await nativePageClient.unregisterTools();
+      } catch {
+        // The relay may already be gone with the page; nothing left to revoke.
+      }
+      toolsRegistered = false;
       updateStatus("Off");
     }
     return state();
+  }
+
+  // Puts this extension's Cowork tools on a page that has none, so any WebMCP
+  // agent in this browser reaches the same bounded relay the panel uses.
+  async function registerPageTools() {
+    try {
+      const result = await nativePageClient.registerTools();
+      return Array.isArray(result?.registered) && result.registered.length > 0;
+    } catch {
+      return false;
+    }
   }
 
   function state() {
@@ -422,6 +444,7 @@ export function installBrowserCompanion({ document, window, runtime }) {
       webMcpAvailable: nativeDiscovery?.webMcpAvailable === true,
       coworkProtocolAvailable: nativeDiscovery?.coworkProtocolAvailable === true,
       nativeToolCount: nativeDiscovery?.tools?.length ?? 0,
+      toolsRegistered,
       fallbackActive: runtimeMode === "legacy-host-companion",
       extensionTransport: true,
       browserWideAttachment: true,
@@ -500,7 +523,9 @@ export function installBrowserCompanion({ document, window, runtime }) {
           "A model on standby proposes nothing"
         );
       }
-      const result = await companion.agent[request.method](request.arguments);
+      const result = request.method === "readPresence"
+        ? { ...actors(), modelAuthorityValid: soloLeaseValid, mode: runtimeMode }
+        : await companion.agent[request.method](request.arguments);
       window.postMessage({
         source: RESPONSE_SOURCE,
         protocolVersion: "0.1",

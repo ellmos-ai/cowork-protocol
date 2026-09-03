@@ -587,7 +587,7 @@ cheap.
 **Measured on this tree** (2026-09-03, after the fold; not carried over from
 the previous batch, where these numbers would be wrong):
 
-- Node tests: 445 of 445 passed, 0 failed
+- Node tests: 454 of 454 passed, 0 failed (445 for the fold itself; the browser companion gained 9 alongside it)
 - `npm run proof`: 10 passed, 0 failed
 - `npm run smoke:builder`: exit 0 on Chrome/152.0.7977.65; 6 fields drafted under the fixed budget, 6 highlighted on return, 0 offer chips created by the directive, and all nine removed selectors absent from the DOM
 - `npm run smoke:accessibility`: exit 0; 38 interactive controls, 38 named AX nodes, 38 unique Tab stops, 38 focus-visible stops, 0 px horizontal overflow. 44 before the fold, 36 after it, 38 once the WebMCP help became a collapsible section and `<summary>` was counted as the keyboard control it is - the DOM selector and the AX role allowlist had both been missing it

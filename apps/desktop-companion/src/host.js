@@ -14,11 +14,19 @@ import {
   resolveWorkMode
 } from "../../../packages/core/src/index.js";
 import { createCoworkModelGateway } from "../../../packages/model-gateway/src/index.js";
+import { coworkToolDefinitions } from "../../../packages/native-webmcp/src/index.js";
 import { restoreCoworkSessionAuthority } from "../../../packages/session-authority/src/index.js";
 
 const PROTOCOL_VERSION = "0.1";
 const LINK_VERSION = "0.1";
 const MAX_BODY_BYTES = 64 * 1024;
+// A local agent may call exactly the tools a browser agent can call, so the
+// allowlist is the published WebMCP registration rather than a second list.
+const AGENT_TOOL_NAMES = new Set(
+  (await coworkToolDefinitions()).map(({ name }) => name)
+);
+const AGENT_REQUEST_TIMEOUT_MILLISECONDS = 15_000;
+const MAX_PENDING_AGENT_REQUESTS = 16;
 const UI_ROOT = fileURLToPath(new URL("../ui/", import.meta.url));
 const REFERENCE_UI_MARK = fileURLToPath(
   new URL("../../../packages/reference-ui/assets/cowork-dialogue-mark.svg", import.meta.url)
@@ -253,6 +261,7 @@ export function createCompanionSessionHost({
   modelProviderId = "preferred-model",
   modelSeatDurationMs = 30 * 60 * 1000,
   computerUse = null,
+  agentRequestTimeoutMilliseconds = AGENT_REQUEST_TIMEOUT_MILLISECONDS,
   now = () => new Date().toISOString(),
   createLinkSessionId = () => randomUUID()
 }) {
@@ -288,7 +297,17 @@ export function createCompanionSessionHost({
   ) {
     throw new TypeError("Companion model seat configuration is invalid");
   }
+  if (
+    !Number.isInteger(agentRequestTimeoutMilliseconds) ||
+    agentRequestTimeoutMilliseconds < 100 ||
+    agentRequestTimeoutMilliseconds > 120_000
+  ) {
+    throw new TypeError("Companion agent request timeout must be in 100..120000 milliseconds");
+  }
   const sessions = new Map();
+  // Host-wide, like Computer Use: an MCP client connects to this Companion,
+  // not to one page, and the cockpit says so before any page has linked.
+  const agentRelay = { clientName: null, toolCalls: 0 };
   let storeLoaded = false;
   let persistence = Promise.resolve();
 

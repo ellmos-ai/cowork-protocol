@@ -288,6 +288,9 @@ try {
       "input:not([type=hidden]):not([disabled])",
       "select:not([disabled])",
       "textarea:not([disabled])",
+      // A <summary> is focusable and keyboard-operable; the zoom reflow check
+      // has to reach the panel's collapsible sections like any other control.
+      "summary",
       "[tabindex]:not([tabindex='-1'])"
     ].join(",");
     const controls = [...new Set(document.querySelectorAll(selector))].filter((element) => {

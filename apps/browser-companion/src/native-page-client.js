@@ -56,6 +56,10 @@ export function createNativePageClient({
   return Object.freeze({
     discover: () => request("discover"),
     executeTool: (toolName, input = {}) =>
-      request("execute-tool", { toolName, input })
+      request("execute-tool", { toolName, input }),
+    // Puts this extension's Cowork tools on the page for as long as the relay
+    // is attached; unregister revokes them again.
+    registerTools: () => request("register-tools"),
+    unregisterTools: () => request("unregister-tools")
   });
 }
