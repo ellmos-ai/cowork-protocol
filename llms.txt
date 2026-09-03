@@ -1,0 +1,31 @@
+# Cowork Protocol
+
+> A collaboration contract on top of WebMCP: bounded attention, offers that stay inert until a real human click, verified receipts, explicit presence and roles, scoped leases and grants, latest-only readback. Provider-neutral, dependency-light JavaScript (Node 22+), MIT.
+
+Cowork Protocol is the submission to The WebMCP Challenge (2026). The FormBuilder Studio page is the reference integration; a browser extension and a Desktop Companion host the same human surface elsewhere. See docs/hosts.md before assuming any of the three is "the product".
+
+## Start here
+
+- [README](https://github.com/ellmos-ai/cowork-protocol/blob/main/README.md): what it is, how to run everything, all npm scripts
+- [Install with your AI assistant](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/install-with-your-assistant.md): a paste-ready prompt that installs and runs the repository step by step
+- [Live showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/): FormBuilder Studio with the embedded Cowork panel (Chrome/Edge 150+ with WebMCP flags for native tool discovery)
+
+## Concepts
+
+- [Three in one: one protocol, one human surface, three hosts](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/hosts.md)
+- [Work modes](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/work-modes.md): presence and role per actor decide the mode and who holds the click right
+- [Integrating an existing app](https://github.com/ellmos-ai/cowork-protocol/blob/main/apps/formbuilder-showcase/INTEGRATION.md)
+
+## Evidence
+
+- [Evidence ledger](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/evidence.md): every claim with the measurement behind it, and what is explicitly not yet evidenced
+
+## Hosts
+
+- [Browser extension install](https://github.com/ellmos-ai/cowork-protocol/blob/main/apps/browser-companion/INSTALL.md)
+- [Desktop Companion](https://github.com/ellmos-ai/cowork-protocol/blob/main/apps/desktop-companion/README.md)
+
+## Optional
+
+- [Demo video](https://youtu.be/9CJehV7Bugk)
+- [Devpost entry](https://devpost.com/software/cowork-protocol)
