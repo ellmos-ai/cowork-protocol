@@ -15,7 +15,8 @@ This gate contains:
 
 - unit tests for 160/161 and 350-code-unit boundaries;
 - decision-table tests for presence and solo-lease limits;
-- session tests for action-mode rights, attempt-based lease accounting, bounded receipts and visible lease expiry;
+- work-mode matrix tests proving the click right is derived from the three status answers rather than chosen, that a model never executes without a valid grant or lease, and that an expired record visibly downgrades it to advising;
+- session tests for attempt-based lease accounting, bounded receipts and visible lease expiry;
 - negative tests for agent-simulated confirmation, stale focus, stale page versions and lossy JSON argument values;
 - negative tests preventing read-only capabilities from becoming mutations and proving visible chips carry the exact authorized value;
 - negative tests for synthetic feedback, unknown feedback verdicts and overstated causal confidence;
@@ -52,10 +53,21 @@ Tests use the real protocol and connector. Only the browser-owned `ModelContext`
 
 `npm run smoke:companion-native` is the complementary Native-first acceptance. It enables WebMCP on FormBuilder and loads the same extension. Before the trusted accelerator there may be no Cowork extension world; afterward the on-demand main-world bridge must discover nine native Cowork tools, while the isolated extension runtime reports `mode: native-cowork`, returns the page's native focus packet, keeps `fallbackActive: false` and inserts no visual root into the page.
 
+`npm run smoke:companion-webmcp` covers the third connector route. On a
+fixture page that has no Cowork tools of its own, the extension registers
+`cowork_read_focus`, `cowork_request_context`, `cowork_offer_action` and
+`cowork_read_presence` through WebMCP, so any WebMCP agent in the browser can
+read focus and propose there. The registered tools answer from the bounded
+relay and never route back through the page's own WebMCP, and a proposed value
+still changes nothing until a trusted click in the Side Panel. The Side Panel
+reports this state as the `bridge-webmcp` route with no model seat of its own.
+
 `npm run smoke:companion-cockpit` isolates the production Side Panel visual
 surface from the fallback pixel-capture pipeline. Chrome renders the shipped
-HTML/CSS/JS at 390×844 and drives the real controls through Cowork,
-observe-only, paused and leased Agent-Solo presentations. The validator
+HTML/CSS/JS at 390×844 and drives the real controls through the four work
+modes the status answers can produce on one relayed page: sparring with the
+model executing, the model working alone, sparring with the human executing,
+and the human working alone. The validator
 requires zero horizontal overflow, no clipped or unnamed controls, the exact
 nine-control keyboard sequence and real focus/context instrument responses. It
 also requires `executionMode: structured` with the Computer Use pointer hidden
@@ -68,7 +80,7 @@ The eval output deliberately uses `adapter-characters`, defined as JavaScript UT
 
 ## Reproducible juror dry-run
 
-Run `npm run proof` for a compact integration journey through the actual protocol and FormBuilder packages. The eight steps cover native field focus, a reasoned one-shot related-context request, a latest-only conversation turn with an exact-id reply, an offer that cannot authorize itself, a matching human click, verified causal change plus feedback, a scoped AFK lease and the real `formularerstellen-response-v1` export. The command exits non-zero if any step fails and reports both `browserClaim: false` and `hostTokenClaim: false` so this local proof cannot be mistaken for browser acceptance.
+Run `npm run proof` for a compact integration journey through the actual protocol and FormBuilder packages. The ten steps cover native field focus, a reasoned one-shot related-context request, a latest-only conversation turn with an exact-id reply, an offer that cannot authorize itself, a matching human click, verified causal change plus feedback, a scoped AFK lease, a collaborative `form-add-field` design step, a delegation grant whose spoken directive changes a field and then waits for a real verdict, and the real `formularerstellen-response-v1` export. The command exits non-zero if any step fails and reports both `browserClaim: false` and `hostTokenClaim: false` so this local proof cannot be mistaken for browser acceptance.
 
 ## Connected-browser acceptance snapshot
 
@@ -94,11 +106,11 @@ The current Chrome smoke submits typed turns through the real conversation UI. O
 
 The provider-acceptance mode was then run through the same Chrome page and same-origin routes against an already installed local Ollama 0.32.15 `qwen3:4b`, with `reasoning_effort: none` and a 200-token upstream answer budget. The browser sent one 502-character bounded turn; the actual model produced the exact `Grace Hopper` offer; the field remained empty before the trusted click and the click produced a verified receipt. The report sets `preferredModelClaim: true`, `connectedModelClaim: true`, `providerLocation: local`, `externalModelClaim: false`, and `browserCredentials: false`. This proves a connected preferred-model journey, but neither a remote provider nor a ChatGPT in-app-agent journey.
 
-`npm run smoke:accessibility` refreshed the current Chrome 152 surface after the actor controls were added. At an exact 390×844 CSS viewport, the browser accessibility tree contained 25 non-ignored interactive nodes and no unnamed control: 14 buttons, 2 checkboxes, 3 comboboxes, 1 link and 5 textboxes. Twenty-five real Tab events followed the skip link, four FormBuilder controls, export, detachable/Companion controls, both actors and every attention/action/handoff/conversation/audio control in DOM order; every stop was visible and matched `:focus-visible`. The same run clicked model and human through their full state cycles. The document had zero horizontal overflow and no control or button/select/link text was horizontally clipped. Human and model presence remain expressed as text, pose and symbol in addition to color. This is current browser AX/keyboard/narrow-layout evidence, not screen-reader practice.
+`npm run smoke:accessibility` re-measured the current Chrome 152 surface after the Studio's three Cowork sections were folded into the one panel. At an exact 390×844 CSS viewport, the browser accessibility tree contained 38 non-ignored interactive nodes and no unnamed control, across `button`, `checkbox`, `combobox`, `link`, `textbox`, the ARIA `tab` role and Chrome's `DisclosureTriangle` role for the panel's collapsible sections. Thirty-eight real Tab events followed the skip link, the FormBuilder and Studio controls, export, detachable/Companion controls, both actors and every attention/handoff/conversation/audio control in DOM order; every stop was visible and matched `:focus-visible`. The same run clicked model and human through their full state cycles. The document had zero horizontal overflow and no control or button/select/link text was horizontally clipped. Human and model presence remain expressed as text, pose and symbol in addition to color. This is current browser AX/keyboard/narrow-layout evidence, not screen-reader practice.
 
-The true-browser-zoom portion of `npm run smoke:webmcp` sets Chrome page zoom to 200%, rather than emulating pinch zoom or merely shrinking the viewport. Chrome reported a 712×524 CSS viewport over 1424×1048 physical pixels. All 41 controls remained visible and reachable (re-measured on 2026-09-03 with Chrome 152.0.7977.65; the first run predates the actor and Studio controls); the only reported overflow delta was one pixel of layout rounding, within the gate's explicit bound.
+The true-browser-zoom portion of `npm run smoke:webmcp` sets Chrome page zoom to 200%, rather than emulating pinch zoom or merely shrinking the viewport. Chrome reported a 712×524 CSS viewport over 1424×1048 physical pixels. All 38 controls remained visible and reachable (re-measured on 2026-09-03 with Chrome 152.0.7977.65; the pinned count in `scripts/webmcp-browser-smoke-lib.mjs` followed the panel fold down from 41); the only reported overflow delta was one pixel of layout rounding, within the gate's explicit bound.
 
-`npm run smoke:contrast` audits rendered foreground/background ranges in ten required states: native ready, keyboard focus, focused field, validation errors, visible offer, receipt controls, recorded feedback, Agent Solo, Human Solo and Listening. Chrome 152 contributed CSS background ranges; where Chrome returned no direct opaque range, the runner fails closed unless it can compose solid ancestor colors and alpha exactly. The current result covers 902 visible text items, 0 unsupported items and 0 failures, with an unrounded minimum ratio of 4.565644512773976:1. The focused-field marker also requires the default `Follow me` mode and labeled blue `Model focus` spotlight; the visible-offer marker requires the labeled coral `Model working` state. The test enforces 4.5:1 even for large text. Listening uses a deterministic fake `SpeechRecognition` boundary solely to expose that visual state, so this result makes no audio claim.
+`npm run smoke:contrast` audits rendered foreground/background ranges in eleven required states: native ready, keyboard focus, focused field, validation errors, visible offer, receipt controls, recorded feedback, Agent Solo, Human Solo, Listening and the FormBuilder Studio field suggestion, which is now an offer chip in the one Cowork panel. Chrome 152 contributed CSS background ranges; where Chrome returned no direct opaque range, the runner fails closed unless it can compose solid ancestor colors and alpha exactly. The current result covers 1,398 visible text items, 0 unsupported items and 0 failures, with an unrounded minimum ratio of 4.5656:1. The focused-field marker also requires the default `Follow me` mode and labeled blue `Model focus` spotlight; the visible-offer marker requires the labeled coral `Model working` state. The test enforces 4.5:1 even for large text. Listening uses a deterministic fake `SpeechRecognition` boundary solely to expose that visual state, so this result makes no audio claim.
 
 The showcase visual direction is a light editorial surface with restrained gold decision accents, deep blue actions and teal status cues. A source-level contrast test protects six core variable pairs, while the browser smoke covers the rendered state matrix. Chrome screenshots at 1440×1200 and 390×844 were inspected for hierarchy, clipping and color balance.
 
