@@ -6,18 +6,18 @@ screenshots come from the live showcase
 captured in Chrome 152 with `--enable-features=WebMCP,WebMCPTesting` at a
 1440×1100 viewport. `node design/panel-tour/capture.mjs` regenerates all of
 them, measures the marked regions in the browser and redraws the overlay, so
-the boxes cannot drift away from what they point at.
+the boxes cannot drift away from what they point at. The current set was shot
+from a locally served copy of this branch
+(`COWORK_PANEL_TOUR_URL=http://127.0.0.1:4188/apps/formbuilder-showcase/`),
+because the section folds below are not deployed yet; re-run it against the
+live URL after the next deploy.
 
-> **The image below is the panel as it is deployed, before the section
-> folds.** `capture.mjs` shoots the live showcase URL, so it cannot picture
-> a branch that has not been deployed yet. Since that shot was taken, each
-> section became a disclosure: Model seat, Attention lens and Role open,
-> Conversation not foldable, Handoff and Verified receipts closed until a
-> grant, an absence or a first receipt opens them. The Role section keeps
-> its mode selector and its proposals in the open and folds its
-> explanation into *What this mode means*, which is where the demo control
-> now lives. The regions and their numbers are unchanged; some of them are
-> now one click away. Re-run the capture once this is live.
+Each section is a disclosure. Model seat, Attention lens and Role are open on
+arrival because they carry the live state. Conversation does not fold at all: a
+shared session that can hide its own talk is no longer shared. Verified
+receipts and Handoff arrive closed and open themselves the moment a first
+receipt, a grant or an absence exists. A fold you set by hand is remembered on
+your next visit; one the panel opens for you is not.
 
 ![The embedded Cowork panel with ten numbered regions marked](../design/panel-tour/panel-annotated.png)
 
@@ -217,9 +217,13 @@ The role half of question three, plus everything the model has proposed.
 - **Offers** are the model's proposals as clickable chips, each naming its
   canvas and its exact proposed value. A chip changes nothing until you click
   it. The offer in the screenshot below waited with *Click to authorize*.
+- **What this mode means** folds away what the mode and the model's role
+  imply. The section keeps the selector, the click right and the proposals in
+  the open; the explanation is one click below them.
 - **Create local demo offer** produces one, so the mechanism is visible without
-  a model. Pointing at a Studio field renames it to **Model suggests a field**
-  and it proposes into that canvas instead.
+  a model. It lives inside *What this mode means*. Pointing at a Studio field
+  renames it to **Model suggests a field** and it proposes into that canvas
+  instead.
 
 *The model sees:* `cowork_offer_action` to propose. It cannot click its own
 offer; only a trusted human click applies one.

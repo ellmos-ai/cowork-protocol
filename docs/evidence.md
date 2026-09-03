@@ -754,10 +754,19 @@ Gate numbers for that change:
   Role detail, before reaching into either: a trusted click needs the control
   visible, which is exactly the step a reader takes. Nothing was removed from
   what they prove
-- not re-captured: `design/panel-tour/`. `capture.mjs` shoots the deployed
-  showcase URL, so the annotated panel image still shows the panel before the
-  folds; `docs/panel-tour.md` says so at the image. The capture script is ready
-  for the next run
+- `design/panel-tour/` re-captured from a locally served copy of this branch,
+  because `capture.mjs` shoots the deployed URL by default and this is not
+  deployed: exit 0, all five images, all ten markers found and re-measured in
+  the browser, so the overlay still points at what it names. `docs/panel-tour.md`
+  records which URL the current set came from
+- the capture is what caught the one real defect this change introduced: the
+  two surface buttons lost their icons on the first render, because `render()`,
+  `openInCompanion()` and its catch each wrote the whole button's
+  `textContent`. All four sites now go through one `setButtonLabel()` that
+  writes the label node and leaves the icon alone - and through the panel's own
+  `$()`, whose fallback to the panel element is what keeps the detached
+  Picture-in-Picture surface working. `button.textContent` still reads as the
+  label alone, which is what `smoke:surface` and `smoke:companion-mcp` assert
 
 ## Explicitly not yet evidenced
 
