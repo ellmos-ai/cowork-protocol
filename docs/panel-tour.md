@@ -10,9 +10,11 @@ the boxes cannot drift away from what they point at.
 
 ![The embedded Cowork panel with ten numbered regions marked](../design/panel-tour/panel-annotated.png)
 
-The panel is one instrument. It serves the FormBuilder Studio canvas and the
-sample form below it through the same ten regions; nothing here is duplicated
-per canvas. Nine WebMCP tools carry it to a model that speaks the protocol:
+The panel is one instrument. A switcher above the canvas chooses which surface
+it serves — *Build your own form* (the Studio) or *Fill the sample form* — and
+only the chosen one is on the page, so the panel can never report attention on
+a canvas nobody can see. Both are served through the same ten regions below;
+nothing here is duplicated per canvas. Nine WebMCP tools carry it to a model that speaks the protocol:
 `cowork_read_focus`, `cowork_request_context`, `cowork_read_changes`,
 `cowork_read_presence`, `cowork_offer_action`, `cowork_execute_solo`,
 `cowork_read_feedback`, `cowork_read_turn` and `cowork_reply_turn`.
@@ -25,13 +27,15 @@ Chrome or Edge 150+ with the WebMCP flags on, or start the browser with
 disclosed scripted helper, so the whole walkthrough works before you connect
 anything of your own.
 
-1. **Arrive.** FormBuilder Studio is the first thing on the page with the
-   Cowork panel beside it, and the fixed sample form sits below the workspace.
-   *You see* the panel resting at *Sparring · you execute* — you hold the click
-   right, the model advises.
+1. **Arrive.** A switcher offers two canvases, **Build your own form** and
+   **Fill the sample form**, with the Cowork panel beside whichever is open.
+   *You see* Build your own form already selected and the panel resting at
+   *Sparring · you execute* — you hold the click right, the model advises.
 2. **Add two fields.** Pick a field type and press **Add field** twice.
    *You see* two rows on the canvas and no Cowork controls anywhere near them:
-   the Studio has none of its own.
+   the Studio has none of its own. Even before you add anything the panel is
+   already on this canvas — the empty Studio is a target in its own right, so
+   the lens reads *Working on: Studio canvas*.
 3. **Point at the first row.** *You see* the panel's attention lens change to
    `Pointing at: <the field's label> (Studio canvas)` — the panel followed your pointer to
    one field, not to the page.
@@ -67,8 +71,9 @@ anything of your own.
 9. **Check the browser.** Open **How to enable WebMCP in this browser**.
    *You see* your own browser named, with both routes to switch the experiment
    on — the flags page and the command line.
-10. **Prove it from the agent side.** On the sample form below the workspace,
-    focus *Full name*, then call `document.modelContext.getTools()`. *You see*
+10. **Prove it from the agent side.** Switch to **Fill the sample form** —
+    the panel follows the switch and stays the same instrument — then focus
+    *Full name*, then call `document.modelContext.getTools()`. *You see*
     the nine `cowork_*` tools; `cowork_read_focus` returns the bounded packet,
     `cowork_offer_action` leaves the field unchanged until you click the visible
     offer, and `cowork_read_changes` and `cowork_read_feedback` return only the
