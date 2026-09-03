@@ -24,6 +24,9 @@
   --cowork-ink: #241c15;
   --shadow: 0 26px 70px rgba(88, 67, 24, 0.12), 0 3px 12px rgba(27, 33, 49, 0.06);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --slate-wash: #eceef2;
+  --slate-accent: #6b7280;
+  --slate-ink: #3f4653;
 }
 
 * { box-sizing: border-box; }
@@ -658,4 +661,45 @@ textarea { resize: vertical; }
 @keyframes model-working-glimmer {
   from { box-shadow: 0 0 0 3px rgba(216,79,61,.14), 0 0 14px rgba(216,79,61,.2); }
   to { box-shadow: 0 0 0 5px rgba(216,79,61,.22), 0 0 30px rgba(216,79,61,.34); }
+}
+
+/* The demo switch is a competition add-on, not part of either product, so it
+   is the one block in the panel that does not wear the Cowork colours. */
+.showcase-addon {
+  margin: .6rem 0 .2rem;
+  padding: .6rem .7rem;
+  border: 1px dashed var(--line);
+  border-left: .2rem solid var(--slate-accent);
+  border-radius: .7rem;
+  background: var(--slate-wash);
+}
+.showcase-addon-kicker {
+  margin: 0 0 .35rem;
+  color: var(--slate-ink);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.showcase-addon .microcopy { color: var(--slate-ink); }
+
+.webmcp-help > summary {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  font-size: .84rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.webmcp-help > summary .badge { margin-left: auto; }
+.webmcp-help:not([open]) > :not(summary) { display: none; }
+.webmcp-steps { margin: .5rem 0 0; padding-left: 1.1rem; color: var(--muted); font-size: .8rem; }
+.webmcp-steps li { margin-bottom: .3rem; }
+.webmcp-steps code {
+  padding: .05rem .28rem;
+  border-radius: .3rem;
+  background: var(--slate-wash);
+  color: var(--slate-ink);
+  font-size: .96em;
+  overflow-wrap: anywhere;
 }

@@ -203,6 +203,9 @@ try {
       "input:not([type=hidden]):not([disabled])",
       "select:not([disabled])",
       "textarea:not([disabled])",
+      // A <summary> is focusable and keyboard-operable, so a collapsible
+      // section is a control the Tab path has to reach like any other.
+      "summary",
       "[tabindex]:not([tabindex='-1'])"
     ].join(",");
     const controls = [...new Set(document.querySelectorAll(selector))].filter((element) => {
@@ -269,7 +272,9 @@ try {
   // "tab" was added for FormBuilder Studio's Build/Fill/Export role="tab" buttons.
   // "spinbutton" was added for the Delegate dialog's <input type="number">
   // call-budget/duration fields (Chrome's AX role for a number input).
-  const interactiveRoles = new Set(["button", "checkbox", "combobox", "link", "spinbutton", "tab", "textbox"]);
+  // "DisclosureTriangle" is Chrome's AX role for a <summary>: the panel's
+  // collapsible sections are keyboard controls and belong in the Tab path.
+  const interactiveRoles = new Set(["button", "checkbox", "combobox", "DisclosureTriangle", "link", "spinbutton", "tab", "textbox"]);
   observation.axInteractiveNodes = nodes
     .filter(
       (node) =>

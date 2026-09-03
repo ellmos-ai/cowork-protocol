@@ -180,16 +180,25 @@
         </div>
       </section>
 
+      <details class="panel-section webmcp-help" id="webmcp-help">
+        <summary><span class="section-icon" aria-hidden="true">ⓘ</span>How to enable WebMCP in this browser<span class="badge" id="webmcp-help-state">checking…</span></summary>
+        <p class="microcopy" id="webmcp-help-browser"></p>
+        <ol class="webmcp-steps" id="webmcp-help-steps"></ol>
+      </details>
+
       <section class="panel-section model-seat" aria-labelledby="model-seat-heading">
         <div class="section-row">
           <h3 id="model-seat-heading"><span class="section-icon" aria-hidden="true">◆</span>Model seat</h3>
           <span class="badge" id="model-seat-badge" data-tone="demo">Demo helper (scripted)</span>
         </div>
-        <label class="check-row">
-          <input id="demo-mode" type="checkbox" checked>
-          <span>Demo mode — scripted helper, no model involved</span>
-        </label>
-        <p class="microcopy" id="model-seat-help">Demo mode is on: a disclosed scripted helper answers and proposes fixed values. Nothing here comes from a language model.</p>
+        <div class="showcase-addon">
+          <p class="showcase-addon-kicker">Showcase add-on · not part of Cowork Protocol or FormBuilder</p>
+          <label class="check-row">
+            <input id="demo-mode" type="checkbox" checked>
+            <span>Demo mode — scripted helper, no model involved</span>
+          </label>
+          <p class="microcopy" id="model-seat-help">Demo mode is on: a disclosed scripted helper answers and proposes fixed values. Nothing here comes from a language model.</p>
+        </div>
         <details class="model-connect" id="model-connect">
           <summary>Connect your own model (OpenAI-compatible endpoint)</summary>
           <div class="field-grid">
@@ -261,24 +270,6 @@
         <button class="demo-button" id="demo-offer" type="button">Create local demo offer</button>
       </section>
 
-      <section class="panel-section" aria-labelledby="presence-heading">
-        <div class="section-row">
-          <h3 id="presence-heading"><span class="section-icon" aria-hidden="true">↗</span>Handoff</h3>
-          <button class="text-button" id="toggle-agent" type="button">Pause agent</button>
-        </div>
-        <label>
-          <span>Job to hand over</span>
-          <input id="lease-goal" value="Complete only the focused field" maxlength="120">
-        </label>
-        <div class="button-row">
-          <button class="quiet-button" id="hand-over" type="button">Hand over, I’ll watch</button>
-          <button class="quiet-button" id="away-short" type="button">I’m briefly away</button>
-          <button class="quiet-button" id="away-long" type="button">I’m away longer</button>
-          <button class="primary-small" id="return-human" type="button">I’m back</button>
-        </div>
-        <p class="microcopy" id="lease-microcopy">This field-scoped demo lease lasts two minutes, permits at most two attempts, and ends after a verified page change.</p>
-      </section>
-
       <section class="panel-section" aria-labelledby="audio-heading">
         <div class="section-row">
           <h3 id="audio-heading"><span class="section-icon" aria-hidden="true">◉</span>Conversation</h3>
@@ -307,6 +298,24 @@
         </div>
         <ol id="receipt-list" class="receipt-list" aria-live="polite"></ol>
         <p class="microcopy">Evaluate a result with one click. Optional direction is capped at 350 characters, and WebMCP exposes only the latest feedback event.</p>
+      </section>
+
+      <section class="panel-section" aria-labelledby="presence-heading">
+        <div class="section-row">
+          <h3 id="presence-heading"><span class="section-icon" aria-hidden="true">↗</span>Handoff</h3>
+          <button class="text-button" id="toggle-agent" type="button">Pause agent</button>
+        </div>
+        <label>
+          <span>Job to hand over</span>
+          <input id="lease-goal" value="Complete only the focused field" maxlength="120">
+        </label>
+        <div class="button-row">
+          <button class="quiet-button" id="hand-over" type="button">Hand over, I’ll watch</button>
+          <button class="quiet-button" id="away-short" type="button">I’m briefly away</button>
+          <button class="quiet-button" id="away-long" type="button">I’m away longer</button>
+          <button class="primary-small" id="return-human" type="button">I’m back</button>
+        </div>
+        <p class="microcopy" id="lease-microcopy">This field-scoped demo lease lasts two minutes, permits at most two attempts, and ends after a verified page change.</p>
       </section>
 
       <p class="system-status" id="system-status" role="status">Initializing local protocol…</p>

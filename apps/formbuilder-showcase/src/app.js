@@ -426,6 +426,55 @@ function describeFailure(error) {
   return error.code ? `${error.code}: ${error.message}` : error.message;
 }
 
+/**
+ * Says how to turn WebMCP on in the browser actually being used. The feature
+ * names come from the smokes that launch Chrome with them; the flag page entry
+ * is described as a search, because its label is not ours to promise.
+ */
+function renderWebMcpHelp() {
+  const native = capabilityLevel === "native";
+  const state = $("#webmcp-help-state");
+  state.textContent = native ? "Native WebMCP" : "off";
+  state.dataset.tone = native ? "live" : "off";
+  const brands = navigator.userAgentData?.brands?.map((brand) => brand.brand).join(" ") ?? navigator.userAgent;
+  const isEdge = /Edg/i.test(brands);
+  const isChrome = !isEdge && /Chrome|Chromium/i.test(brands);
+  const chromium = isEdge || isChrome;
+  const flagsPage = isEdge ? "edge://flags" : "chrome://flags";
+  const exe = isEdge
+    ? '"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"'
+    : '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"';
+  $("#webmcp-help-browser").textContent = native
+    ? "This browser exposes document.modelContext, so a browser agent can discover this page's nine Cowork tools. Everything on this page also works without it."
+    : chromium
+      ? `Detected ${isEdge ? "Microsoft Edge" : "Chrome or another Chromium browser"}. WebMCP is an experiment and is off by default; the page works without it, only in-browser agent discovery is missing.`
+      : "WebMCP is a Chromium experiment. Use Chrome or Edge 150 or newer to try it; this page works without it either way.";
+  const steps = chromium && !native
+    ? [
+        `Open ${flagsPage}, search for WebMCP, enable the WebMCP and WebMCP Testing entries, then restart the browser.`,
+        `If the flags are not offered, start the browser from a command line with the features switched on: ${exe} --enable-features=WebMCP,WebMCPTesting`,
+        "Reload this page. The badge above reads Native WebMCP once it is on."
+      ]
+    : [];
+  $("#webmcp-help-steps").replaceChildren(
+    ...steps.map((step) => {
+      const item = document.createElement("li");
+      item.textContent = step;
+      return item;
+    })
+  );
+  // Open itself once, on a first visit without WebMCP - not on every reload.
+  try {
+    if (!native && window.localStorage.getItem("cowork-webmcp-help-seen") === null) {
+      $("#webmcp-help").open = true;
+      window.localStorage.setItem("cowork-webmcp-help-seen", "1");
+    }
+  } catch {
+    // Private windows and blocked site data are fine: the disclosure just
+    // stays closed until someone opens it.
+  }
+}
+
 function setStatus(message) {
   $("#system-status").textContent = message;
 }
@@ -1039,6 +1088,7 @@ function render() {
   $("#context-label").textContent = view.contextLabel;
   $("#capability-badge").textContent = view.capabilityLabel;
   $("#capability-badge").dataset.tone = capabilityLevel === "native" ? "live" : "off";
+  renderWebMcpHelp();
   $("#capability-badge").title =
     capabilityLevel === "native"
       ? "This browser exposes document.modelContext; the page registered its nine native Cowork tools."
