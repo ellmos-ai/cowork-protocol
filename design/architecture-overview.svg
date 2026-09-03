@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1050" viewBox="0 0 1800 1050" role="img" aria-labelledby="title description">
   <title id="title">Cowork Protocol architecture overview</title>
-  <desc id="description">One protocol, one human surface, three hosts. A human answers three questions per partner: present, working on what, in which role; the resulting work mode names who may click. The interchangeable surface is an embedded panel, an extension side panel or the Desktop Companion; one versioned Session Authority owns surface and model-seat leases, one Context Manager and serialized Model Gateway feed the single active model seat, which may be a demo helper, a direct endpoint, a page host, the Companion, or none at all. The provider-neutral Protocol Core then selects native Cowork, existing WebMCP, or a bounded browser relay that registers Cowork tools over WebMCP on foreign pages, with a profile-filtered Open Compute fallback in the Desktop Companion. A model executes only inside a grant or lease, and every path ends at a real human click with a verified receipt.</desc>
+  <desc id="description">Read top to bottom. Each partner answers three questions, present, working on what, and in which role, and the resulting work mode names who may click; a model executes only inside a grant or lease. The human works through one interchangeable surface, rendered by an embedded panel, an extension side panel or the Desktop Companion. One versioned Session Authority owns the leases, and one bounded context and serialized gateway feed the single active model seat, which resolves to a scripted demo helper, a direct endpoint, a page host, the connected Companion, or nothing. The provider-neutral Protocol Core then takes the strongest connector the page actually offers: native Cowork, an existing WebMCP catalog behind a bounded bridge, or a browser relay that registers the Cowork tools over WebMCP itself, with a profile-filtered Open Compute fallback in the Desktop Companion. Every path ends the same way, at a visible offer, a real human click and an observed verification.</desc>
 
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
@@ -9,165 +9,113 @@
       <stop offset="1" stop-color="#eafbf7"/>
     </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
-      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#241c15" flood-opacity="0.10"/>
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#241c15" flood-opacity="0.09"/>
     </filter>
-    <marker id="arrow-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <marker id="arrow-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#241c15"/>
     </marker>
-    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#0a7a72"/>
     </marker>
-    <marker id="arrow-slate" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6f7f8d"/>
-    </marker>
     <style>
-      .title { font: 800 58px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #241c15; letter-spacing: -1.8px; }
-      .subtitle { font: 400 25px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #584c43; }
+      .title { font: 800 60px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #241c15; letter-spacing: -2px; }
+      .subtitle { font: 400 26px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #584c43; }
       .eyebrow { font: 800 16px ui-monospace, "SFMono-Regular", Consolas, monospace; letter-spacing: 2.2px; fill: #0a7a72; }
-      .card-title { font: 750 25px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #241c15; }
+      .card-title { font: 750 26px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #241c15; }
       .card-copy { font: 400 18px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #5d5047; }
-      .lane-title { font: 800 21px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #241c15; }
-      .lane-copy { font: 500 16px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #5d5047; }
-      .lane-copy-tight { font: 500 15px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #5d5047; }
-      .chip { font: 800 15px ui-monospace, "SFMono-Regular", Consolas, monospace; letter-spacing: 0.7px; }
-      .connector-label { font: 700 15px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #64564c; }
+      .path-title { font: 800 26px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #241c15; }
+      .path-copy { font: 500 17px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #5d5047; }
+      .mode-copy { font: 500 18px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4c4139; }
+      .chip { font: 800 15px ui-monospace, "SFMono-Regular", Consolas, monospace; letter-spacing: 0.8px; }
+      .footnote { font: 500 17px Inter, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #6b5d53; }
     </style>
   </defs>
 
   <rect width="1800" height="1050" rx="34" fill="url(#background)"/>
-  <circle cx="1640" cy="105" r="210" fill="#0a7a72" opacity="0.08"/>
-  <circle cx="135" cy="980" r="250" fill="#ff604a" opacity="0.07"/>
+  <circle cx="1660" cy="90" r="215" fill="#0a7a72" opacity="0.07"/>
+  <circle cx="120" cy="990" r="255" fill="#ff604a" opacity="0.06"/>
 
-  <text x="90" y="76" class="eyebrow">WEBMCP COLLABORATION ARCHITECTURE</text>
-  <text x="90" y="134" class="title">Cowork Protocol</text>
-  <text x="90" y="174" class="subtitle">One protocol · one human surface · three hosts · strongest available connector.</text>
+  <text x="70" y="66" class="eyebrow">WEBMCP COLLABORATION ARCHITECTURE</text>
+  <text x="70" y="122" class="title">Cowork Protocol</text>
+  <text x="70" y="160" class="subtitle">One protocol · one human surface · three hosts.</text>
 
-  <g transform="translate(1220 56)">
-    <rect x="0" y="0" width="130" height="40" rx="20" fill="#eaf4ff" stroke="#75a7f2" stroke-width="2"/>
-    <text x="65" y="26" text-anchor="middle" class="chip" fill="#245aa8">PRESENT?</text>
-    <rect x="142" y="0" width="176" height="40" rx="20" fill="#fff5dc" stroke="#e5be6b" stroke-width="2"/>
-    <text x="230" y="26" text-anchor="middle" class="chip" fill="#8b6110">WORKING ON?</text>
-    <rect x="330" y="0" width="110" height="40" rx="20" fill="#fff0ed" stroke="#ff8d7d" stroke-width="2"/>
-    <text x="385" y="26" text-anchor="middle" class="chip" fill="#b62f1e">ROLE?</text>
-  </g>
+  <!-- Work mode band -->
+  <rect x="70" y="190" width="1660" height="84" rx="22" fill="#fffdf6" stroke="#d3c2ab" stroke-width="2"/>
+  <text x="102" y="240" class="eyebrow">WORK MODE MATRIX</text>
+  <path d="M380 214 V250" stroke="#ddcfbf" stroke-width="2"/>
+  <text x="412" y="240" class="mode-copy">Present? · Working on? · Role?</text>
+  <path d="M800 214 V250" stroke="#ddcfbf" stroke-width="2"/>
+  <text x="832" y="240" class="mode-copy">Sparring · Doubling · solo work</text>
+  <path d="M1230 214 V250" stroke="#ddcfbf" stroke-width="2"/>
+  <text x="1262" y="240" class="mode-copy">model executes only inside a grant or lease</text>
 
+  <!-- Session row -->
   <g filter="url(#shadow)">
-    <rect x="70" y="226" width="272" height="168" rx="24" fill="#fffefb" stroke="#decfbf" stroke-width="2"/>
-    <rect x="384" y="226" width="310" height="168" rx="24" fill="#fffefb" stroke="#0a7a72" stroke-width="4"/>
-    <rect x="736" y="226" width="320" height="168" rx="24" fill="#fffefb" stroke="#e5be6b" stroke-width="4"/>
-    <rect x="1098" y="226" width="330" height="168" rx="24" fill="#fffefb" stroke="#ff604a" stroke-width="3"/>
-    <rect x="1470" y="226" width="260" height="168" rx="24" fill="#fffefb" stroke="#8c9ead" stroke-width="2"/>
+    <rect x="70" y="314" width="382" height="210" rx="26" fill="#fffefb" stroke="#decfbf" stroke-width="2"/>
+    <rect x="496" y="314" width="382" height="210" rx="26" fill="#fffefb" stroke="#0a7a72" stroke-width="4"/>
+    <rect x="922" y="314" width="382" height="210" rx="26" fill="#fffefb" stroke="#e5be6b" stroke-width="4"/>
+    <rect x="1348" y="314" width="382" height="210" rx="26" fill="#fffefb" stroke="#ff604a" stroke-width="3"/>
   </g>
 
-  <text x="96" y="260" class="eyebrow">HUMAN</text>
-  <text x="96" y="300" class="card-title">The human</text>
-  <text x="96" y="334" class="card-copy">Present? · Working on?</text>
-  <text x="96" y="362" class="card-copy">Role · trusted click</text>
+  <text x="98" y="354" class="eyebrow">HUMAN</text>
+  <text x="98" y="400" class="card-title">The human</text>
+  <text x="98" y="436" class="card-copy">focus · speech · selection</text>
+  <text x="98" y="464" class="card-copy">the trusted click</text>
 
-  <text x="410" y="260" class="eyebrow">ONE HUMAN SURFACE</text>
-  <text x="410" y="300" class="card-title">Interchangeable UI</text>
-  <text x="410" y="334" class="card-copy">Embedded panel · side panel</text>
-  <text x="410" y="362" class="card-copy">Desktop Companion</text>
+  <text x="524" y="354" class="eyebrow">ONE HUMAN SURFACE</text>
+  <text x="524" y="400" class="card-title">Interchangeable UI</text>
+  <text x="524" y="436" class="card-copy">embedded panel</text>
+  <text x="524" y="464" class="card-copy">extension side panel</text>
+  <text x="524" y="492" class="card-copy">Desktop Companion</text>
 
-  <text x="762" y="260" class="eyebrow">ONE VERSIONED SESSION</text>
-  <text x="762" y="300" class="card-title">Session Authority</text>
-  <text x="762" y="334" class="card-copy">revision · surface leases</text>
-  <text x="762" y="362" class="card-copy">presence · modes · journal</text>
+  <text x="950" y="354" class="eyebrow">ONE VERSIONED SESSION</text>
+  <text x="950" y="400" class="card-title">Session Authority</text>
+  <text x="950" y="436" class="card-copy">revision · surface leases</text>
+  <text x="950" y="464" class="card-copy">presence · modes · journal</text>
 
-  <text x="1124" y="260" class="eyebrow">COWORK MODEL PATH</text>
-  <text x="1124" y="300" class="card-title">Context + gateway</text>
-  <text x="1124" y="334" class="card-copy">summary · bounded turns</text>
-  <text x="1124" y="362" class="card-copy">one serialized queue</text>
+  <text x="1376" y="354" class="eyebrow">ONE ACTIVE SEAT</text>
+  <text x="1376" y="400" class="card-title">Model seat</text>
+  <text x="1376" y="436" class="card-copy">Context + gateway</text>
+  <text x="1376" y="464" class="card-copy">demo · direct · none</text>
+  <text x="1376" y="492" class="card-copy">page host · companion</text>
 
-  <text x="1496" y="260" class="eyebrow">ONE ACTIVE SEAT</text>
-  <text x="1496" y="300" class="card-title">Model seat</text>
-  <text x="1496" y="334" class="card-copy">demo · direct · none</text>
-  <text x="1496" y="362" class="card-copy">page host · companion</text>
+  <path d="M452 419 H496" stroke="#241c15" stroke-width="3" marker-end="url(#arrow-dark)"/>
+  <path d="M878 419 H922" stroke="#241c15" stroke-width="3" marker-end="url(#arrow-dark)"/>
+  <path d="M1304 419 H1348" stroke="#241c15" stroke-width="3" marker-end="url(#arrow-dark)"/>
 
-  <path d="M342 310 H384" stroke="#241c15" stroke-width="3" marker-end="url(#arrow-dark)"/>
-  <text x="363" y="212" text-anchor="middle" class="connector-label">authorize / evaluate</text>
-  <path d="M694 310 H736" stroke="#241c15" stroke-width="3" marker-end="url(#arrow-dark)"/>
-  <text x="715" y="212" text-anchor="middle" class="connector-label">commands / projections</text>
-  <path d="M1056 296 H1098" stroke="#241c15" stroke-width="3" marker-end="url(#arrow-dark)"/>
-  <path d="M1098 328 H1056" stroke="#241c15" stroke-width="3" marker-end="url(#arrow-dark)"/>
-  <text x="1077" y="212" text-anchor="middle" class="connector-label">bounded context ↔ turn</text>
-  <path d="M1428 310 H1470" stroke="#6f7f8d" stroke-width="3" stroke-dasharray="5 4" marker-end="url(#arrow-slate)"/>
-  <text x="1449" y="212" text-anchor="middle" class="connector-label">exclusive lease</text>
+  <!-- Protocol core -->
+  <path d="M1113 524 V544 H900 V564" fill="none" stroke="#0a7a72" stroke-width="5" stroke-linejoin="round" marker-end="url(#arrow-teal)"/>
+  <rect x="620" y="564" width="560" height="52" rx="26" fill="#0a7a72"/>
+  <text x="900" y="597" text-anchor="middle" class="chip" fill="#ffffff">PROTOCOL CORE · STRONGEST AVAILABLE CONNECTOR</text>
 
-  <path d="M900 394 V438" stroke="#0a7a72" stroke-width="5" marker-end="url(#arrow-teal)"/>
-  <rect x="620" y="434" width="560" height="48" rx="24" fill="#0a7a72"/>
-  <text x="900" y="464" text-anchor="middle" class="chip" fill="#ffffff">PROTOCOL CORE · STRONGEST AVAILABLE CONNECTOR</text>
+  <!-- Three connector paths -->
+  <g filter="url(#shadow)">
+    <rect x="70" y="656" width="524" height="274" rx="26" fill="#f2fbf8" stroke="#0a7a72" stroke-width="3"/>
+    <rect x="638" y="656" width="524" height="274" rx="26" fill="#fffbef" stroke="#e5be6b" stroke-width="3"/>
+    <rect x="1206" y="656" width="524" height="274" rx="26" fill="#fff5f2" stroke="#ff604a" stroke-width="3"/>
+  </g>
 
-  <rect x="70" y="494" width="1660" height="504" rx="30" fill="#ffffff" opacity="0.74" stroke="#ddcfbf" stroke-width="2"/>
-  <text x="105" y="528" class="eyebrow">CONNECTOR BOUNDARY</text>
-  <text x="105" y="558" class="subtitle">Native when available. Bridged when necessary. Every path ends at a human click.</text>
+  <text x="102" y="710" class="path-title">1 · Native Cowork</text>
+  <text x="102" y="760" class="path-copy">the page ships the protocol</text>
+  <text x="102" y="793" class="path-copy">nine tools registered by the page</text>
+  <text x="102" y="826" class="path-copy">stable targets · verified actions</text>
+  <text x="102" y="859" class="path-copy">FormBuilder Studio + sample form</text>
+  <text x="102" y="892" class="path-copy">strongest guarantees</text>
 
-  <!-- Native lane -->
-  <rect x="100" y="578" width="268" height="118" rx="20" fill="#eafaf6" stroke="#0a7a72" stroke-width="3"/>
-  <text x="124" y="618" class="lane-title">1 · Native Cowork</text>
-  <text x="124" y="648" class="lane-copy">page ships the protocol</text>
-  <text x="124" y="674" class="lane-copy">strongest guarantees</text>
-  <path d="M368 637 H400" stroke="#0a7a72" stroke-width="4" marker-end="url(#arrow-teal)"/>
-  <rect x="400" y="578" width="392" height="118" rx="20" fill="#fffefb" stroke="#0a7a72" stroke-width="3"/>
-  <text x="424" y="618" class="lane-title">Native WebMCP Connector</text>
-  <text x="424" y="648" class="lane-copy">stable targets · verified actions</text>
-  <text x="424" y="674" class="lane-copy">nine tools registered by the page</text>
-  <path d="M792 637 H824" stroke="#0a7a72" stroke-width="4" marker-end="url(#arrow-teal)"/>
-  <rect x="824" y="578" width="482" height="118" rx="20" fill="#fff8df" stroke="#e5be6b" stroke-width="3"/>
-  <text x="848" y="618" class="lane-title">FormBuilder Showcase</text>
-  <text x="848" y="648" class="lane-copy">one panel · Studio above, sample form below</text>
-  <text x="848" y="674" class="lane-copy">real field deltas · click causes · verified receipts</text>
+  <text x="670" y="710" class="path-title">2 · Existing WebMCP</text>
+  <text x="670" y="760" class="path-copy">the page has its own tools</text>
+  <text x="670" y="793" class="path-copy">a bounded bridge on top</text>
+  <text x="670" y="826" class="path-copy">read results capped</text>
+  <text x="670" y="859" class="path-copy">mutations stay offer-only</text>
+  <text x="670" y="892" class="path-copy">degraded, never hidden</text>
 
-  <!-- Existing WebMCP lane -->
-  <rect x="100" y="708" width="268" height="118" rx="20" fill="#fff6df" stroke="#e5be6b" stroke-width="3"/>
-  <text x="124" y="748" class="lane-title">2 · Existing WebMCP</text>
-  <text x="124" y="778" class="lane-copy">host catalog supplied</text>
-  <text x="124" y="804" class="lane-copy">degraded, never hidden</text>
-  <path d="M368 767 H400" stroke="#b8891d" stroke-width="4" marker-end="url(#arrow-dark)"/>
-  <rect x="400" y="708" width="392" height="118" rx="20" fill="#fffefb" stroke="#e5be6b" stroke-width="3"/>
-  <text x="424" y="748" class="lane-title">Bounded WebMCP Bridge</text>
-  <text x="424" y="778" class="lane-copy">read results capped</text>
-  <text x="424" y="804" class="lane-copy">mutations stay offer-only</text>
-  <path d="M792 767 H824" stroke="#b8891d" stroke-width="4" marker-end="url(#arrow-dark)"/>
-  <rect x="824" y="708" width="482" height="118" rx="20" fill="#fffefb" stroke="#e5be6b" stroke-width="3"/>
-  <text x="848" y="748" class="lane-title">WebMCP-enabled web app</text>
-  <text x="848" y="778" class="lane-copy">the page keeps its own tools</text>
-  <text x="848" y="804" class="lane-copy">degraded guarantees are explicit, never hidden</text>
+  <text x="1238" y="710" class="path-title">3 · No WebMCP</text>
+  <text x="1238" y="760" class="path-copy">Browser relay + Side Panel</text>
+  <text x="1238" y="793" class="path-copy">350 → 1,200 → 400×400 relay lens</text>
+  <text x="1238" y="826" class="path-copy">semantic first · bounded visual escalation</text>
+  <text x="1238" y="859" class="path-copy">Cowork tools registered over WebMCP</text>
+  <text x="1238" y="892" class="path-copy">Desktop: profiled Open Compute · red signal</text>
 
-  <!-- No WebMCP lane -->
-  <rect x="100" y="838" width="268" height="144" rx="20" fill="#fff0ed" stroke="#ff604a" stroke-width="3"/>
-  <text x="124" y="878" class="lane-title">3 · No WebMCP</text>
-  <text x="124" y="908" class="lane-copy">extension starts disabled</text>
-  <text x="124" y="933" class="lane-copy">one trusted shortcut arms it</text>
-  <path d="M368 910 H400" stroke="#da3824" stroke-width="4" marker-end="url(#arrow-dark)"/>
-  <rect x="400" y="838" width="392" height="144" rx="20" fill="#fffefb" stroke="#ff604a" stroke-width="3"/>
-  <text x="424" y="878" class="lane-title">Browser relay + Side Panel</text>
-  <text x="424" y="908" class="lane-copy">350 → 1,200 → 400×400 relay lens</text>
-  <text x="424" y="933" class="lane-copy">Cowork tools registered over WebMCP</text>
-  <text x="424" y="958" class="lane-copy-tight">Desktop: profiled Open Compute · red signal</text>
-  <path d="M792 910 H824" stroke="#da3824" stroke-width="4" marker-end="url(#arrow-dark)"/>
-  <rect x="824" y="838" width="482" height="144" rx="20" fill="#fffefb" stroke="#ff604a" stroke-width="3"/>
-  <text x="848" y="878" class="lane-title">Arbitrary web page or desktop GUI</text>
-  <text x="848" y="912" class="lane-copy">semantic first · bounded visual escalation</text>
-  <text x="848" y="944" class="lane-copy">visible offer → human click → observed verification</text>
-
-  <!-- Work mode matrix -->
-  <rect x="1338" y="578" width="368" height="240" rx="20" fill="#fffdf6" stroke="#c9b79f" stroke-width="2"/>
-  <text x="1364" y="612" class="eyebrow">WORK MODE MATRIX</text>
-  <text x="1364" y="652" class="lane-title">Who acts, who advises</text>
-  <text x="1364" y="690" class="lane-copy">Present? · Working on? · Role?</text>
-  <text x="1364" y="716" class="lane-copy">one executes, one advises → Sparring</text>
-  <text x="1364" y="742" class="lane-copy">both execute, apart → Doubling</text>
-  <text x="1364" y="768" class="lane-copy">Sparring · Doubling · solo work</text>
-  <text x="1364" y="794" class="lane-copy-tight">model executes only inside a grant or lease</text>
-
-  <!-- Agent access -->
-  <rect x="1338" y="838" width="368" height="144" rx="20" fill="#fffdf6" stroke="#c9b79f" stroke-width="2"/>
-  <text x="1364" y="870" class="eyebrow">AGENT ACCESS</text>
-  <text x="1364" y="908" class="lane-title">Who can reach it</text>
-  <text x="1364" y="938" class="lane-copy">WebMCP agent in the browser</text>
-  <text x="1364" y="962" class="lane-copy">OpenAI-compatible model endpoint</text>
-
-  <text x="900" y="1018" text-anchor="middle" class="connector-label">Context stays bounded. Offers stay inert. Human authority stays visible.</text>
-  <text x="900" y="1042" text-anchor="middle" class="connector-label">Source-backed component view · design/architecture-overview.svg · 2026-09-03</text>
+  <text x="900" y="978" text-anchor="middle" class="footnote">Every path ends the same way: visible offer → human click → observed verification.</text>
+  <text x="900" y="1012" text-anchor="middle" class="footnote">Source-backed component view · design/architecture-overview.svg · 2026-09-03</text>
 </svg>
