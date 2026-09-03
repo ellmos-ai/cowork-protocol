@@ -408,6 +408,23 @@ try {
   );
   requireCondition(returnVerdictResolved, "Expected a real feedback click to close the round and clear the highlights");
 
+  // --- An empty model seat reads as an absent model, not an advising one. ---
+  await dispatchTrustedClick(call, "#demo-mode");
+  const emptySeat = await evaluateValue(call, `(() => ({
+    modelState: document.querySelector(".cowork-panel").dataset.modelState,
+    seatActive: document.querySelector("#model-seat").classList.contains("is-active")
+  }))()`);
+  requireCondition(
+    !emptySeat.modelState.startsWith("here") && emptySeat.seatActive === false,
+    `Expected an empty model seat to read as absent, got ${JSON.stringify(emptySeat)}`
+  );
+  await dispatchTrustedClick(call, "#demo-mode");
+  const demoSeat = await evaluateValue(call, `document.querySelector(".cowork-panel").dataset.modelState`);
+  requireCondition(
+    demoSeat.startsWith("here"),
+    `Expected the demo helper to put the model back in the room, got ${demoSeat}`
+  );
+
   // --- The removed sections must be gone from the DOM, not merely hidden. ---
   const foldedAway = await evaluateValue(call, `[
     "#builder-suggest-add",
@@ -440,6 +457,7 @@ try {
     builderOfferInertBeforeClickClaim: true,
     builderReceiptVerifiedClaim: true,
     onePanelServesBothCanvasesClaim: true,
+    emptySeatReadsAsAbsentModelClaim: true,
     presentDelegationClaim: true,
     soloDraftBatchClaim: true,
     handoverReturnHighlightClaim: true,

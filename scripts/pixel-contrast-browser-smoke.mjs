@@ -576,7 +576,9 @@ try {
     })()`
   ));
 
-  await dispatchTrustedClick(call, 'document.querySelector(".primary-action")', "Validate and export");
+  // Scope this to the sample form: since the studio moved into the workspace,
+  // the first .primary-action in the DOM is the Fill tab's hidden submit.
+  await dispatchTrustedClick(call, 'document.querySelector("#demo-form .primary-action")', "Validate and export");
   states.push(await auditRenderedState(
     call,
     "validation-errors",

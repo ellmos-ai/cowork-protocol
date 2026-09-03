@@ -574,7 +574,10 @@ textarea { resize: vertical; }
 /* FormBuilder Studio: the Build/Fill/Export product surface. It reuses the
    .form-surface treatment (border, shadow, violet stripe, grid background)
    and the existing button/offer/receipt component classes above. */
-.builder-studio { width: min(1440px, calc(100% - 3rem)); min-height: auto; margin: 0 auto 3rem; }
+/* The studio is now the workspace column, so the grid sizes it; the fixed
+   sample form moved below the workspace and carries the page width. */
+.builder-studio { min-height: auto; }
+.sample-form { width: min(1440px, calc(100% - 3rem)); min-height: auto; margin: 0 auto 3rem; }
 .builder-tabs { display: flex; gap: .35rem; margin: 1.2rem 0 1.1rem; border-bottom: 1px solid var(--line); }
 .builder-tab { padding: .65rem 1.05rem; border: 0; border-bottom: 3px solid transparent; color: var(--muted); background: transparent; font-weight: 800; }
 .builder-tab[aria-selected="true"] { color: var(--formbuilder-violet-deep); border-bottom-color: var(--formbuilder-violet); }

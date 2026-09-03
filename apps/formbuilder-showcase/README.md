@@ -12,7 +12,7 @@ without an agent, without WebMCP, and without any extension; see
 [`INTEGRATION.md`](INTEGRATION.md) for exactly how (and why in that order)
 Cowork Protocol was then connected on top. That connection adds no controls
 to the Studio: the page's one Cowork panel serves the Studio canvas the same
-way it serves the demo form above it, and every suggestion still needs your
+way it serves the fixed sample form below the workspace, and every suggestion still needs your
 real click.
 Its form-rendering engine is derived from the pre-existing MIT-licensed
 FormBuilder web companion (see [`FORMBUILDER-NOTICE.md`](FORMBUILDER-NOTICE.md)
@@ -63,7 +63,7 @@ page's persistent storage.
 
 The FormBuilder Studio section has no Cowork controls of its own. It used to:
 a "Model suggestions" list, a "Delegate to the model" dialog and a "Say what to
-do" input sat in the Build tab and largely repeated what the Cowork panel above
+do" input sat in the Build tab and largely repeated what the Cowork panel
 already did. One instrument is the point of the protocol, so those three
 sections are gone and the panel drives both canvases. What stayed is the part
 that was never a duplicate — the bridge, the suggester and the directive

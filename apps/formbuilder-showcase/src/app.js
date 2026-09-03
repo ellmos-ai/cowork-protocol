@@ -247,6 +247,15 @@ function fieldLabelForTarget(targetId) {
 // on the field the attention lens points at, the model on the field its
 // lease covers. The wording for it lives in packages/reference-ui.
 function currentAreas(state) {
+  // An empty model seat means no model is here - not one that advises. The
+  // seat is the only source for this, so the figures, the relay and the work
+  // mode can never imply an advisor that does not exist. Applied on the tick
+  // where the seat CHANGES (this is the one caller, so tracking it here is
+  // safe): a human who parks the model on "away" keeps that choice, and
+  // "away" stays a real option in ACTOR_STATUS_CYCLE.
+  const seatIsEmpty = modelSeat.resolve().kind === "none";
+  const seatChanged = seatWasEmpty !== null && seatWasEmpty !== seatIsEmpty;
+  seatWasEmpty = seatIsEmpty;
   return {
     human: {
       ...state.human,
@@ -254,6 +263,7 @@ function currentAreas(state) {
     },
     model: {
       ...state.model,
+      ...(seatIsEmpty ? { availability: "away" } : seatChanged ? { availability: "here" } : {}),
       area: state.lease
         ? fieldLabelForTarget(state.lease.allowedTargetIds?.[0]) ?? state.lease.goal
         : null
@@ -355,6 +365,7 @@ const conversationClient = createConversationClient({
 const conversationInbox = createConversationInbox();
 let conversationTransportLabel = modelSeat.resolve().transportLabel;
 let extensionAttached = false;
+let seatWasEmpty = null;
 let builderCowork = null;
 // The Studio canvas is this panel's second attention target:
 // `{ fieldId, label }` while the human points at a Builder field, null
