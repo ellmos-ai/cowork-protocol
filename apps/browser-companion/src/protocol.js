@@ -1,7 +1,10 @@
 const ALLOWED_METHODS = new Set([
   "readFocus",
   "requestContext",
-  "offerAction"
+  "offerAction",
+  // Read-only: who is here and who holds the click right. An agent that can
+  // see it stops proposing into a standby seat.
+  "readPresence"
 ]);
 const MAX_REQUEST_ID_CHARACTERS = 120;
 const MAX_REQUEST_CHARACTERS = 12_000;

@@ -36,6 +36,8 @@ function setNotice(message, milliseconds = 3500) {
 function presentationInput(state) {
   return {
     mode: state?.mode ?? "off",
+    // Set once this extension has put Cowork tools on a page that had none.
+    toolsRegistered: state?.toolsRegistered === true,
     executionMode: state?.executionMode ?? "structured",
     human: state?.human ?? { availability: "here", role: "executing", area: null },
     model: state?.model ?? { availability: "away", role: "advising", area: null },

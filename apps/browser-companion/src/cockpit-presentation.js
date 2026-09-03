@@ -42,6 +42,20 @@ const ROUTES = Object.freeze({
   })
 });
 
+// The page had no Cowork tools, so this extension registered them. Any WebMCP
+// agent in this browser can now read and propose here through its own chat;
+// the click stays in this panel either way.
+const TOOLS_REGISTERED_ROUTE = Object.freeze({
+  route: "bridge-webmcp",
+  routeLabel: "Bridge + WebMCP",
+  routeExplainer:
+    "Bridge + WebMCP — this extension registered Cowork tools here; any WebMCP agent " +
+    "may read focus and propose, your click stays in this panel.",
+  seatNote:
+    "Model seat: whichever WebMCP agent this browser attaches. This extension supplies " +
+    "the tools, not the model."
+});
+
 const EXECUTION_MODES = Object.freeze({
   structured: Object.freeze({
     executionMode: "structured",
@@ -107,8 +121,9 @@ export function nextAvailableStatus(actor, unavailable) {
 }
 
 export function buildCockpitPresentation(input) {
-  const route = ROUTES[input?.mode];
-  if (!route) throw new TypeError("Cockpit requires a supported connector route");
+  const baseRoute = ROUTES[input?.mode];
+  if (!baseRoute) throw new TypeError("Cockpit requires a supported connector route");
+  const route = input?.toolsRegistered === true ? TOOLS_REGISTERED_ROUTE : baseRoute;
   const execution = EXECUTION_MODES[input?.executionMode];
   if (!execution) throw new TypeError("Cockpit requires a supported execution mode");
 

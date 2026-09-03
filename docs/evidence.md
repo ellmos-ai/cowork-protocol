@@ -547,6 +547,32 @@ Two behaviour changes are recorded rather than absorbed silently:
   panel's own human-seat presence indicator" — so the page now has one
   presence readout and one expiry clock for both canvases instead of two.
 
+### After the fold: what the page is for
+
+Three follow-on changes, recorded because each one changes what a visitor
+sees first:
+
+- **Building is the use case.** FormBuilder Studio moved into the workspace
+  column beside the panel; the fixed "Event registration" form moved below it
+  and is now labelled as what it is - a sample form whose fields the WebMCP
+  proof and four smokes read. It stays visible and unchanged for exactly that
+  reason. The skip link points at the builder.
+- **An empty model seat reads as an absent model.** With demo mode off and
+  nothing connected, the collaboration view used to show a model that advises.
+  `modelSeat.resolve().kind === "none"` now puts the model on `away`, applied
+  on the tick where the seat changes so a human who parks the model on `away`
+  keeps that choice and `away` stays a real option in `ACTOR_STATUS_CYCLE`.
+  Proven end to end in `smoke:builder` (`emptySeatReadsAsAbsentModelClaim`).
+- **The demo switch is marked as what it is.** The model seat keeps the
+  panel's colours because it is part of the work mode; only the demo switch
+  and its disclosure text sit in neutral slate under "Showcase add-on - not
+  part of Cowork Protocol or FormBuilder".
+
+A collapsible "How to enable WebMCP in this browser" names the browser in use
+and gives both routes: the flags page (described as a search, since its label
+is not ours to promise) and the command line with `--enable-features=WebMCP,WebMCPTesting`,
+the same feature names the smokes launch Chrome with.
+
 No new WebMCP tool: a surface change leaves the nine-tool contract untouched.
 No `<input type="number">` remains anywhere in
 `apps/formbuilder-showcase/index.html`, so the `spinbutton` AX role the
@@ -564,8 +590,8 @@ the previous batch, where these numbers would be wrong):
 - Node tests: 445 of 445 passed, 0 failed
 - `npm run proof`: 10 passed, 0 failed
 - `npm run smoke:builder`: exit 0 on Chrome/152.0.7977.65; 6 fields drafted under the fixed budget, 6 highlighted on return, 0 offer chips created by the directive, and all nine removed selectors absent from the DOM
-- `npm run smoke:accessibility`: exit 0; 36 interactive controls, 36 named AX nodes, 36 unique Tab stops, 36 focus-visible stops, 0 px horizontal overflow (44 before the fold)
-- `npm run smoke:contrast`: exit 0; 1343 audited text items across 11 states, 0 unsupported ranges, minimum contrast 4.5656:1
+- `npm run smoke:accessibility`: exit 0; 38 interactive controls, 38 named AX nodes, 38 unique Tab stops, 38 focus-visible stops, 0 px horizontal overflow. 44 before the fold, 36 after it, 38 once the WebMCP help became a collapsible section and `<summary>` was counted as the keyboard control it is - the DOM selector and the AX role allowlist had both been missing it
+- `npm run smoke:contrast`: exit 0; 1398 audited text items across 11 states, 0 unsupported ranges, minimum contrast 4.5656:1
 - the other six Chrome smokes (`webmcp`, `surface`, `model-host`, `companion`, `companion-native`, `companion-cockpit`): exit 0 each. The native tool count stays unread in headless Chrome without the WebMCP flag (`nativeToolCountUnchanged: null`), so no claim is made about it here
 - build artifacts: `build:pages` 35 files (25 modules reachable from `app.js`, no unresolved import), `build:companion` 21 files
 
