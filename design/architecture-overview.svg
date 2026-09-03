@@ -10,11 +10,11 @@
       <stop offset="1" stop-color="#ad95ec"/>
     </linearGradient>
     <radialGradient id="glowA" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#fff0fa" stop-opacity="0.4"/>
+      <stop offset="0" stop-color="#fff0fa" stop-opacity="0.25"/>
       <stop offset="1" stop-color="#fff0fa" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="glowB" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#efe6ff" stop-opacity="0.35"/>
+      <stop offset="0" stop-color="#efe6ff" stop-opacity="0.22"/>
       <stop offset="1" stop-color="#efe6ff" stop-opacity="0"/>
     </radialGradient>
     <path id="sparkle" d="M0 -10 Q 1.7 -1.7 10 0 Q 1.7 1.7 0 10 Q -1.7 1.7 -10 0 Q -1.7 -1.7 0 -10 Z"/>
@@ -47,84 +47,44 @@
   <ellipse cx="250" cy="150" rx="520" ry="380" fill="url(#glowA)"/>
   <ellipse cx="1500" cy="900" rx="560" ry="400" fill="url(#glowB)"/>
   <g id="glitter">
-    <use href="#sparkle" transform="translate(1402 287) rotate(22.1) scale(1.05)" fill="#ffffff" opacity="0.83"/>
-    <use href="#sparkle" transform="translate(928 136) rotate(1.7) scale(0.4)" fill="#ffd9f0" opacity="0.92"/>
-    <use href="#sparkle" transform="translate(494 989) rotate(23.7) scale(0.45)" fill="#ffd9f0" opacity="0.91"/>
-    <use href="#sparkle" transform="translate(1246 630) rotate(29.1) scale(0.63)" fill="#ffffff" opacity="0.86"/>
-    <use href="#sparkle" transform="translate(49 202) rotate(38.9) scale(0.8)" fill="#ffd9f0" opacity="0.43"/>
-    <use href="#sparkle" transform="translate(1387 1017) rotate(65.4) scale(0.61)" fill="#ffffff" opacity="0.46"/>
-    <use href="#sparkle" transform="translate(641 980) rotate(52.1) scale(0.72)" fill="#ffffff" opacity="0.39"/>
-    <use href="#sparkle" transform="translate(1738 601) rotate(7.5) scale(0.73)" fill="#ffffff" opacity="0.56"/>
-    <use href="#sparkle" transform="translate(615 892) rotate(84.1) scale(0.36)" fill="#ffffff" opacity="0.48"/>
-    <use href="#sparkle" transform="translate(15 362) rotate(74.0) scale(0.5)" fill="#ffd9f0" opacity="0.92"/>
-    <use href="#sparkle" transform="translate(1331 379) rotate(5.2) scale(0.57)" fill="#ffd9f0" opacity="0.64"/>
-    <use href="#sparkle" transform="translate(638 643) rotate(33.6) scale(0.7)" fill="#ffffff" opacity="0.58"/>
-    <use href="#sparkle" transform="translate(1224 139) rotate(45.1) scale(0.77)" fill="#ffd9f0" opacity="0.43"/>
-    <use href="#sparkle" transform="translate(1646 39) rotate(33.1) scale(0.95)" fill="#ffffff" opacity="0.81"/>
-    <use href="#sparkle" transform="translate(932 946) rotate(33.0) scale(0.41)" fill="#ffffff" opacity="0.55"/>
-    <use href="#sparkle" transform="translate(1351 42) rotate(65.9) scale(0.36)" fill="#ffd9f0" opacity="0.54"/>
-    <use href="#sparkle" transform="translate(880 8) rotate(37.9) scale(0.46)" fill="#ffffff" opacity="0.67"/>
-    <use href="#sparkle" transform="translate(952 966) rotate(30.6) scale(0.75)" fill="#ffd9f0" opacity="0.75"/>
-    <use href="#sparkle" transform="translate(1453 125) rotate(62.1) scale(0.42)" fill="#ffd9f0" opacity="0.79"/>
-    <use href="#sparkle" transform="translate(839 1012) rotate(5.2) scale(0.3)" fill="#ffffff" opacity="0.93"/>
-    <use href="#sparkle" transform="translate(783 125) rotate(77.3) scale(0.88)" fill="#ffffff" opacity="0.58"/>
-    <use href="#sparkle" transform="translate(711 105) rotate(36.3) scale(0.84)" fill="#ffd9f0" opacity="0.55"/>
-    <use href="#sparkle" transform="translate(1551 540) rotate(59.7) scale(0.53)" fill="#ffffff" opacity="0.68"/>
-    <use href="#sparkle" transform="translate(1047 1037) rotate(26.2) scale(0.23)" fill="#ffffff" opacity="0.54"/>
-    <use href="#sparkle" transform="translate(1585 83) rotate(2.5) scale(0.61)" fill="#ffffff" opacity="0.74"/>
-    <use href="#sparkle" transform="translate(15 329) rotate(79.9) scale(1.03)" fill="#ffd9f0" opacity="0.73"/>
-    <use href="#sparkle" transform="translate(137 624) rotate(6.5) scale(1.02)" fill="#ffffff" opacity="0.83"/>
-    <use href="#sparkle" transform="translate(651 103) rotate(69.7) scale(0.33)" fill="#ffffff" opacity="0.83"/>
-    <use href="#sparkle" transform="translate(912 69) rotate(72.3) scale(0.56)" fill="#ffffff" opacity="0.89"/>
-    <use href="#sparkle" transform="translate(1369 175) rotate(18.3) scale(0.95)" fill="#ffd9f0" opacity="0.6"/>
-    <use href="#sparkle" transform="translate(1122 946) rotate(48.7) scale(0.23)" fill="#ffffff" opacity="0.84"/>
-    <use href="#sparkle" transform="translate(1395 14) rotate(22.3) scale(0.54)" fill="#ffd9f0" opacity="0.87"/>
-    <use href="#sparkle" transform="translate(387 144) rotate(82.9) scale(0.72)" fill="#ffd9f0" opacity="0.61"/>
-    <use href="#sparkle" transform="translate(334 55) rotate(49.8) scale(0.7)" fill="#ffffff" opacity="0.54"/>
-    <use href="#sparkle" transform="translate(1071 63) rotate(25.2) scale(0.39)" fill="#ffffff" opacity="0.88"/>
-    <use href="#sparkle" transform="translate(911 543) rotate(17.5) scale(0.31)" fill="#ffffff" opacity="0.88"/>
-    <use href="#sparkle" transform="translate(1732 295) rotate(87.9) scale(0.7)" fill="#ffffff" opacity="0.61"/>
-    <use href="#sparkle" transform="translate(1752 307) rotate(12.9) scale(0.31)" fill="#ffffff" opacity="0.47"/>
-    <use href="#sparkle" transform="translate(580 976) rotate(48.0) scale(0.35)" fill="#ffffff" opacity="0.35"/>
-    <use href="#sparkle" transform="translate(473 100) rotate(19.4) scale(0.54)" fill="#ffffff" opacity="0.68"/>
-    <use href="#sparkle" transform="translate(614 1032) rotate(61.1) scale(0.81)" fill="#ffd9f0" opacity="0.47"/>
-    <use href="#sparkle" transform="translate(748 1030) rotate(51.0) scale(0.85)" fill="#ffffff" opacity="0.58"/>
-    <use href="#sparkle" transform="translate(509 591) rotate(62.5) scale(0.69)" fill="#ffffff" opacity="0.81"/>
-    <use href="#sparkle" transform="translate(1469 120) rotate(86.7) scale(0.69)" fill="#ffffff" opacity="0.37"/>
-    <use href="#sparkle" transform="translate(1103 999) rotate(40.4) scale(0.37)" fill="#ffd9f0" opacity="0.71"/>
-    <use href="#sparkle" transform="translate(96 1014) rotate(33.5) scale(0.62)" fill="#ffffff" opacity="0.62"/>
-    <use href="#sparkle" transform="translate(793 126) rotate(58.5) scale(0.22)" fill="#ffd9f0" opacity="0.65"/>
-    <use href="#sparkle" transform="translate(1678 618) rotate(60.9) scale(0.42)" fill="#ffd9f0" opacity="0.38"/>
-    <use href="#sparkle" transform="translate(155 1029) rotate(63.4) scale(0.76)" fill="#ffd9f0" opacity="0.47"/>
-    <use href="#sparkle" transform="translate(1764 90) rotate(28.3) scale(0.45)" fill="#ffffff" opacity="0.57"/>
-    <use href="#sparkle" transform="translate(1023 1037) rotate(48.7) scale(0.68)" fill="#ffffff" opacity="0.4"/>
-    <use href="#sparkle" transform="translate(276 992) rotate(8.7) scale(0.43)" fill="#ffffff" opacity="0.85"/>
-    <use href="#sparkle" transform="translate(441 11) rotate(74.6) scale(0.34)" fill="#ffffff" opacity="0.66"/>
-    <use href="#sparkle" transform="translate(1772 787) rotate(13.2) scale(0.71)" fill="#ffd9f0" opacity="0.86"/>
-    <use href="#sparkle" transform="translate(376 152) rotate(1.1) scale(0.46)" fill="#ffffff" opacity="0.7"/>
-    <use href="#sparkle" transform="translate(1324 439) rotate(8.0) scale(1.01)" fill="#ffffff" opacity="0.5"/>
-    <use href="#sparkle" transform="translate(927 12) rotate(68.0) scale(0.74)" fill="#ffffff" opacity="0.58"/>
-    <use href="#sparkle" transform="translate(1332 1008) rotate(13.8) scale(0.92)" fill="#ffffff" opacity="0.78"/>
-    <use href="#sparkle" transform="translate(1275 612) rotate(82.3) scale(0.46)" fill="#ffffff" opacity="0.67"/>
-    <use href="#sparkle" transform="translate(892 361) rotate(76.6) scale(0.23)" fill="#ffd9f0" opacity="0.89"/>
-    <use href="#sparkle" transform="translate(163 61) rotate(51.7) scale(0.92)" fill="#ffffff" opacity="0.45"/>
-    <use href="#sparkle" transform="translate(1690 144) rotate(47.7) scale(0.44)" fill="#ffffff" opacity="0.89"/>
-    <use href="#sparkle" transform="translate(1176 866) rotate(57.9) scale(0.32)" fill="#ffffff" opacity="0.9"/>
-    <use href="#sparkle" transform="translate(1400 54) rotate(67.5) scale(0.42)" fill="#ffd9f0" opacity="0.36"/>
-    <use href="#sparkle" transform="translate(872 1019) rotate(81.0) scale(0.28)" fill="#ffffff" opacity="0.42"/>
-    <use href="#sparkle" transform="translate(575 112) rotate(79.6) scale(0.8)" fill="#ffffff" opacity="0.91"/>
-    <use href="#sparkle" transform="translate(146 51) rotate(44.7) scale(0.32)" fill="#ffd9f0" opacity="0.92"/>
-    <use href="#sparkle" transform="translate(1405 84) rotate(14.9) scale(0.28)" fill="#ffd9f0" opacity="0.95"/>
-    <use href="#sparkle" transform="translate(463 969) rotate(35.0) scale(0.83)" fill="#ffffff" opacity="0.46"/>
-    <use href="#sparkle" transform="translate(580 1015) rotate(40.2) scale(0.44)" fill="#ffd9f0" opacity="0.69"/>
-    <use href="#sparkle" transform="translate(93 587) rotate(71.7) scale(0.33)" fill="#ffffff" opacity="0.4"/>
-    <use href="#sparkle" transform="translate(1046 68) rotate(81.3) scale(0.91)" fill="#ffffff" opacity="0.53"/>
-    <use href="#sparkle" transform="translate(689 123) rotate(41.6) scale(0.56)" fill="#ffffff" opacity="0.42"/>
-    <use href="#sparkle" transform="translate(445 960) rotate(83.2) scale(0.43)" fill="#ffffff" opacity="0.67"/>
-    <use href="#sparkle" transform="translate(1175 69) rotate(32.7) scale(0.74)" fill="#ffffff" opacity="0.81"/>
-    <use href="#sparkle" transform="translate(879 958) rotate(22.0) scale(0.74)" fill="#ffd9f0" opacity="0.47"/>
-    <use href="#sparkle" transform="translate(1281 1042) rotate(83.0) scale(0.63)" fill="#ffffff" opacity="0.55"/>
-    <use href="#sparkle" transform="translate(222 641) rotate(73.1) scale(1.0)" fill="#ffffff" opacity="0.48"/>
+    <use href="#sparkle" transform="translate(677 1034) rotate(46.3) scale(0.27)" fill="#ffffff" opacity="0.76"/>
+    <use href="#sparkle" transform="translate(1689 74) rotate(54.9) scale(0.34)" fill="#ffffff" opacity="0.75"/>
+    <use href="#sparkle" transform="translate(949 55) rotate(85.1) scale(0.43)" fill="#ffffff" opacity="0.46"/>
+    <use href="#sparkle" transform="translate(38 542) rotate(59.6) scale(0.23)" fill="#ffffff" opacity="0.46"/>
+    <use href="#sparkle" transform="translate(26 362) rotate(18.1) scale(0.28)" fill="#fff0fa" opacity="0.41"/>
+    <use href="#sparkle" transform="translate(506 289) rotate(58.4) scale(0.39)" fill="#ffffff" opacity="0.62"/>
+    <use href="#sparkle" transform="translate(350 168) rotate(75.4) scale(0.41)" fill="#ffffff" opacity="0.43"/>
+    <use href="#sparkle" transform="translate(1763 429) rotate(29.5) scale(0.52)" fill="#ffffff" opacity="0.83"/>
+    <use href="#sparkle" transform="translate(240 294) rotate(42.2) scale(0.32)" fill="#fff0fa" opacity="0.67"/>
+    <use href="#sparkle" transform="translate(182 592) rotate(6.6) scale(0.17)" fill="#fff0fa" opacity="0.77"/>
+    <use href="#sparkle" transform="translate(1363 614) rotate(64.3) scale(0.46)" fill="#ffffff" opacity="0.45"/>
+    <use href="#sparkle" transform="translate(503 289) rotate(25.9) scale(0.20)" fill="#ffffff" opacity="0.52"/>
+    <use href="#sparkle" transform="translate(382 641) rotate(8.5) scale(0.50)" fill="#ffffff" opacity="0.65"/>
+    <use href="#sparkle" transform="translate(837 288) rotate(21.9) scale(0.41)" fill="#fff0fa" opacity="0.67"/>
+    <use href="#sparkle" transform="translate(55 774) rotate(2.6) scale(0.22)" fill="#fff0fa" opacity="0.60"/>
+    <use href="#sparkle" transform="translate(1050 538) rotate(16.5) scale(0.61)" fill="#fff0fa" opacity="0.69"/>
+    <use href="#sparkle" transform="translate(460 547) rotate(78.8) scale(0.31)" fill="#ffffff" opacity="0.76"/>
+    <use href="#sparkle" transform="translate(295 616) rotate(19.9) scale(0.55)" fill="#ffffff" opacity="0.67"/>
+    <use href="#sparkle" transform="translate(1390 22) rotate(15.1) scale(0.24)" fill="#ffffff" opacity="0.55"/>
+    <use href="#sparkle" transform="translate(1396 92) rotate(13.9) scale(0.47)" fill="#ffffff" opacity="0.67"/>
+    <use href="#sparkle" transform="translate(770 24) rotate(56.0) scale(0.16)" fill="#ffffff" opacity="0.55"/>
+    <use href="#sparkle" transform="translate(1520 141) rotate(35.3) scale(0.59)" fill="#ffffff" opacity="0.61"/>
+    <use href="#sparkle" transform="translate(1000 135) rotate(51.3) scale(0.56)" fill="#fff0fa" opacity="0.85"/>
+    <use href="#sparkle" transform="translate(44 197) rotate(6.3) scale(0.26)" fill="#fff0fa" opacity="0.84"/>
+    <use href="#sparkle" transform="translate(122 148) rotate(21.0) scale(0.41)" fill="#ffffff" opacity="0.46"/>
+    <use href="#sparkle" transform="translate(377 107) rotate(55.2) scale(0.57)" fill="#ffffff" opacity="0.59"/>
+    <use href="#sparkle" transform="translate(1583 142) rotate(21.2) scale(0.35)" fill="#ffffff" opacity="0.65"/>
+    <use href="#sparkle" transform="translate(13 288) rotate(31.6) scale(0.43)" fill="#ffffff" opacity="0.51"/>
+    <use href="#sparkle" transform="translate(1107 1033) rotate(66.8) scale(0.55)" fill="#ffffff" opacity="0.52"/>
+    <use href="#sparkle" transform="translate(1111 37) rotate(76.8) scale(0.44)" fill="#fff0fa" opacity="0.58"/>
+    <use href="#sparkle" transform="translate(860 642) rotate(31.0) scale(0.18)" fill="#ffffff" opacity="0.79"/>
+    <use href="#sparkle" transform="translate(55 736) rotate(49.8) scale(0.49)" fill="#ffffff" opacity="0.48"/>
+    <use href="#sparkle" transform="translate(1526 129) rotate(47.7) scale(0.41)" fill="#ffffff" opacity="0.59"/>
+    <use href="#sparkle" transform="translate(1235 290) rotate(22.4) scale(0.44)" fill="#ffffff" opacity="0.51"/>
+    <use href="#sparkle" transform="translate(1530 599) rotate(85.2) scale(0.56)" fill="#fff0fa" opacity="0.76"/>
+    <use href="#sparkle" transform="translate(41 959) rotate(18.7) scale(0.46)" fill="#ffffff" opacity="0.83"/>
+    <use href="#sparkle" transform="translate(1310 293) rotate(27.0) scale(0.21)" fill="#ffffff" opacity="0.69"/>
+    <use href="#sparkle" transform="translate(1708 995) rotate(80.0) scale(0.26)" fill="#fff0fa" opacity="0.80"/>
   </g>
 
   <text x="70" y="66" class="eyebrow on-art-soft">WEBMCP COLLABORATION ARCHITECTURE</text>
