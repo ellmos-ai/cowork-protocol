@@ -13,13 +13,12 @@ Cowork Protocol is a small collaboration contract for people and web agents. It 
 ## Three in one
 
 The protocol is the submission; everything else here exists to show it holds up
-wherever the human happens to be. Four ways to use it, in order of how much
-each one brings with it:
+wherever the human happens to be. Three hosts, the first one in two flavours:
 
-1. **Protocol only** — the packages, wired into your own app's own UI. No Cowork surface at all.
-2. **Protocol plus the embedded panel** — one instrument the page itself renders, no install. The live showcase runs at this level.
-3. **Browser extension** — a side panel for pages that carry neither, registering the same Cowork tools over WebMCP.
-4. **Desktop Companion** — an app window without an extension: freer, not tied to one browser, with a filtered Computer Use fallback, and while connected it holds the session's model seat.
+1a. **Protocol only** — the packages, wired into your own app's own UI. No Cowork surface at all.
+1b. **Protocol plus the embedded panel** — one instrument the page itself renders, no install. The live showcase runs at this level.
+2. **Browser extension** — a side panel for pages that carry neither, registering the same Cowork tools over WebMCP.
+3. **Desktop Companion** — an app window without an extension: freer, not tied to one browser, with a filtered Computer Use fallback, and while connected it holds the session's model seat.
 
 [![Cowork Protocol architecture: human and preferred model collaborate through any compatible UI, the provider-neutral protocol core and three bounded connector paths](design/architecture-overview.png)](docs/architecture.md)
 
@@ -250,10 +249,10 @@ interchangeable:
 
 | Level | Surface | What it is |
 | --- | --- | --- |
-| 1 | Protocol only | the packages, wired into your own app's own UI. No Cowork surface at all |
-| 2 | Embedded panel | the Cowork instrument the page itself renders, no install. This showcase runs at this level |
-| 3 | Browser extension | the Cowork Browser Companion, Chrome's side panel outside the page DOM, for pages that carry neither the protocol nor a panel |
-| 4 | Desktop Companion | the loopback app window with a Windows tray icon, no extension; while connected it holds the session's model seat |
+| 1a | Protocol only | the packages, wired into your own app's own UI. No Cowork surface at all |
+| 1b | Embedded panel | the Cowork instrument the page itself renders, no install. This showcase runs at this level |
+| 2 | Browser extension | the Cowork Browser Companion, Chrome's side panel outside the page DOM, for pages that carry neither the protocol nor a panel |
+| 3 | Desktop Companion | the loopback app window with a Windows tray icon, no extension; while connected it holds the session's model seat |
 
 ## Build the optional browser extension
 
