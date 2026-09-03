@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Cowork Protocol Browser Companion",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A toggleable, token-bounded Cowork fallback for pages without Cowork Protocol or WebMCP.",
   "background": {
     "service_worker": "service-worker.js",
