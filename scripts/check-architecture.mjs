@@ -30,6 +30,14 @@ assert.match(svg, /350 → 1,200 → 400×400 relay lens/);
 assert.match(svg, /Desktop: profiled Open Compute · red signal/);
 assert.match(svg, /semantic first · bounded visual escalation/);
 assert.match(svg, /visible offer → human click → observed verification/);
+assert.match(svg, /WORK MODE MATRIX/);
+assert.match(svg, /Present\? · Working on\? · Role\?/);
+assert.match(svg, /Sparring · Doubling · solo work/);
+assert.match(svg, /model executes only inside a grant or lease/);
+assert.match(svg, /Cowork tools registered over WebMCP/);
+assert.match(svg, /One protocol · one human surface · three hosts/);
+assert.match(svg, /demo · direct · none/);
+assert.match(svg, /page host · companion/);
 
 assert.match(docs, /!\[Cowork Protocol architecture overview\]\(\.\.\/design\/architecture-overview\.svg\)/);
 assert.match(
@@ -53,6 +61,7 @@ console.log(
         "profiled-open-compute"
       ],
       providerNeutralSurfaceClaim: true,
+      workModeMatrix: true,
       accessibleSvg: true,
       documented: true,
       png: { width: 1800, height: 1050 }

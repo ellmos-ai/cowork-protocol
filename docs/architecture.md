@@ -15,13 +15,22 @@ This UML-like C4 component view answers one question: which component owns conte
 
 ![Cowork Protocol architecture overview](../design/architecture-overview.svg)
 
-The overview above is the compact submission view: human intent can enter
-through any compatible surface, the Protocol Core keeps context and authority
-bounded, and the runtime selects the strongest connector the current page
-actually provides. Where no page connector exists, the extension relay stays
-bounded to the browser or the Desktop Companion may invoke Open Compute through
-a semantic-first token profile and an explicitly signaled visual fallback.
-The Mermaid views below remain the source-backed
+The overview above is the compact submission view: one protocol, one human
+surface, three hosts. Each partner answers three questions -- present, working
+on what, in which role -- and the resulting work mode
+([work-modes.md](work-modes.md)) names who may click; a model executes only
+inside a grant or lease. The same human surface is rendered by an embedded
+panel, the extension side panel or the Desktop Companion, and one panel serves
+both halves of the showcase page: FormBuilder Studio above and the sample form
+below. One versioned Session Authority and one serialized gateway feed the
+single active model seat, which resolves to a scripted demo helper, a direct
+OpenAI-compatible connection, a same-origin page host, the connected Companion,
+or nothing at all. The Protocol Core then selects the strongest connector the
+current page actually provides. Where no page connector exists, the extension
+relay stays bounded to the browser and registers the Cowork tools over WebMCP
+on that foreign page, and the Desktop Companion may invoke Open Compute as a
+filtered fallback through a semantic-first token profile with an explicitly
+signaled visual escalation. The Mermaid views below remain the source-backed
 engineering detail and text alternatives.
 
 ```mermaid
