@@ -357,7 +357,7 @@ the `.fodt` writer drops XML-illegal control characters, renders line breaks
 and uses paragraph-family heading styles. Every DOM-free fix is covered by a new unit test (eleven in total,
 389 tests on the fixed tree).
 
-Commit `<commit>` gave the showcase a visible model seat and made the direct
+Commit `afceec6` gave the showcase a visible model seat and made the direct
 model connection reachable from the page itself. `apps/formbuilder-showcase/src/model-seat.js`
 resolves one of four seats in a fixed order - an injected transport, a direct
 OpenAI-compatible endpoint entered in the page, the same-origin model host, or
