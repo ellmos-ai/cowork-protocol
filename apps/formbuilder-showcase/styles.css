@@ -522,20 +522,20 @@ textarea { resize: vertical; }
 .human-badge::before { content: "●"; }
 .model-badge::before { content: "✓"; }
 /* Actor status (v0.2): availability + role, four states per figure. */
-.cowork-panel[data-human-state="here-acting"] .actor-human { --actor-state-color: #0a7a72; color: var(--cowork-teal); }
-.cowork-panel[data-human-state="here-observing"] .actor-human { --actor-state-color: #275eaa; color: var(--blue); }
-.cowork-panel[data-human-state="here-observing"] .human-badge::before { content: "◉"; }
+.cowork-panel[data-human-state="here-executing"] .actor-human { --actor-state-color: #0a7a72; color: var(--cowork-teal); }
+.cowork-panel[data-human-state="here-advising"] .actor-human { --actor-state-color: #275eaa; color: var(--blue); }
+.cowork-panel[data-human-state="here-advising"] .human-badge::before { content: "◉"; }
 .cowork-panel[data-human-state="standby"] .actor-human { --actor-state-color: #8d5c0c; color: #8d5c0c; }
 .cowork-panel[data-human-state="standby"] .human-figure { transform: translateX(3px); }
 .cowork-panel[data-human-state="standby"] .human-badge::before { content: "◷"; }
 .cowork-panel[data-human-state="away"] .actor-human { --actor-state-color: #a53227; color: #a53227; opacity: .62; }
 .cowork-panel[data-human-state="away"] .actor-human .actor-aura { border-style: dashed; box-shadow: none; }
 .cowork-panel[data-human-state="away"] .human-badge::before { content: "↗"; }
-.cowork-panel[data-model-state="here-acting"] .actor-model { --actor-state-color: #0a7a72; color: var(--cowork-teal); }
-.cowork-panel[data-model-state="here-observing"] .actor-model { --actor-state-color: #275eaa; color: var(--blue); }
-.cowork-panel[data-model-state="here-observing"] .model-screen { fill: var(--blue); }
-.cowork-panel[data-model-state="here-observing"] .model-arm { opacity: .42; }
-.cowork-panel[data-model-state="here-observing"] .model-badge::before { content: "◉"; }
+.cowork-panel[data-model-state="here-executing"] .actor-model { --actor-state-color: #0a7a72; color: var(--cowork-teal); }
+.cowork-panel[data-model-state="here-advising"] .actor-model { --actor-state-color: #275eaa; color: var(--blue); }
+.cowork-panel[data-model-state="here-advising"] .model-screen { fill: var(--blue); }
+.cowork-panel[data-model-state="here-advising"] .model-arm { opacity: .42; }
+.cowork-panel[data-model-state="here-advising"] .model-badge::before { content: "◉"; }
 .cowork-panel[data-model-state="standby"] .actor-model { --actor-state-color: #8d5c0c; color: #8d5c0c; opacity: .72; }
 .cowork-panel[data-model-state="standby"] .actor-model .actor-aura { border-style: dashed; box-shadow: none; }
 .cowork-panel[data-model-state="standby"] .model-figure { filter: grayscale(.7); }

@@ -267,8 +267,8 @@ h2 { margin: 0; font-size: 17px; letter-spacing: -.025em; }
 .human-head, .human-body { fill: #fff8ea; stroke: #0a5e52; stroke-width: 2; }
 .human-hair { fill: #075e52; }
 .human-badge::before { content: "●"; }
-.companion-cockpit[data-human-state="here-observing"] .actor-human { --actor-state-color: var(--blue); color: var(--blue); }
-.companion-cockpit[data-human-state="here-observing"] .human-badge::before { content: "◉"; }
+.companion-cockpit[data-human-state="here-advising"] .actor-human { --actor-state-color: var(--blue); color: var(--blue); }
+.companion-cockpit[data-human-state="here-advising"] .human-badge::before { content: "◉"; }
 .companion-cockpit[data-human-state="standby"] .actor-human { --actor-state-color: #8d5c0c; color: var(--yellow); }
 .companion-cockpit[data-human-state="standby"] .human-figure { transform: translateX(3px); }
 .companion-cockpit[data-human-state="standby"] .human-badge::before { content: "◷"; }
@@ -283,12 +283,12 @@ h2 { margin: 0; font-size: 17px; letter-spacing: -.025em; }
 .model-eye { fill: white; }
 .model-mouth, .model-antenna, .model-arm, .model-leg { fill: none; stroke: #0b4e4a; stroke-linecap: round; stroke-width: 3; }
 .model-badge::before { content: "○"; }
-.companion-cockpit[data-model-state="here-acting"] .actor-model { --actor-state-color: var(--teal); color: var(--green); }
-.companion-cockpit[data-model-state="here-acting"] .model-badge::before { content: "✓"; }
-.companion-cockpit[data-model-state="here-observing"] .actor-model { --actor-state-color: var(--blue); color: var(--blue); }
-.companion-cockpit[data-model-state="here-observing"] .model-screen { fill: var(--blue); }
-.companion-cockpit[data-model-state="here-observing"] .model-arm { opacity: .4; }
-.companion-cockpit[data-model-state="here-observing"] .model-badge::before { content: "◉"; }
+.companion-cockpit[data-model-state="here-executing"] .actor-model { --actor-state-color: var(--teal); color: var(--green); }
+.companion-cockpit[data-model-state="here-executing"] .model-badge::before { content: "✓"; }
+.companion-cockpit[data-model-state="here-advising"] .actor-model { --actor-state-color: var(--blue); color: var(--blue); }
+.companion-cockpit[data-model-state="here-advising"] .model-screen { fill: var(--blue); }
+.companion-cockpit[data-model-state="here-advising"] .model-arm { opacity: .4; }
+.companion-cockpit[data-model-state="here-advising"] .model-badge::before { content: "◉"; }
 .companion-cockpit[data-model-state="standby"] .actor-model { --actor-state-color: #8d5c0c; color: var(--yellow); opacity: .72; }
 .companion-cockpit[data-model-state="standby"] .actor-model .actor-aura { border-style: dashed; box-shadow: none; }
 .companion-cockpit[data-model-state="standby"] .model-figure { filter: grayscale(.7); }

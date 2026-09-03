@@ -57,11 +57,12 @@ The agent reads a structured `cowork_read_focus` tool instead of guessing from t
 - **Offers that cannot authorize themselves.** An agent proposes an exact visible
   value; only a real human click applies it, and every change comes back as a
   causal, latest-only receipt with click-authenticated feedback.
-- **One work-mode matrix instead of two settings.** Two status variables per
-  actor - availability and role - derive the work mode and, with it, the click
-  right. Nothing chooses action rights separately. Scoped solo work still needs a
-  fail-closed lease that is versioned, budgeted and expiring, so "away" never
-  means "unattended". See [docs/work-modes.md](docs/work-modes.md).
+- **Three questions instead of a settings panel.** Each partner answers who is
+  here, on what, and in which role - executing or advising. The work mode and the
+  click right follow; nothing chooses action rights separately. A model executes
+  only inside a versioned, budgeted, expiring grant or lease, so "away" never
+  means "unattended" and a present human is never a substitute for the record.
+  See [docs/work-modes.md](docs/work-modes.md).
 - **One conversation across surfaces.** Page panel, extension Side Panel and
   desktop Companion share a single versioned session; an optional same-origin
   model host attaches a preferred model while endpoint and key stay on the
@@ -223,8 +224,8 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 - `packages/integration-contract` — declares provider-neutral protocol hosts,
   replaceable surface clients and the three operator-controlled page-UI modes.
 - `packages/reference-ui` — shared Cowork reference-surface identity, human/model
-  icons and the single work-mode vocabulary (status labels, mode labels, the four
-  Clarify steps) consumed by FormBuilder Embed, the extension Side Panel and the
+  icons and the single work-mode vocabulary (status labels, mode labels, the three
+  status steps) consumed by FormBuilder Embed, the extension Side Panel and the
   Desktop Companion. No surface writes its own status wording.
 - `packages/session-authority` — owns versioned collaboration snapshots, bounded deltas, exact-revision surface handoffs and compact optional model briefings shared across Cowork surfaces.
 - `packages/companion-link` — performs a loopback-only, exact-revision

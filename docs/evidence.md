@@ -402,56 +402,84 @@ The interaction rhythm *Point / Offer / Click / Verify* and the separate
 "Action rights" selector are gone. Both mixed the two participants: the rhythm
 described one scripted exchange rather than the session's state, and a paused
 model was reachable through two controls that could disagree. In their place,
-`resolveWorkMode()` in `packages/core/src/index.js` derives the work mode, the
-authority holder and every action right from two status variables per actor -
-`availability` (here / standby / away) and `role` (acting / observing) - plus one
-explicit switch for simultaneous work. Authority *is* the click right:
+each partner answers three questions - `availability` (here / standby / away),
+`area` (the page, task, focused target or granted goal), and `role` (executing
+or advising) - and `resolveWorkMode()` in `packages/core/src/index.js` derives
+the work mode, the authority holder and every action right from them. The modes
+are only names for combinations: Sparring (one executes, one advises, and the
+authority swaps), Doubling (both execute, each confined to a different area),
+solo (the partner is not here) and idle. Authority *is* the click right:
 `canExecute` means holding it, `canPropose` means being present without it. The
 old `explain` and `suggest` action modes turned out to be one state and are now
-one (`observing` = advising); `delegated` became the model holding authority and
-`paused` became model standby. Where both actors are set to act and
-simultaneous work is not allowed, the human keeps authority and the model falls
-back to advising - the return path of the typical session, not an invented
-tie-break. A model set to act while the human is away still needs a valid
-authority record (the solo lease); without it `resolveWorkMode` reports
-`authorityLapsed` and the model advises instead of acting. The full concept,
-including the old-to-new mapping, is `docs/work-modes.md`, with a one-page German
-summary in `docs/work-modes.de.md`.
+one (`advising`); `delegated` became the model executing inside a grant, and
+`paused` became model standby. The full concept is `docs/work-modes.md`, with a
+one-page German summary in `docs/work-modes.de.md`.
 
-The 0.1 wire is unchanged: presence events, offers, authorizations, receipts,
-leases, grants and the nine native WebMCP tools keep their published shapes.
-`toLegacyPresence()` derives the legacy `effectiveMode` from the legacy values it
-just produced, so a 0.1 consumer that re-resolves the mode always agrees; a
-regression test asserts that agreement for every matrix cell.
+Two rules carry the safety of the model, and both are enforced in the resolver
+rather than in a surface. First, **a model executes only inside a valid
+delegation grant or solo lease** - human-authored goal, call budget, expiry.
+`modelAuthorityValid` is that record and nothing else; a present human is never
+a substitute for it, because presence means someone can intervene, not that the
+model is authorized or bounded. Without the record the model advises, its
+proposals still need a human click, and `authorityLapsed` tells the surface why.
+An earlier draft of this rework let a present human stand in for the record;
+that softened the security core, was caught in review and is now asserted by a
+test that walks every human status. Second, **the human's hand wins**: when both
+partners execute on the same or an unknown area, the human keeps authority and
+the model falls back to advising. That is the return path of the typical
+session, not an invented tie-break.
 
-All three surfaces now read their wording from one vocabulary in
-`packages/reference-ui/src/index.js` (`CLARIFY_STEPS`, `buildWorkModePresentation`,
-`WORK_MODE_CHOICES`, `statusForWorkModeChoice`), and a test asserts that no
-surface script spells a status label itself. The four-step Clarify bar replaced
-the rhythm bar in all three. Two findings surfaced during the rebuild and were
-fixed rather than worked around: the browser extension's handoff control could
-never mint a lease and therefore never perform a handoff, so it is now an
-honest hint control; and `fromLegacyPresence()` initially forced a present human
-into the acting role, which made "model acts while the human watches"
-unreachable from 0.1 input and rendered two Companion states identically - the
-0.1 wire carries its single "who is working" bit on the agent, and the bridge
-now reads it there.
+Doubling is gated by the work itself rather than by a preference. It is offered
+only while both partners name an area and the areas differ; on the same area, or
+with an area unclaimed, the surfaces do not list it at all, because nothing
+proves the two would stay out of each other's way. The `allow simultaneous`
+checkbox an earlier draft carried was removed with it - one fewer control, and
+the user's requirement that the default flow work without any setting.
 
-Measured on this tree with Chrome 152.0.7977.65: 434 unit tests pass (417
-before, +8 for the matrix, +9 across the surfaces and the shared vocabulary);
-all nine browser smokes exit 0; the showcase exposes 44 interactive controls, 44
-uniquely named AX nodes, 44 tab stops and 44 focus-visible controls (21 buttons,
-9 textboxes, 4 comboboxes, 4 checkboxes, 3 tabs, 2 spinbuttons, 1 link) with 0
-horizontal overflow - one more than the previous 43, because the removed
-action-rights selector was replaced by a work-mode selector and the simultaneous
-switch is new; the pixel-contrast audit resolves 1633 visible text items across
-11 rendered states with 0 unsupported backgrounds, 0 failures and a minimum
-contrast of 4.57; the native companion smoke still reports 9 WebMCP tools; the
-cockpit smoke shows four distinct work modes across four states (previously
-three of them varied only the model) with the keyboard path unchanged at 9
-controls and no horizontal overflow at 320, 390 and 480 px; the Pages artifact
-is 35 files and the extension artifact 21, and every relative import in both
-build outputs resolves against the artifact itself.
+All three surfaces read their wording from one vocabulary in
+`packages/reference-ui/src/index.js` (`STATUS_STEPS`, `buildWorkModePresentation`,
+`workModeChoices`, `statusForWorkModeChoice`), and a test asserts that no surface
+script spells a status label itself. The three-step bar `Present · Working on ·
+Role` replaced the rhythm bar in all three. A four-step "Clarify" bar was built
+first and cut back: its fourth step named the model's job, which is not a fourth
+question but the role read off the same answer, and listing a derived value
+beside its own sources invites setting it separately.
+
+Two findings surfaced during the rebuild and were fixed rather than worked
+around: the browser extension's handoff control could never mint a lease and
+therefore never perform a handoff, so it is now an honest hint control; and
+`fromLegacyPresence()` initially forced a present human into the executing role,
+which made "model executes while the human watches" unreachable from 0.1 input
+and rendered two Desktop Companion states identically. The 0.1 wire carries its
+single "who is working" bit on the agent, and the bridge now reads it there.
+
+The 0.1 wire is otherwise unchanged: presence events, offers, authorizations,
+receipts, leases, grants and the nine native WebMCP tools keep their published
+shapes. `toLegacyPresence()` derives the legacy `effectiveMode` from the legacy
+values it just produced, so a 0.1 consumer that re-resolves the mode always
+agrees; a regression test asserts that agreement for every matrix cell.
+
+Measured on this tree with Chrome 152.0.7977.65: 445 unit tests pass (417
+before); all nine browser smokes exit 0; `check:secrets` and
+`check:architecture` exit 0. The showcase exposes 44 interactive controls, 44
+uniquely named AX nodes, 44 tab stops and 44 focus-visible controls (22 buttons,
+9 textboxes, 4 comboboxes, 3 checkboxes, 3 tabs, 2 spinbuttons, 1 link) with 0
+horizontal overflow. That is one more control than the 43 of 0.1: the
+action-rights selector was replaced by a work-mode selector, the simultaneous
+checkbox an early draft added was removed again with the doubling rule, and one
+button was added - `Hand over, I'll watch` - because without it the panel could
+mint a grant only by sending the human away, which left two of six modes
+unreachable. The webmcp smoke asserts both halves of that: choosing
+`sparring-model` without a grant is refused, and the same choice after the
+hand-over click reaches it. The pixel-contrast audit resolves 1611 visible text
+items across 11 rendered states with 0 unsupported backgrounds, 0 failures and a
+minimum contrast of 4.57. The native companion smoke reports 9 WebMCP tools. The
+surface smoke drives the Desktop Companion through the headline turn - the model
+executing under a grant while the human is present and advising, labelled
+`Sparring · model executes` - which is the only surface with a real model seat to
+show it on. The Pages artifact is 35 files and the extension artifact 21, and
+every relative import in both build outputs resolves against the artifact itself.
+
 
 ## Explicitly not yet evidenced
 

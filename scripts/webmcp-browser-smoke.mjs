@@ -714,41 +714,95 @@ try {
   }
   observed.advisorComment = advisorObserved;
 
-  // --- Simultaneous work is opt-in: picking "Both at once" while the
-  // allowance is off must fall to the conflict rule visibly (the select snaps
-  // back to the mode in force), and must reach "parallel" once it is on. ---
+  // --- The security core, proven in the browser: asking the model to
+  // execute without a grant must not give it the click right. The select
+  // snaps back to the mode in force and the page says what is missing. ---
   const pickWorkMode = (choiceId) => `(() => {
     const select = document.querySelector("#work-mode");
     select.value = ${JSON.stringify(choiceId)};
     select.dispatchEvent(new Event("change", { bubbles: true }));
     return {
       selected: select.value,
+      offered: [...select.options].map((option) => option.value),
       modeBadge: document.querySelector("#mode-badge")?.textContent?.trim() ?? null,
-      status: document.querySelector("#system-status")?.textContent ?? null,
-      allowParallel: document.querySelector("#allow-parallel")?.checked ?? null
+      modelLabel: document.querySelector("#agent-label")?.textContent?.trim() ?? null,
+      status: document.querySelector("#system-status")?.textContent ?? null
     };
   })()`;
-  const refusedParallel = await evaluateValue(call, pickWorkMode("parallel"));
+  const refusedExecution = await evaluateValue(call, pickWorkMode("sparring-model"));
   if (
-    refusedParallel.selected !== "cowork-human" ||
-    refusedParallel.allowParallel !== false ||
-    !refusedParallel.status?.includes("Allow both at once")
+    refusedExecution.selected !== "idle" ||
+    refusedExecution.modelLabel !== "Model is advising" ||
+    !refusedExecution.status?.includes("granted job")
   ) {
     throw new Error(
-      `Both at once must be refused and explained while the allowance is off: ${JSON.stringify(refusedParallel)}`
+      `A model without a grant must stay advising: ${JSON.stringify(refusedExecution)}`
     );
   }
-  await dispatchTrustedClick(call, 'document.querySelector("#allow-parallel")', "Allow both at once");
-  const grantedParallel = await evaluateValue(call, pickWorkMode("parallel"));
+  if (refusedExecution.offered.includes("doubling")) {
+    throw new Error(
+      `Doubling must not be offered while the two share no distinct areas: ${JSON.stringify(refusedExecution.offered)}`
+    );
+  }
+  observed.grantRequiredForExecution = refusedExecution;
+
+  // --- ...and with a grant it is reachable. Handing a job over while
+  // staying present is the everyday flow: you say what to do, the model
+  // executes inside the grant, you watch. Doubling then appears exactly
+  // when the two stand on different fields, and not before. ---
+  const pointAt = (fieldId) => `(() => {
+    document.querySelector('[data-field-id="${fieldId}"]')
+      .dispatchEvent(new PointerEvent("pointerenter", { bubbles: true }));
+    return document.querySelector("#focus-label")?.textContent ?? null;
+  })()`;
+  const readPanel = `(() => ({
+    selected: document.querySelector("#work-mode")?.value ?? null,
+    offered: [...document.querySelector("#work-mode").options].map((option) => option.value),
+    modeBadge: document.querySelector("#mode-badge")?.textContent?.trim() ?? null,
+    modelLabel: document.querySelector("#agent-label")?.textContent?.trim() ?? null,
+    humanLabel: document.querySelector("#human-label")?.textContent?.trim() ?? null,
+    areaLabel: document.querySelector("#area-label")?.textContent?.trim() ?? null
+  }))()`;
+
+  await evaluateValue(call, `(() => {
+    const select = document.querySelector("#work-mode");
+    select.value = "sparring-human";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
+  await evaluateValue(call, pointAt("email"));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  await dispatchTrustedClick(call, 'document.querySelector("#hand-over")', "Hand the job over while watching");
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const handedOver = await evaluateValue(call, readPanel);
   if (
-    grantedParallel.selected !== "parallel" ||
-    grantedParallel.modeBadge !== "Both at once"
+    handedOver.selected !== "sparring-model" ||
+    handedOver.modelLabel !== "Model is executing" ||
+    handedOver.humanLabel !== "You are advising"
   ) {
     throw new Error(
-      `Both at once must take effect once it is allowed: ${JSON.stringify(grantedParallel)}`
+      `Handing a job over while staying must reach sparring-model: ${JSON.stringify(handedOver)}`
     );
   }
-  observed.parallelAllowance = { refusedParallel, grantedParallel };
+  if (handedOver.offered.includes("doubling")) {
+    throw new Error(
+      `Doubling must not be offered while both stand on the same field: ${JSON.stringify(handedOver)}`
+    );
+  }
+
+  await evaluateValue(call, pointAt("full-name"));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const disjointAreas = await evaluateValue(call, readPanel);
+  if (!disjointAreas.offered.includes("doubling")) {
+    throw new Error(
+      `Doubling must appear once the two stand on different fields: ${JSON.stringify(disjointAreas)}`
+    );
+  }
+  const doubling = await evaluateValue(call, pickWorkMode("doubling"));
+  if (doubling.selected !== "doubling" || doubling.modeBadge !== "Doubling") {
+    throw new Error(`Doubling must take effect on disjoint areas: ${JSON.stringify(doubling)}`);
+  }
+  await dispatchTrustedClick(call, 'document.querySelector("#return-human")', "Take the job back");
+  observed.handedOverWhileWatching = { handedOver, disjointAreas, doubling };
 
   const summary = validateNativeWebMcpObservation(observed);
   const conversationSummary = validateConversationObservation(conversationObserved);
@@ -767,7 +821,9 @@ try {
     soloExecutionStatus: soloExecution.packet?.status,
     advisorCommentClaim: true,
     advisorCommentHiddenWhenModelStopsAdvising: advisorHiddenAfterModeChange,
-    parallelNeedsExplicitAllowanceClaim: true
+    modelExecutionNeedsGrantClaim: true,
+    handOverWhileWatchingClaim: true,
+    doublingOnDisjointAreasClaim: true
   }, null, 2));
   socket.close();
 } finally {

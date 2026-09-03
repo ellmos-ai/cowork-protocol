@@ -10,7 +10,7 @@
     <main
       class="cowork-cockpit"
       data-cowork-surface="cockpit"
-      data-human-state="here-acting"
+      data-human-state="here-executing"
       data-model-state="away"
       data-relay-state="dormant"
       data-route="off"
@@ -61,7 +61,7 @@
             <p class="eyebrow">Live collaboration</p>
             <h2 id="collaboration-title">Who works now?</h2>
           </div>
-          <span id="mode" class="mode-chip">Nobody is acting</span>
+          <span id="mode" class="mode-chip">Nobody is executing</span>
         </div>
 
         <div class="actor-stage">
@@ -85,10 +85,10 @@
               </span>
               <span class="state-badge human-badge" aria-hidden="true"></span>
             </span>
-            <span class="actor-copy"><small>You</small><strong id="human-label">You are working</strong></span>
+            <span class="actor-copy"><small id="human-area">You</small><strong id="human-label">You are executing</strong></span>
           </button>
 
-          <div id="relay-core" class="relay-core" role="status" aria-live="polite" aria-label="Nobody is acting">
+          <div id="relay-core" class="relay-core" role="status" aria-live="polite" aria-label="Nobody is executing">
             <svg viewBox="0 0 132 92" aria-hidden="true" focusable="false">
               <path class="relay-orbit relay-orbit-top" d="M18 47C29 9 101 9 114 47"/>
               <path class="relay-orbit relay-orbit-bottom" d="M18 47c13 38 85 38 96 0"/>
@@ -97,7 +97,7 @@
               <path class="relay-spark" d="m66 28 6 13 13 6-13 6-6 13-6-13-13-6 13-6Z"/>
               <circle class="relay-pulse" cx="18" cy="47" r="4"/>
             </svg>
-            <strong id="relay-label">Nobody is acting</strong>
+            <strong id="relay-label">Nobody is executing</strong>
             <span id="relay-detail">No one holds the click right right now.</span>
           </div>
 
@@ -127,7 +127,7 @@
               </span>
               <span class="state-badge model-badge" aria-hidden="true"></span>
             </span>
-            <span class="actor-copy"><small>Model</small><strong id="model-label">Model disconnected</strong></span>
+            <span class="actor-copy"><small id="model-area">Model</small><strong id="model-label">Model disconnected</strong></span>
           </button>
         </div>
 
@@ -186,7 +186,7 @@
         </button>
       </nav>
 
-      <div class="protocol-rhythm" id="clarify-steps" aria-label="What this panel clarifies"></div>
+      <div class="protocol-rhythm" id="status-steps" aria-label="What this panel clarifies"></div>
     </main>
     <script src="sidepanel.js" type="module"></script>
   </body>

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { CLARIFY_STEPS } from "../src/index.js";
+import { STATUS_STEPS } from "../src/index.js";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../../..");
 
@@ -16,8 +16,8 @@ const surfaces = [
   "apps/desktop-companion/ui/index.html"
 ];
 
-// Each surface holds the Clarify bar and fills it from the shared vocabulary.
-const clarifyRenderers = [
+// Each surface holds the status bar and fills it from the shared vocabulary.
+const statusRenderers = [
   "apps/formbuilder-showcase/src/app.js",
   "apps/browser-companion/sidepanel.js",
   "apps/desktop-companion/ui/app.js"
@@ -36,24 +36,25 @@ test("every Cowork surface uses the selected Dialogue and Relay identity", async
     assert.match(html, /data-cowork-brand="dialogue-relay"/, surface);
     assert.match(html, /class="cowork-brand-mark"/, surface);
     assert.match(html, /cowork-dialogue-mark\.svg/, surface);
-    assert.match(html, /class="protocol-rhythm" id="clarify-steps"/, surface);
+    assert.match(html, /class="protocol-rhythm" id="status-steps"/, surface);
   }
 });
 
-test("every Cowork surface fills the Clarify bar from the shared vocabulary", async () => {
-  assert.equal(CLARIFY_STEPS.length, 4);
+test("every Cowork surface fills the status bar from the shared vocabulary", async () => {
+  // Three questions per partner, and no more: who is here, on what, in which role.
+  assert.equal(STATUS_STEPS.length, 3);
   assert.deepEqual(
-    CLARIFY_STEPS.map((step) => step.id),
-    ["status", "mode", "attention", "task"]
+    STATUS_STEPS.map((step) => step.id),
+    ["present", "area", "role"]
   );
 
-  for (const renderer of clarifyRenderers) {
+  for (const renderer of statusRenderers) {
     const script = await source(renderer);
     // The words live in packages/reference-ui, never in a surface. A surface
     // that spelled its own steps would drift away from the other two.
-    assert.match(script, /CLARIFY_STEPS/, renderer);
-    assert.match(script, /clarify-steps/, renderer);
-    for (const step of CLARIFY_STEPS) {
+    assert.match(script, /STATUS_STEPS/, renderer);
+    assert.match(script, /status-steps/, renderer);
+    for (const step of STATUS_STEPS) {
       assert.doesNotMatch(script, new RegExp(`["\`']${step.label}["\`']`), renderer);
     }
   }

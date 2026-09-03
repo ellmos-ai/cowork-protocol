@@ -34,10 +34,10 @@ import {
   createProtocolHostDeclaration
 } from "../../../packages/integration-contract/src/index.js";
 import {
-  CLARIFY_STEPS,
   REFERENCE_UI_PROVIDER_ID,
+  STATUS_STEPS,
   statusForWorkModeChoice,
-  WORK_MODE_CHOICES
+  workModeChoices
 } from "../../../packages/reference-ui/src/index.js";
 import {
   createShowcaseSubmission,
@@ -98,10 +98,10 @@ const $ = (selector) =>
 $("#lease-microcopy").textContent =
   `This field-scoped demo lease lasts ${Math.round(LEASE_DURATION_MS / 60_000)} minutes, permits at most ${LEASE_MAX_CALLS} attempts, and ends after a verified page change. ` +
   `The Builder's own delegation (Build tab) lets you set your own call budget and duration.`;
-// Every visible word about status, mode and the model's job comes from
+// Every visible word about presence, area, role and mode comes from
 // packages/reference-ui; this surface never writes its own status labels.
-$("#clarify-steps").replaceChildren(
-  ...CLARIFY_STEPS.map((step) => {
+$("#status-steps").replaceChildren(
+  ...STATUS_STEPS.map((step) => {
     const item = document.createElement("span");
     const dot = document.createElement("i");
     dot.setAttribute("aria-hidden", "true");
@@ -110,15 +110,27 @@ $("#clarify-steps").replaceChildren(
     return item;
   })
 );
-const [, MODE_STEP, , TASK_STEP] = CLARIFY_STEPS;
-$("#work-mode-heading-text").textContent = MODE_STEP.label;
-$("#work-mode-select-label").textContent = MODE_STEP.question;
-$("#task-heading-text").textContent = TASK_STEP.label;
-$("#work-mode").replaceChildren(
-  ...WORK_MODE_CHOICES.map((choice) => new Option(choice.label, choice.id))
-);
+const [, AREA_STEP, ROLE_STEP] = STATUS_STEPS;
+$("#work-mode-heading-text").textContent = ROLE_STEP.label;
+$("#work-mode-select-label").textContent = ROLE_STEP.question;
+// The offered modes depend on the live state (doubling only where the two
+// are on different areas), so the option list is rebuilt on every render.
+let renderedWorkModeChoices = [];
+function renderWorkModeChoices(workMode) {
+  const choices = workModeChoices(workMode);
+  const unchanged =
+    choices.length === renderedWorkModeChoices.length &&
+    choices.every((choice, index) => choice.id === renderedWorkModeChoices[index].id);
+  if (!unchanged) {
+    renderedWorkModeChoices = choices;
+    $("#work-mode").replaceChildren(
+      ...choices.map((choice) => new Option(choice.label, choice.id))
+    );
+  }
+  return choices;
+}
 const workModeLabel = (choiceId) =>
-  WORK_MODE_CHOICES.find((choice) => choice.id === choiceId)?.label ?? String(choiceId);
+  renderedWorkModeChoices.find((choice) => choice.id === choiceId)?.label ?? String(choiceId);
 
 const fields = [...document.querySelectorAll(".form-field[data-field-id]")];
 const schemaFields = new Map(
@@ -214,6 +226,29 @@ function reportCompanionSurfaceVisibility(visibility) {
       return pullAllCompanionDeltas();
     });
   return companionSurfaceQueue;
+}
+
+function fieldLabelForTarget(targetId) {
+  const fieldId = String(targetId ?? "").replace("form-field:", "");
+  return fields.find((field) => field.dataset.fieldId === fieldId)?.dataset.label ?? null;
+}
+
+// The area each partner claims is observed, never configured: the human is
+// on the field the attention lens points at, the model on the field its
+// lease covers. The wording for it lives in packages/reference-ui.
+function currentAreas(state) {
+  return {
+    human: {
+      ...state.human,
+      area: state.human.availability === "here" ? focusPacket?.focus?.label ?? null : null
+    },
+    model: {
+      ...state.model,
+      area: state.lease
+        ? fieldLabelForTarget(state.lease.allowedTargetIds?.[0]) ?? state.lease.goal
+        : null
+    }
+  };
 }
 
 function authorityState(nextSession = session) {
@@ -820,7 +855,8 @@ function render() {
     "clock-tick",
     transitionShowcaseSession(session, {
       type: "CLOCK_TICK",
-      now
+      now,
+      ...currentAreas(session)
     }),
     { at: now }
   );
@@ -908,12 +944,13 @@ function render() {
   $("#talk").disabled = companionConnected;
   $("#toggle-agent").textContent =
     session.model.availability === "here" ? "Pause model" : "Resume model";
+  renderWorkModeChoices(session.workMode);
   $("#work-mode").value = view.choiceId;
-  $("#allow-parallel").checked = view.allowParallel;
   $("#mode-detail").textContent = view.modeDetail;
   $("#authority-label").textContent = view.authorityLabel;
-  $("#task-badge").textContent = view.taskLabel;
-  $("#task-detail").textContent = view.taskDetail;
+  $("#role-badge").textContent = view.roleLabel;
+  $("#role-detail").textContent = view.roleDetail;
+  $("#area-label").textContent = `${AREA_STEP.label}: ${view.areaLabel}`;
 
   const humanHere = view.humanState.startsWith("here");
   const modelHere = view.modelState.startsWith("here");
@@ -1256,26 +1293,29 @@ function executeOffer(event, offer) {
   }
 }
 
-function startAway(duration) {
+// The one grant this panel can mint: the fixed demo lease over the focused
+// field. Both handover buttons use it - staying or leaving changes who is
+// present, never what the model is allowed to do.
+function mintDemoLease() {
   if (session.model.availability !== "here") {
     setStatus("SESSION_PAUSED: bring the model back in before handing the work over.");
-    return;
+    return null;
   }
   if (!focusPacket) {
-    setStatus("Focus a field before granting a solo lease.");
-    return;
+    setStatus("Point at a field before handing a job over.");
+    return null;
   }
   const goal = $("#lease-goal").value.trim();
   if (!goal) {
-    setStatus("A solo lease needs a concrete task.");
-    return;
+    setStatus("A handed-over job needs a concrete task.");
+    return null;
   }
   const now = Date.now();
-  const lease = {
+  return {
     leaseId: `lease-${now}`,
     // GAP-01: a lease is a delegation grant now, not merely a scoped
     // capability list - authorizeSoloAction() requires a real human origin.
-    // startAway() is reachable only from real button/actor clicks - their
+    // Both callers are reachable only from real button/actor clicks - their
     // handlers check event.isTrusted - so "human-click" is accurate here.
     origin: "human-click",
     goal,
@@ -1286,6 +1326,12 @@ function startAway(duration) {
     pageVersion,
     expiresAt: new Date(now + LEASE_DURATION_MS).toISOString()
   };
+}
+
+function startAway(duration) {
+  const lease = mintDemoLease();
+  if (lease === null) return;
+  const at = new Date().toISOString();
   leaseCallsUsed = 0;
   commitSession(
     "human-away",
@@ -1293,12 +1339,32 @@ function startAway(duration) {
       type: "HUMAN_AWAY",
       duration,
       lease,
-      now: new Date(now).toISOString()
+      area: fieldLabelForTarget(lease.allowedTargetIds[0]) ?? lease.goal,
+      now: at
     }),
-    { causeRefs: [`lease:${lease.leaseId}`], at: new Date(now).toISOString() }
+    { causeRefs: [`lease:${lease.leaseId}`], at }
   );
   setStatus("The model works alone only inside the displayed two-minute field lease.");
   render();
+}
+
+// Hand the job over and stay: the everyday case - you say what to do, the
+// model executes inside the grant, you watch and advise.
+function handOverWhileWatching() {
+  const lease = mintDemoLease();
+  if (lease === null) return;
+  const status = statusForWorkModeChoice("sparring-model", session);
+  leaseCallsUsed = 0;
+  commitSession(
+    "work-handed-over",
+    transitionShowcaseSession(
+      { ...session, lease, leaseCallsUsed: 0 },
+      { type: "SET_STATUS", human: status.human, model: status.model }
+    ),
+    { causeRefs: [`lease:${lease.leaseId}`] }
+  );
+  render();
+  setStatus(`${$("#mode-detail").textContent} ${$("#authority-label").textContent}.`);
 }
 
 function executeSoloAction({ capabilityId, targetId, value }) {
@@ -1381,6 +1447,7 @@ function returnHuman() {
     transitionShowcaseSession(session, {
       type: "HUMAN_RETURNED",
       receipts,
+      area: focusPacket?.focus?.label ?? null,
       pendingQuestion: offers.length ? "Review the remaining action offer?" : null
     })
   );
@@ -1410,7 +1477,7 @@ function toggleAgent() {
 // away. The cycle starts from the *resolved* status, so a model whose
 // authority the conflict rule already took moves on from what is displayed.
 function cycleActorStatus(side) {
-  const requested = nextActorStatus(session.workMode[side]);
+  const requested = { ...nextActorStatus(session.workMode[side]), area: session[side].area };
   commitSession(
     `${side}-status-changed`,
     transitionShowcaseSession(session, { type: "SET_STATUS", [side]: requested }),
@@ -1679,10 +1746,7 @@ $("#work-mode").addEventListener("change", (event) => {
     transitionShowcaseSession(session, {
       type: "SET_STATUS",
       human: picked.human,
-      model: picked.model,
-      // The checkbox owns simultaneity. Picking "Both at once" while it is
-      // off must fall to the conflict rule visibly, not switch it on.
-      allowParallel: picked.allowParallel && $("#allow-parallel").checked
+      model: picked.model
     }),
     { payload: { choiceId } }
   );
@@ -1692,25 +1756,8 @@ $("#work-mode").addEventListener("change", (event) => {
       ? `${workModeLabel(choiceId)}.`
       : `${workModeLabel(choiceId)} is not in force: ${workModeLabel(resolved)}. ` +
         (session.workMode.authorityLapsed
-          ? "The model needs a granted job (Handoff) before it can work alone."
-          : 'Switch on "Allow both at once" to work simultaneously.')
-  );
-  render();
-});
-
-$("#allow-parallel").addEventListener("change", (event) => {
-  commitSession(
-    "parallel-changed",
-    transitionShowcaseSession(session, {
-      type: "SET_STATUS",
-      allowParallel: event.target.checked
-    }),
-    { payload: { allowParallel: event.target.checked } }
-  );
-  setStatus(
-    event.target.checked
-      ? "Both may act at the same time, on separate targets."
-      : "Simultaneous work is off. The hand on the mouse keeps the click right."
+          ? "A model executes only inside a granted job - hand one over below."
+          : "Both execute at once only on different areas.")
   );
   render();
 });
@@ -1816,6 +1863,9 @@ $("#open-companion").addEventListener("click", () => {
 $("#conversation-form").addEventListener("submit", (event) => {
   event.preventDefault();
   void sendConversationTurn($("#conversation-input").value);
+});
+$("#hand-over").addEventListener("click", (event) => {
+  if (event.isTrusted) handOverWhileWatching();
 });
 $("#away-short").addEventListener("click", (event) => {
   if (event.isTrusted) startAway("short");

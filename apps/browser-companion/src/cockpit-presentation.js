@@ -63,20 +63,20 @@ const CONTEXT_LABELS = Object.freeze([
 ]);
 
 /**
- * The four status states one actor cycles through when its figure is clicked.
- * Availability plus role - there is no separate action-rights control, the
- * work mode and the click right follow from these two variables alone.
+ * The four statuses one figure cycles through. Availability answers "who is
+ * here", role answers "executing or advising"; the area is the third question
+ * and travels with the actor, so it is never part of the cycle.
  */
 export const ACTOR_STATUS_CYCLE = Object.freeze([
-  Object.freeze({ availability: "here", role: "acting" }),
-  Object.freeze({ availability: "here", role: "observing" }),
-  Object.freeze({ availability: "standby", role: "observing" }),
-  Object.freeze({ availability: "away", role: "observing" })
+  Object.freeze({ availability: "here", role: "executing" }),
+  Object.freeze({ availability: "here", role: "advising" }),
+  Object.freeze({ availability: "standby", role: "advising" }),
+  Object.freeze({ availability: "away", role: "advising" })
 ]);
 
 /**
  * Next status in the cycle. Pass the *resolved* actor (workMode.human /
- * .model), not the stored one: once the conflict rule has taken the model's
+ * .model), not the stored one: once a missing grant has taken the model's
  * authority away, the figure must cycle on from what the panel shows.
  */
 export function nextActorStatus(actor) {
@@ -87,6 +87,23 @@ export function nextActorStatus(actor) {
   );
   if (index < 0) throw new TypeError("Cockpit requires a valid actor status");
   return ACTOR_STATUS_CYCLE[(index + 1) % ACTOR_STATUS_CYCLE.length];
+}
+
+/**
+ * The next status this surface can actually deliver, skipping the ones it
+ * cannot grant - a seat cannot be clicked into existence, and execution
+ * cannot be clicked past a missing grant. Returns null when the actor has
+ * nowhere to go.
+ */
+export function nextAvailableStatus(actor, unavailable) {
+  let next = nextActorStatus(actor);
+  // Only the other three: landing back on the status we are already on is
+  // nowhere to go, not a move.
+  for (let step = 0; step < ACTOR_STATUS_CYCLE.length - 1; step += 1) {
+    if (!unavailable(next)) return next;
+    next = nextActorStatus(next);
+  }
+  return null;
 }
 
 export function buildCockpitPresentation(input) {
@@ -108,8 +125,7 @@ export function buildCockpitPresentation(input) {
     workMode = resolveWorkMode({
       human: input.human,
       model: input.model,
-      allowParallel: input.allowParallel === true,
-      modelAuthorityValid: input.modelAuthorityValid !== false
+      modelAuthorityValid: input.modelAuthorityValid === true
     });
   } catch (error) {
     throw new TypeError("Cockpit requires a valid actor status", { cause: error });
@@ -126,6 +142,8 @@ export function buildCockpitPresentation(input) {
     ...route,
     ...execution,
     ...presentation,
+    authorityLapsed: workMode.authorityLapsed,
+    doublingAvailable: workMode.doublingAvailable,
     contextLevel: input.contextLevel,
     contextLabel: CONTEXT_LABELS[input.contextLevel]
   };

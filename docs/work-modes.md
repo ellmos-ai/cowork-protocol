@@ -1,141 +1,149 @@
-# Work modes: who is here, who works, who may click
+# Work modes: who is here, on what, in which role
 
 Cowork Protocol 0.2 replaces the interaction rhythm *Point → Offer → Click →
-Verify* and the separate "Action rights" setting with one matrix.
+Verify* and the separate "Action rights" setting with three questions per
+partner. Nothing else is configured, and the work mode is only a name for a
+combination of answers.
 
 The old rhythm mixed the two participants into one line. "Point" is something a
 human does, "Offer" something a model does, "Click" a human again. It described
-a single scripted exchange, not the state the session is actually in. Worse, the
-same situation could be entered twice: a paused model was reachable both through
-the presence control and through the action-rights menu, and the two could
-disagree.
+one scripted exchange, not the state the session is in. And the same situation
+could be entered twice: a paused model was reachable through the presence
+control and through the action-rights menu, and the two could disagree.
 
-The new model asks four questions, in this order:
+## The three questions
 
-1. **Clarify your status** — who is here?
-2. **Clarify how you work together** — who acts, who advises?
-3. **Clarify what the model sees** — how much context, through which lens?
-4. **Clarify the model's job** — what may it do?
-
-Only the first two are chosen. The other two follow, and the click right follows
-with them.
-
-## The two status variables
-
-Each actor — the human and the model — carries exactly two values.
-
-| Variable | Values | Meaning |
+| Question | Field | Values |
 | --- | --- | --- |
-| `availability` | `here` · `standby` · `away` | Can this actor take part right now? |
-| `role` | `acting` · `observing` | What is it doing while it is here? |
+| Present? | `availability` | `here` · `standby` · `away` |
+| Working on what? | `area` | the page, the task, the focused field, the goal a grant names, or `null` |
+| Role? | `role` | `executing` (holds authority) · `advising` (suggests) |
 
-The two actors use the same vocabulary. A human on `standby` stepped away for a
-moment; a model on `standby` is attached but not working. A human that is `away`
-left; a model that is `away` is disconnected. This symmetry is the point: the
-panel shows two figures, and both are read the same way.
+Both partners answer the same three. A human on `standby` stepped away for a
+moment; a model on `standby` is connected but not working. A human that is
+`away` left; a model that is `away` has no seat connected at all.
 
-`role` only means anything while an actor is `here`. Availability answers *can
-you*, role answers *do you*.
+`role` only means anything while a partner is `here`. Availability answers *can
+you*, role answers *are you*, area answers *on what*.
 
-## The derived work mode
+## The modes are names, not settings
 
-`resolveWorkMode()` in `packages/core` turns the four values plus one switch
-into the whole rest of the state. Nothing else in the system decides who may
-click.
+`resolveWorkMode()` in `packages/core` reads the six values and returns the
+mode, the authority holder and every action right.
 
-| Human | Model | Simultaneous | Work mode | Authority |
-| --- | --- | --- | --- | --- |
-| here, acting | here, acting | allowed | `parallel` | both |
-| here, acting | here, acting | not allowed | `cowork` | human |
-| here, acting | here, observing | — | `cowork` | human |
-| here, acting | standby or away | — | `human-solo` | human |
-| here, observing | here, acting | — | `cowork` | model |
-| standby or away | here, acting | — | `model-solo` | model |
-| here, observing | here, observing | — | `idle` | nobody |
-| here, observing | standby or away | — | `idle` | nobody |
-| standby or away | here, observing | — | `idle` | nobody |
-| standby or away | standby or away | — | `idle` | nobody |
+| Both here | Areas | Mode | Authority |
+| --- | --- | --- | --- |
+| one executes, one advises | any | **Sparring** | the one executing |
+| both execute | different | **Doubling** | both, each in its own area |
+| both execute | same or unknown | **Sparring** | human |
+| neither executes | any | Idle | nobody |
 
-Three rules make the table readable:
+| Partner not here | Mode | Authority |
+| --- | --- | --- |
+| human executes, model on standby or no seat | **You work alone** | human |
+| model executes, human on standby or away | **Model works alone** | model |
+| nobody executes | Idle | nobody |
 
-- **Solo means the partner is not here.** Human solo is not "the model is
-  forbidden to act"; it is "the model is not in the room". A model that *is*
-  here and merely watches makes this cowork, not solo — because it can still
-  speak up.
-- **Cowork means one acts and the other advises**, and which one can change
-  mid-session without anything being reconfigured.
-- **Both at once needs an explicit allowance.** Simultaneous authority is only
-  useful when the two are not in each other's way ("I do this, you do that").
-  It is off by default.
+**Sparring** is the back-and-forth: at any moment one partner acts and the other
+advises, and the authority swaps as often as you like. *Advisor* is the same
+state named by direction: a model that advises is the observation mode with
+suggestions; a human that advises is a human directing a working model. One
+state, two viewpoints, so the surfaces show it as one mode with the direction
+spelled out.
+
+**Doubling** is genuine simultaneity, and it is offered only when the two are on
+*different* areas. That is not a preference switch: same area means they would
+be in each other's way, so the surfaces do not offer doubling at all there. An
+unclaimed area is not a disjoint one; without a named area, nothing proves the
+two are apart, and the human keeps authority.
 
 ### Authority is the click right
 
-`authority` is not a fifth setting. It is a name for the answer to "who acts",
-and it *is* the permission to click, type and change the page:
+`authority` is not a fourth setting. It is a name for the answer to "who is
+executing", and it *is* the permission to click, type and change the page:
 
 ```
-canExecute(actor) = authority is this actor (or both)
-canPropose(actor) = actor is here and does not hold authority
+canExecute(partner) = authority is this partner (or both)
+canPropose(partner) = partner is here and does not hold authority
 ```
 
-That is the whole rights model. A model with authority may act within its scope;
-a model without it may only propose, and a human click turns the proposal into a
-change. There is no separate "Action rights" control any more, because there is
-nothing left for it to decide. The old four action modes map onto the matrix
-without remainder:
+That is the whole rights model. There is no separate "Action rights" control any
+more, because there is nothing left for it to decide. The old four action modes
+map onto the matrix without remainder:
 
 | Old `actionMode` | New state |
 | --- | --- |
-| `explain` | model `here` + `observing` |
-| `suggest` | model `here` + `observing` — the same state |
-| `delegated` | model `here` + `acting` (authority model) |
+| `explain` | model `here` + `advising` |
+| `suggest` | model `here` + `advising` — the same state, proposing |
+| `delegated` | model `here` + `executing`, inside a grant |
 | `paused` | model `standby` |
 
 `explain` and `suggest` were never two things. A model that watches and explains
 is a model that can also suggest; whether it phrases its next sentence as a
 comment or as an offer is a question about that sentence, not about the session.
-Merging them removes one of the double bookings that motivated this rework.
+
+### A model executes only inside a grant or a lease
+
+This is the security core and it is not softened anywhere.
+
+A model may hold authority only while a valid authority record covers it: a
+delegation grant or a solo lease, with a human-authored goal, a call budget and
+an expiry. `resolveWorkMode()` takes that as `modelAuthorityValid`. Without it
+the model is `advising`, its proposals still need a human click, and the
+resolver reports `authorityLapsed` so the surface can say why.
+
+**A present human is never a substitute for the record.** Being in the room does
+not authorize the model; it only means a human can intervene. The record is what
+bounds *what* the model may do and *for how long*, and that bound is the point.
+
+The human side needs no record. A human who is present and executing is simply
+using their own machine.
 
 ### The conflict rule: the hand on the mouse wins
 
-If both actors are set to `acting` and simultaneous work is not allowed, the
-human keeps authority and the model falls back to advising. This is not a
-tie-break invented for the table; it is the return path of the typical session:
+If both partners execute and their areas are the same or unknown, the human
+keeps authority and the model falls back to advising. This is not a tie-break
+invented for the table; it is the return path of the typical session:
 
-> The human writes a prompt. The model works, the human watches. The human signs
-> off and leaves; the model finishes the agreed job alone. The human comes back —
-> by click or by voice — and now the model advises while the human acts.
+> The human writes a prompt. That mints a grant, so the model executes while the
+> human watches. The human signs off and leaves; the model finishes the granted
+> job alone. The human comes back, by click or by voice, picks up the same area,
+> and now the model advises while the human executes.
 
-Nothing is reconfigured at any step. The human's return sets one variable, and
-the mode, the authority and the model's job all follow.
+Nothing is configured at any step, which is the whole design goal: it should
+work without thinking about it. Each step changes one answer, and the mode, the
+authority and the model's role follow.
 
-### Authority needs a record, not just an intent
+## The status bar
 
-A model set to `acting` while the human is away has to show *why* it may act.
-That record is the solo lease, or a delegation grant: human-authored goal,
-bounded scope, limited number of calls, an expiry. `resolveWorkMode()` takes it
-as `modelAuthorityValid`; if the record is missing or expired, the model falls
-back to `observing` and the resolver reports `authorityLapsed`. The role is the
-intent, the record is the evidence, and only evidence grants the click.
+Every surface shows the same three-step bar, filled from one shared vocabulary
+(`STATUS_STEPS` in `packages/reference-ui`):
 
-While the human is present, presence *is* the living authority — the human is
-right there and can stop anything — so a cowork session with the model acting
-needs no lease.
+**Present · Working on · Role**
 
-## The four clarify steps as a bar
+This replaced a four-step "Clarify" bar during the rework. The fourth step named
+the model's job, which is not a fourth question: the job *is* the role, read off
+the same answer. A bar that lists a derived value beside the values it derives
+from invites the reader to set it, which is the mistake this rework removes.
+Attention and token budget belong under "Working on", because that is what they
+scope.
 
-Every surface shows the same four-step bar, filled from one shared vocabulary
-(`CLARIFY_STEPS` in `packages/reference-ui`):
+## The model seat is its own axis
 
-| Step | Label | Answers |
+Whether a model client is connected at all is a different question from what an
+attached model is doing:
+
+| Seat | Availability | Meaning |
 | --- | --- | --- |
-| 1 | Your status | who is here — the two figures |
-| 2 | How we work | the work mode and the simultaneous switch |
-| 3 | What the model sees | the attention lens |
-| 4 | The model's job | advise, work, stand by — derived, shown not chosen |
+| disconnected | `away` | no model client, nothing to engage |
+| connected | `standby` | attached, deliberately not working |
+| connected | `here` | taking part, executing or advising |
 
-Step 4 is a readout. It is in the bar because the *question* matters to the
-human even though the *answer* is computed.
+Keeping these apart matters because they have different remedies. A model on
+standby is woken with a click. A model with no seat needs a seat: the Desktop
+Companion, a same-origin model host, an OpenAI-compatible endpoint, or a
+WebMCP-capable browser agent. The browser extension has no seat of its own, and
+says so rather than pretending.
 
 ## Transitions
 
@@ -144,31 +152,17 @@ same function.
 
 | Trigger | Effect |
 | --- | --- |
-| Click a figure | cycles that actor's status: `here-acting` → `here-observing` → `standby` → `away` → … The work mode follows. |
-| Pick a work mode | `statusForWorkModeChoice()` sets both actors' status. The figures follow. |
-| A prompt, typed or spoken | hands the model the acting role for that job; the human keeps watching. |
-| "I'm briefly away" / "away longer" | human `standby` / `away`, with a goal that mints the authority record. |
-| "I'm back", or any click on the page | human returns to `here` + `acting`; the conflict rule takes authority back. |
-| The authority record expires | the model returns to advising, and the session says so instead of stopping silently. |
+| Click a figure | cycles that partner's status: `here-executing` → `here-advising` → `standby` → `away` → … |
+| Pick a mode | `statusForWorkModeChoice()` sets both partners' status and carries the areas over |
+| A prompt, typed or spoken | mints a grant for that job, so the model executes and the human watches |
+| Focus a field | sets the human's area, which is also what decides whether doubling is possible |
+| "I'm briefly away" / "away longer" | human `standby` / `away`, with a goal that mints the authority record |
+| "I'm back", or any click on the page | human returns to executing; the conflict rule takes authority back |
+| The record expires | the model returns to advising, and the session says so instead of stopping silently |
 
 Clicking a figure is how you change your partner's status, because the person
-clicking is always the human: clicking the model figure parks or wakes the model,
-clicking your own figure says whether you are working or watching.
-
-## The attention lens is not a mode
-
-The lens answers "what reaches the model" and has two jobs that pull in
-different directions:
-
-- **Attention** — put the right thing in front of the model for the current
-  task. A pointer-following lens suits a live pair; a click-pinned lens suits a
-  model working alone through a list.
-- **Token economy** — every level of context costs. The lens is where that cost
-  is spent deliberately.
-
-Because neither is the same question as "who may click", the lens stays
-adjustable and is not folded into the work mode. It is step 3 of the bar, not a
-property of step 2.
+clicking is always the human: clicking the model figure parks or wakes the
+model, clicking your own figure says whether you are executing or advising.
 
 ## What did not change
 
@@ -183,9 +177,9 @@ The 0.1 wire carries a single "who is working" bit, and it sits on the agent
 (`agentEngagement`). Plain 0.1 cowork with no engagement field is the
 offer-and-click rhythm, so it reads back as the human holding the click right.
 
-The finer distinctions the matrix adds — who holds authority, both at once,
-nobody acting — live in the new `workMode` field and in the surfaces, not on the
-0.1 wire.
+The finer distinctions the matrix adds — who holds authority, doubling, the
+area, nobody executing — live in the new `workMode` field and in the surfaces,
+not on the 0.1 wire.
 
 ## Where this lives
 
@@ -198,5 +192,5 @@ nobody acting — live in the new `workMode` field and in the surfaces, not on t
 | Desktop Companion | `apps/desktop-companion/` |
 
 No surface writes its own status wording. Three surfaces that spell their own
-labels drift apart within a week; one vocabulary module is why the side panel and
-the Companion say "Model is advising" in the same words.
+labels drift apart within a week; one vocabulary module is why the side panel
+and the Companion say "Model is advising" in the same words.

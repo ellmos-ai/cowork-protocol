@@ -1,103 +1,5 @@
 export const REFERENCE_UI_PROVIDER_ID = "cowork-reference-ui";
 
-const MODE_LABELS = Object.freeze({
-  cowork: "Cowork",
-  "agent-solo": "Agent solo",
-  "human-solo": "Human solo",
-  idle: "Idle"
-});
-
-const HUMAN_PRESENTATIONS = Object.freeze({
-  present: Object.freeze({ humanTone: "green", humanLabel: "Human present" }),
-  "afk-short": Object.freeze({
-    humanTone: "yellow",
-    humanLabel: "Human briefly away"
-  }),
-  "afk-long": Object.freeze({
-    humanTone: "red",
-    humanLabel: "Human away for longer"
-  })
-});
-
-const COLLABORATION_HUMANS = Object.freeze({
-  present: Object.freeze({ humanLabel: "You are here", humanBadge: "●" }),
-  "afk-short": Object.freeze({
-    humanLabel: "You are briefly away",
-    humanBadge: "◷"
-  }),
-  "afk-long": Object.freeze({ humanLabel: "You are away", humanBadge: "↗" })
-});
-
-const COLLABORATION_MODELS = Object.freeze({
-  collaborating: Object.freeze({ modelLabel: "Model collaborating", modelBadge: "✓" }),
-  observing: Object.freeze({ modelLabel: "Model observing", modelBadge: "◉" }),
-  paused: Object.freeze({ modelLabel: "Model paused", modelBadge: "Ⅱ" })
-});
-
-const COLLABORATION_MODES = Object.freeze({
-  cowork: Object.freeze({ modeLabel: "Working together", relayState: "live" }),
-  "human-solo": Object.freeze({ modeLabel: "Human working solo", relayState: "dormant" }),
-  "agent-solo": Object.freeze({ modeLabel: "Model working solo", relayState: "to-model" }),
-  idle: Object.freeze({ modeLabel: "Both paused", relayState: "dormant" })
-});
-
-export function buildCollaborationPresentation({
-  humanPresence,
-  agentEngagement,
-  effectiveMode
-}) {
-  const human = COLLABORATION_HUMANS[humanPresence];
-  let model = COLLABORATION_MODELS[agentEngagement];
-  let mode = COLLABORATION_MODES[effectiveMode];
-  if (!human || !model || !mode) {
-    throw new TypeError("Collaboration presentation requires valid actor and mode values");
-  }
-  if (agentEngagement === "paused") {
-    mode = humanPresence === "present"
-      ? COLLABORATION_MODES["human-solo"]
-      : COLLABORATION_MODES.idle;
-  } else if (agentEngagement === "observing" && effectiveMode === "cowork") {
-    mode = Object.freeze({ modeLabel: "Model watching", relayState: "watching" });
-  } else if (agentEngagement === "observing" && effectiveMode === "agent-solo") {
-    mode = Object.freeze({ modeLabel: "Model waiting", relayState: "dormant" });
-  } else if (
-    effectiveMode === "idle" &&
-    humanPresence !== "present" &&
-    agentEngagement !== "paused"
-  ) {
-    mode = Object.freeze({ modeLabel: "Model waiting", relayState: "dormant" });
-    if (agentEngagement === "collaborating") {
-      model = Object.freeze({ ...model, modelLabel: "Model ready" });
-    }
-  }
-  return Object.freeze({
-    humanState: humanPresence,
-    ...human,
-    modelState: agentEngagement,
-    ...model,
-    ...mode
-  });
-}
-
-export function buildReferenceSurfacePresentation({
-  humanPresence,
-  agentPresence,
-  effectiveMode
-}) {
-  const human = HUMAN_PRESENTATIONS[humanPresence];
-  const modeLabel = MODE_LABELS[effectiveMode];
-  if (!human || !modeLabel || !["active", "paused"].includes(agentPresence)) {
-    throw new TypeError("Reference UI requires valid Cowork presence and mode values");
-  }
-  return Object.freeze({
-    providerId: REFERENCE_UI_PROVIDER_ID,
-    humanIcon: "●",
-    modelIcon: "A",
-    ...human,
-    agentLabel: agentPresence === "paused" ? "Agent paused" : "Agent active",
-    modeLabel
-  });
-}
 
 /* ------------------------------------------------------------------ *
  * Work-mode vocabulary (v0.2)
@@ -106,43 +8,42 @@ export function buildReferenceSurfacePresentation({
  * reads its wording from here. Never write these strings into a surface.
  * ------------------------------------------------------------------ */
 
-/** The four questions a Cowork surface answers, in reading order. */
-export const CLARIFY_STEPS = Object.freeze([
-  Object.freeze({ id: "status", label: "Your status", question: "Clarify who is here" }),
-  Object.freeze({ id: "mode", label: "How we work", question: "Clarify how you work together" }),
-  Object.freeze({ id: "attention", label: "What the model sees", question: "Clarify what reaches the model" }),
-  Object.freeze({ id: "task", label: "The model's job", question: "Clarify what the model may do" })
+/** The three questions a Cowork surface answers, in reading order. */
+export const STATUS_STEPS = Object.freeze([
+  Object.freeze({ id: "present", label: "Present", question: "Who is here right now" }),
+  Object.freeze({ id: "area", label: "Working on", question: "Which page, task or field" }),
+  Object.freeze({ id: "role", label: "Role", question: "Executing or advising" })
 ]);
 
 const HUMAN_STATUS = Object.freeze({
-  "here-acting": Object.freeze({ label: "You are working", badge: "●", tone: "green" }),
-  "here-observing": Object.freeze({ label: "You are watching", badge: "◉", tone: "green" }),
+  "here-executing": Object.freeze({ label: "You are executing", badge: "●", tone: "green" }),
+  "here-advising": Object.freeze({ label: "You are advising", badge: "◉", tone: "green" }),
   standby: Object.freeze({ label: "You are briefly away", badge: "◷", tone: "yellow" }),
   away: Object.freeze({ label: "You are away", badge: "↗", tone: "red" })
 });
 
 const MODEL_STATUS = Object.freeze({
-  "here-acting": Object.freeze({ label: "Model is working", badge: "✓", tone: "green" }),
-  "here-observing": Object.freeze({ label: "Model is advising", badge: "◉", tone: "green" }),
+  "here-executing": Object.freeze({ label: "Model is executing", badge: "✓", tone: "green" }),
+  "here-advising": Object.freeze({ label: "Model is advising", badge: "◉", tone: "green" }),
   standby: Object.freeze({ label: "Model on standby", badge: "Ⅱ", tone: "yellow" }),
-  away: Object.freeze({ label: "Model disconnected", badge: "○", tone: "red" })
+  away: Object.freeze({ label: "No model connected", badge: "○", tone: "red" })
 });
 
 const WORK_MODES = Object.freeze({
-  "cowork-human": Object.freeze({
-    modeLabel: "Together · you act",
+  "sparring-human": Object.freeze({
+    modeLabel: "Sparring · you execute",
     relayState: "watching",
-    modeDetail: "You click. The model watches and suggests."
+    modeDetail: "You act, the model advises. Say the word and it swaps."
   }),
-  "cowork-model": Object.freeze({
-    modeLabel: "Together · model acts",
+  "sparring-model": Object.freeze({
+    modeLabel: "Sparring · model executes",
     relayState: "live",
-    modeDetail: "The model acts on your commands while you watch."
+    modeDetail: "The model acts inside its granted job, you advise."
   }),
-  parallel: Object.freeze({
-    modeLabel: "Both at once",
+  doubling: Object.freeze({
+    modeLabel: "Doubling",
     relayState: "live",
-    modeDetail: "Both act at the same time, on separate targets."
+    modeDetail: "Both act at once, each confined to a different area."
   }),
   "human-solo": Object.freeze({
     modeLabel: "You work alone",
@@ -152,31 +53,31 @@ const WORK_MODES = Object.freeze({
   "model-solo": Object.freeze({
     modeLabel: "Model works alone",
     relayState: "to-model",
-    modeDetail: "The model finishes the agreed job while you are away."
+    modeDetail: "The model finishes its granted job while you are away."
   }),
   idle: Object.freeze({
-    modeLabel: "Nobody is acting",
+    modeLabel: "Nobody is executing",
     relayState: "dormant",
     modeDetail: "No one holds the click right right now."
   })
 });
 
-const MODEL_TASKS = Object.freeze({
-  acting: Object.freeze({
-    taskLabel: "Work",
-    taskDetail: "Acts within the agreed scope and reports every change."
+const MODEL_ROLES = Object.freeze({
+  executing: Object.freeze({
+    roleLabel: "Executing",
+    roleDetail: "Acts inside the granted goal and budget, and reports every change."
   }),
   advising: Object.freeze({
-    taskLabel: "Advise",
-    taskDetail: "Explains and proposes. Nothing changes without your click."
+    roleLabel: "Advising",
+    roleDetail: "Explains and proposes. Nothing changes without your click."
   }),
   standby: Object.freeze({
-    taskLabel: "Stand by",
-    taskDetail: "Proposes nothing until you bring it back in."
+    roleLabel: "Standing by",
+    roleDetail: "Proposes nothing until you bring it back in."
   }),
   off: Object.freeze({
-    taskLabel: "Disconnected",
-    taskDetail: "No model is attached to this session."
+    roleLabel: "No seat",
+    roleDetail: "No model is connected to this session."
   })
 });
 
@@ -185,14 +86,27 @@ function statusKey(actor) {
 }
 
 function modeKey(workMode) {
-  if (workMode?.mode !== "cowork") return workMode?.mode;
-  return workMode.authority === "model" ? "cowork-model" : "cowork-human";
+  if (workMode?.mode !== "sparring") return workMode?.mode;
+  return workMode.authority === "model" ? "sparring-model" : "sparring-human";
 }
 
-function modelTaskKey(workMode) {
+function modelRoleKey(workMode) {
   if (workMode.model.availability === "away") return "off";
   if (workMode.model.availability === "standby") return "standby";
-  return workMode.model.role === "acting" ? "acting" : "advising";
+  return workMode.model.role;
+}
+
+function describeAreas(workMode) {
+  const humanArea = workMode.human.area;
+  const modelArea = workMode.model.area;
+  if (humanArea === null && modelArea === null) return "Nothing claimed yet";
+  if (humanArea === modelArea) return `Both on ${humanArea}`;
+  return [
+    humanArea === null ? null : `You: ${humanArea}`,
+    modelArea === null ? null : `Model: ${modelArea}`
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /**
@@ -206,7 +120,7 @@ export function buildWorkModePresentation(workMode) {
   if (!human || !model || !mode) {
     throw new TypeError("Work-mode presentation requires a resolved work mode");
   }
-  const task = MODEL_TASKS[modelTaskKey(workMode)];
+  const role = MODEL_ROLES[modelRoleKey(workMode)];
   return Object.freeze({
     providerId: REFERENCE_UI_PROVIDER_ID,
     mode: workMode.mode,
@@ -216,14 +130,17 @@ export function buildWorkModePresentation(workMode) {
     humanLabel: human.label,
     humanBadge: human.badge,
     humanTone: human.tone,
+    humanArea: workMode.human.area,
     modelState: statusKey(workMode.model),
     modelLabel: model.label,
     modelBadge: model.badge,
     modelTone: model.tone,
-    ...task,
+    modelArea: workMode.model.area,
+    ...role,
+    areaLabel: describeAreas(workMode),
     authorityLabel:
       workMode.authority === "both"
-        ? "Both hold the click right"
+        ? "Both hold the click right, each in its own area"
         : workMode.authority === "none"
           ? "Nobody holds the click right"
           : workMode.authority === "human"
@@ -232,36 +149,52 @@ export function buildWorkModePresentation(workMode) {
   });
 }
 
-/** The selectable work modes, in the order a surface offers them. */
-export const WORK_MODE_CHOICES = Object.freeze([
-  Object.freeze({ id: "cowork-human", label: WORK_MODES["cowork-human"].modeLabel }),
-  Object.freeze({ id: "cowork-model", label: WORK_MODES["cowork-model"].modeLabel }),
-  Object.freeze({ id: "parallel", label: WORK_MODES.parallel.modeLabel }),
-  Object.freeze({ id: "human-solo", label: WORK_MODES["human-solo"].modeLabel }),
-  Object.freeze({ id: "model-solo", label: WORK_MODES["model-solo"].modeLabel }),
-  Object.freeze({ id: "idle", label: WORK_MODES.idle.modeLabel })
-]);
+/**
+ * The selectable work modes, in the order a surface offers them. Doubling is
+ * only offered while the two are on different areas - otherwise it would
+ * promise a simultaneity the tools and the task cannot give.
+ */
+export function workModeChoices(workMode) {
+  const choices = [
+    { id: "sparring-human", label: WORK_MODES["sparring-human"].modeLabel },
+    { id: "sparring-model", label: WORK_MODES["sparring-model"].modeLabel },
+    { id: "human-solo", label: WORK_MODES["human-solo"].modeLabel },
+    { id: "model-solo", label: WORK_MODES["model-solo"].modeLabel },
+    { id: "idle", label: WORK_MODES.idle.modeLabel }
+  ];
+  if (workMode?.doublingAvailable === true || workMode?.mode === "doubling") {
+    choices.splice(2, 0, { id: "doubling", label: WORK_MODES.doubling.modeLabel });
+  }
+  return Object.freeze(choices.map((choice) => Object.freeze(choice)));
+}
 
 /**
- * The reverse direction: picking a mode sets both actors' status. This is why
- * no surface needs a separate action-rights control - and why choosing a mode
- * moves the status displays, exactly as clicking a figure moves the mode.
+ * The reverse direction: picking a mode sets the status of both partners.
+ * This is why no surface needs a separate action-rights control, and why
+ * choosing a mode moves the status displays exactly as clicking a figure
+ * moves the mode. Areas carry over; a mode never invents what someone is on.
  */
 export function statusForWorkModeChoice(choiceId, current = {}) {
-  const stillAway = current?.human?.availability === "away" ? "away" : "standby";
+  const humanArea = current.human?.area ?? null;
+  const modelArea = current.model?.area ?? null;
+  const stillAway = current.human?.availability === "away" ? "away" : "standby";
+  const pair = (humanAvailability, humanRole, modelAvailability, modelRole) => ({
+    human: { availability: humanAvailability, role: humanRole, area: humanArea },
+    model: { availability: modelAvailability, role: modelRole, area: modelArea }
+  });
   switch (choiceId) {
-    case "cowork-human":
-      return { human: { availability: "here", role: "acting" }, model: { availability: "here", role: "observing" }, allowParallel: false };
-    case "cowork-model":
-      return { human: { availability: "here", role: "observing" }, model: { availability: "here", role: "acting" }, allowParallel: false };
-    case "parallel":
-      return { human: { availability: "here", role: "acting" }, model: { availability: "here", role: "acting" }, allowParallel: true };
+    case "sparring-human":
+      return pair("here", "executing", "here", "advising");
+    case "sparring-model":
+      return pair("here", "advising", "here", "executing");
+    case "doubling":
+      return pair("here", "executing", "here", "executing");
     case "human-solo":
-      return { human: { availability: "here", role: "acting" }, model: { availability: "standby", role: "observing" }, allowParallel: false };
+      return pair("here", "executing", "standby", "advising");
     case "model-solo":
-      return { human: { availability: stillAway, role: "observing" }, model: { availability: "here", role: "acting" }, allowParallel: false };
+      return pair(stillAway, "advising", "here", "executing");
     case "idle":
-      return { human: { availability: "here", role: "observing" }, model: { availability: "standby", role: "observing" }, allowParallel: false };
+      return pair("here", "advising", "standby", "advising");
     default:
       throw new TypeError(`Unknown work-mode choice: ${choiceId}`);
   }

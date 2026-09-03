@@ -884,23 +884,23 @@ export function buildContextExpansion(input) {
   };
 }
 
+
 /* ------------------------------------------------------------------ *
  * Work-mode matrix (v0.2)
  *
- * One pure function replaces the old split between "presence" and a
- * separately chosen "action mode". Two variables per actor decide
- * everything else:
+ * Three questions per partner, nothing else:
  *
- *   availability - here | standby | away   (can this actor take part?)
- *   role         - acting | observing      (what does it do while here?)
+ *   Present?        here | standby | away
+ *   Working on?     an area - the page, the task, the focused target, or
+ *                   the goal a grant names. null when nothing is claimed.
+ *   Role?           executing (holds authority) | advising (suggests)
  *
- * The work mode, who holds authority, and therefore who may click are
- * derived. Action rights are never chosen on their own; see
- * docs/work-modes.md.
+ * The work mode is only a name for a combination, and the click right is
+ * the role. Nothing here is configured separately; see docs/work-modes.md.
  * ------------------------------------------------------------------ */
 
 const AVAILABILITY_VALUES = new Set(["here", "standby", "away"]);
-const ROLE_VALUES = new Set(["acting", "observing"]);
+const ROLE_VALUES = new Set(["executing", "advising"]);
 
 const LEGACY_HUMAN_AVAILABILITY = Object.freeze({
   present: "here",
@@ -915,88 +915,88 @@ const LEGACY_HUMAN_PRESENCE = Object.freeze({
 
 function readActor(actor, side) {
   const availability = actor?.availability;
-  const role = actor?.role ?? "observing";
+  const role = actor?.role ?? "advising";
+  const code = side === "human" ? "INVALID_HUMAN_PRESENCE" : "INVALID_AGENT_PRESENCE";
   if (!AVAILABILITY_VALUES.has(availability)) {
-    throw new CoworkProtocolError(
-      side === "human" ? "INVALID_HUMAN_PRESENCE" : "INVALID_AGENT_PRESENCE",
-      `Unknown ${side} availability: ${availability}`
-    );
+    throw new CoworkProtocolError(code, `Unknown ${side} availability: ${availability}`);
   }
   if (!ROLE_VALUES.has(role)) {
-    throw new CoworkProtocolError(
-      side === "human" ? "INVALID_HUMAN_PRESENCE" : "INVALID_AGENT_PRESENCE",
-      `Unknown ${side} role: ${role}`
-    );
+    throw new CoworkProtocolError(code, `Unknown ${side} role: ${role}`);
   }
-  return { availability, role };
+  const area = actor?.area ?? null;
+  if (area !== null && (typeof area !== "string" || area.trim() === "")) {
+    throw new CoworkProtocolError(code, `A ${side} area must be a non-empty name or null`);
+  }
+  return { availability, role, area };
 }
 
 /**
- * Resolve the whole collaboration state from the four status variables.
+ * Resolve the collaboration state from the three questions per partner.
  *
- * `modelAuthorityValid` is the model's authority record (the solo lease or
- * delegation grant). A model set to `acting` without a valid record falls
- * back to advising - the record is the evidence, the role is only the intent.
+ * `modelAuthorityValid` is the model's authority record - a delegation grant
+ * or a solo lease, with a human-authored goal, a call budget and an expiry.
+ * It is the ONLY thing that lets a model execute. A present human is never a
+ * substitute for it: without a record the model advises, and its proposals
+ * still need a human click. This is the security core of the protocol.
  *
- * Conflict rule: if both actors act and simultaneous work is not allowed,
- * the human keeps authority. A hand on the mouse always wins.
+ * Two actors execute at once (doubling) only when both name an area and the
+ * areas differ. Same or unknown area means they would be in each other's way,
+ * and then the human keeps authority - a hand on the mouse always wins.
  */
 export function resolveWorkMode(input) {
   const human = readActor(input?.human, "human");
   const model = readActor(input?.model, "model");
-  const allowParallel = input?.allowParallel === true;
-  const modelAuthorityValid = input?.modelAuthorityValid !== false;
+  const modelAuthorityValid = input?.modelAuthorityValid === true;
 
-  const humanActs = human.availability === "here" && human.role === "acting";
-  const modelWantsToAct = model.availability === "here" && model.role === "acting";
-  const modelActs = modelWantsToAct && modelAuthorityValid;
-  const authorityLapsed = modelWantsToAct && !modelAuthorityValid;
+  const humanExecutes = human.availability === "here" && human.role === "executing";
+  const modelWantsToExecute = model.availability === "here" && model.role === "executing";
+  const modelExecutes = modelWantsToExecute && modelAuthorityValid;
+  const authorityLapsed = modelWantsToExecute && !modelAuthorityValid;
+  const areasAreDisjoint =
+    human.area !== null && model.area !== null && human.area !== model.area;
 
   let mode;
   let authority;
-  let humanRole = human.availability === "here" ? human.role : "observing";
-  let modelRole = model.availability === "here"
-    ? modelActs ? "acting" : "observing"
-    : "observing";
+  let humanRole = human.availability === "here" ? human.role : "advising";
+  let modelRole = model.availability === "here" && modelExecutes ? "executing" : "advising";
 
-  if (humanActs && modelActs) {
-    if (allowParallel) {
-      mode = "parallel";
+  if (humanExecutes && modelExecutes) {
+    if (areasAreDisjoint) {
+      mode = "doubling";
       authority = "both";
     } else {
-      mode = "cowork";
+      mode = "sparring";
       authority = "human";
-      modelRole = "observing";
+      modelRole = "advising";
     }
-  } else if (humanActs) {
-    mode = model.availability === "here" ? "cowork" : "human-solo";
+  } else if (humanExecutes) {
+    mode = model.availability === "here" ? "sparring" : "human-solo";
     authority = "human";
-  } else if (modelActs) {
-    mode = human.availability === "here" ? "cowork" : "model-solo";
+  } else if (modelExecutes) {
+    mode = human.availability === "here" ? "sparring" : "model-solo";
     authority = "model";
   } else {
     mode = "idle";
     authority = "none";
   }
 
-  const rights = (side, role) => {
-    const available = (side === "human" ? human : model).availability === "here";
-    const execute = authority === side || authority === "both";
-    return Object.freeze({
-      availability: (side === "human" ? human : model).availability,
+  const side = (name, actor, role) =>
+    Object.freeze({
+      availability: actor.availability,
       role,
-      canExecute: execute,
-      canPropose: available && !execute
+      area: actor.area,
+      canExecute: authority === name || authority === "both",
+      canPropose:
+        actor.availability === "here" && authority !== name && authority !== "both"
     });
-  };
 
   return Object.freeze({
     mode,
     authority,
-    allowParallel,
     authorityLapsed,
-    human: rights("human", humanRole),
-    model: rights("model", modelRole)
+    doublingAvailable: areasAreDisjoint,
+    human: side("human", human, humanRole),
+    model: side("model", model, modelRole)
   });
 }
 
@@ -1011,23 +1011,20 @@ export function hasAuthority(workMode, side) {
  * matrix above.
  */
 export function toLegacyPresence(workMode) {
-  const modelActive =
-    workMode.model.availability === "here" &&
-    (workMode.model.role === "acting" || workMode.model.canPropose);
+  const modelReachable = workMode.model.availability === "here";
   const humanPresence = LEGACY_HUMAN_PRESENCE[workMode.human.availability];
-  const agentPresence = modelActive ? "active" : "paused";
+  const agentPresence = modelReachable ? "active" : "paused";
   return Object.freeze({
     humanPresence,
     agentPresence,
-    agentEngagement:
-      workMode.model.availability === "here"
-        ? workMode.model.role === "acting"
-          ? "collaborating"
-          : "observing"
-        : "paused",
+    agentEngagement: modelReachable
+      ? workMode.model.role === "executing"
+        ? "collaborating"
+        : "observing"
+      : "paused",
     // Derived from the 0.1 values themselves, so a 0.1 consumer that
     // re-resolves the mode always agrees with us. The finer distinctions of
-    // the matrix (who holds authority, both-at-once, nobody acting) live in
+    // the matrix (who holds authority, doubling, nobody executing) live in
     // `workMode`, not on the 0.1 wire.
     effectiveMode: resolvePresenceMode({
       humanPresence,
@@ -1056,12 +1053,12 @@ export function fromLegacyPresence({ humanPresence, agentPresence, agentEngageme
     human: Object.freeze({
       availability,
       role:
-        availability === "here" && engagement !== "collaborating" ? "acting" : "observing"
+        availability === "here" && engagement !== "collaborating" ? "executing" : "advising"
     }),
     model: Object.freeze(
       engagement === "paused"
-        ? { availability: "standby", role: "observing" }
-        : { availability: "here", role: engagement === "collaborating" ? "acting" : "observing" }
+        ? { availability: "standby", role: "advising" }
+        : { availability: "here", role: engagement === "collaborating" ? "executing" : "advising" }
     )
   });
 }

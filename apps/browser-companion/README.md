@@ -42,19 +42,25 @@ value matches.
 
 The Side Panel is a bright collaboration instrument rather than a generic chat
 sidebar. The human silhouette and friendly computer are the primary state
-controls. Each figure carries two status variables - availability (`here`,
-`standby`, `away`) and role (`acting`, `observing`) - and a click cycles them
-as `here-acting -> here-observing -> standby -> away`. Everything else follows:
+controls. Each figure answers three questions - who is here (`here`, `standby`,
+`away`), which area they are on, and whether they are executing or advising -
+and a click cycles the first two of those as
+`here-executing -> here-advising -> standby -> away`. Everything else follows:
 the work mode, and with it who holds the click right. There is no separate
 action-rights setting.
 
-Observing means advising: the model still explains and still proposes, and your
-click is what changes anything. A model on standby proposes nothing. If both
-sides are set to act and simultaneous work is not allowed, the human keeps the
-click right - the hand on the mouse wins. The relay emblem is animated while a
-model acts, directional during a valid solo lease and dormant when nobody acts.
-Your own status can leave `here` only when the Session Authority has granted the
-required solo lease.
+Advising is a real seat: the model explains and proposes, and your click is what
+changes anything. A model on standby is connected but proposes nothing; `away`
+means no seat is connected at all, and reaching `here` runs a real attach rather
+than clicking a seat into existence.
+
+**Executing is bound to a grant, always.** A model set to execute without a
+current grant - goal, budget, expiry - visibly falls back to advising. A human
+sitting in front of the screen is not a substitute for that record. This
+extension has no Session Authority and mints no grant, so its model advises and
+your own status cannot leave `here`. Two executors on the same area is sparring
+and the human keeps the click right; doubling needs two different areas, which
+one relayed page cannot give.
 
 Connector route and execution mode are separate. Native Cowork, native WebMCP
 and the bounded bridge use structured actions and show no synthetic model

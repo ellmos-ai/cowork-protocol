@@ -1,8 +1,5 @@
 import { CoworkProtocolError } from "../../../packages/core/src/index.js";
-import {
-  buildWorkModePresentation,
-  WORK_MODE_CHOICES
-} from "../../../packages/reference-ui/src/index.js";
+import { buildWorkModePresentation } from "../../../packages/reference-ui/src/index.js";
 
 const CAPABILITY_LABELS = {
   native: "Native WebMCP",
@@ -96,16 +93,14 @@ export function nextActionOfferExpiry(offers) {
 }
 
 /**
- * Which entry of WORK_MODE_CHOICES the resolved state actually is. The select
- * shows the mode that is in force, not the one that was picked - so a choice
- * the conflict rule overruled snaps back visibly instead of lying.
+ * Which offered mode the resolved state actually is. The select shows the
+ * mode in force, not the one that was picked - so a choice the missing grant
+ * or a shared area overruled snaps back visibly instead of lying.
  */
 export function workModeChoiceId(workMode) {
-  if (workMode?.mode !== "cowork") return workMode?.mode ?? null;
-  return workMode.authority === "model" ? "cowork-model" : "cowork-human";
+  if (workMode?.mode !== "sparring") return workMode?.mode ?? null;
+  return workMode.authority === "model" ? "sparring-model" : "sparring-human";
 }
-
-export { WORK_MODE_CHOICES };
 
 export function buildPanelViewModel({
   session,
@@ -124,7 +119,7 @@ export function buildPanelViewModel({
   return {
     ...presentation,
     choiceId: workModeChoiceId(session.workMode),
-    allowParallel: session.workMode.allowParallel,
+    doublingAvailable: session.workMode.doublingAvailable,
     authorityLapsed: session.workMode.authorityLapsed,
     capabilityLabel: CAPABILITY_LABELS[capabilityLevel],
     focusLabel: focusPacket?.focus?.label ?? "Point to or select a form field",

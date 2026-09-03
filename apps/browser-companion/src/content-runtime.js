@@ -7,7 +7,7 @@ import {
 import { buildWorkModePresentation } from "../../../packages/reference-ui/src/index.js";
 import { describeDomTarget, normalizeCompanionRequest } from "./protocol.js";
 import { createNativePageClient } from "./native-page-client.js";
-import { ACTOR_STATUS_CYCLE, nextActorStatus } from "./cockpit-presentation.js";
+import { nextAvailableStatus } from "./cockpit-presentation.js";
 
 const RESPONSE_SOURCE = "cowork-browser-companion";
 const TARGET_SELECTOR = [
@@ -71,12 +71,14 @@ export function installBrowserCompanion({ document, window, runtime }) {
   let pendingOfferContract = null;
   let runtimeMode = "off";
   let nativeDiscovery = null;
-  // Two status variables per actor. The work mode, who holds the click right
-  // and the 0.1 presence values on the wire are all derived from these.
-  let human = { availability: "here", role: "acting" };
-  let model = { availability: "away", role: "observing" };
-  // The extension offers no simultaneous-work control, so it never claims one.
-  const allowParallel = false;
+  // Three status variables per actor: who is here, what they are working on,
+  // and whether they execute or advise. The work mode, the click right and
+  // the 0.1 presence values on the wire are all derived from these.
+  let human = { availability: "here", role: "executing" };
+  let model = { availability: "away", role: "advising" };
+  // No Session Authority in this extension mints a grant, so the model's
+  // authority record is absent - it can advise, never execute. Leaving is
+  // gated on the same record.
   let soloLeaseValid = false;
   let contextLevel = 0;
   let focusLabel = "Point to a page control";
@@ -94,18 +96,28 @@ export function installBrowserCompanion({ document, window, runtime }) {
     subtree: true
   });
 
-  // The lease is the model's authority record while the human is gone; with
-  // the human here their own presence is the live authority.
-  function modelAuthorityValid() {
-    return human.availability === "here" || soloLeaseValid;
+  // Which page, task or field the two are on. One relayed page means one
+  // shared area - this extension cannot confine two workers to different
+  // areas, so it never offers doubling.
+  function currentArea() {
+    if (!enabled) return null;
+    const title = typeof document.title === "string" ? document.title.trim() : "";
+    return title === "" ? window.location?.hostname ?? "this page" : title.slice(0, 60);
+  }
+
+  function actors() {
+    const area = currentArea();
+    return {
+      human: { ...human, area },
+      model: { ...model, area: model.availability === "away" ? null : area }
+    };
   }
 
   function workMode() {
     return resolveWorkMode({
-      human,
-      model,
-      allowParallel,
-      modelAuthorityValid: modelAuthorityValid()
+      ...actors(),
+      // The grant is the only authority record. A present human is not one.
+      modelAuthorityValid: soloLeaseValid
     });
   }
 
@@ -320,10 +332,13 @@ export function installBrowserCompanion({ document, window, runtime }) {
   }
 
   async function cycleModelStatus() {
-    const next = nextActorStatus(workMode().model);
-    // "Away" is the one model status the extension can only reach by
-    // detaching: with no page connector there is nothing for a model to join.
-    if (next.availability === "away") {
+    const next = nextAvailableStatus(workMode().model, (candidate) =>
+      // Executing needs a grant with goal, budget and expiry; this extension
+      // issues none, so the model here advises or stands by.
+      candidate.availability === "here" && candidate.role === "executing" && !soloLeaseValid
+    );
+    if (next === null || next.availability === "away") {
+      // Detaching is how the seat really goes away here.
       await setEnabled(false);
       return state();
     }
@@ -334,19 +349,20 @@ export function installBrowserCompanion({ document, window, runtime }) {
   }
 
   function cycleHumanStatus() {
-    const next = nextActorStatus(workMode().human);
-    // Leaving needs a solo lease no Session Authority in this extension can
-    // grant, so the figure wraps to the two statuses it really has instead of
-    // stranding you on the last one it could reach.
-    if (next.availability !== "here" && !soloLeaseValid) {
-      human = ACTOR_STATUS_CYCLE[0];
-      updateStatus(
-        "Leaving needs the Desktop Companion's solo lease; this extension cannot grant one."
-      );
-      return state();
-    }
+    const next = nextAvailableStatus(
+      workMode().human,
+      // Leaving needs the same grant, so the figure cycles the two statuses it
+      // really has instead of stranding you on the last one it could reach.
+      (candidate) => candidate.availability !== "here" && !soloLeaseValid
+    );
+    if (next === null) return state();
+    if (next.availability !== "here" && !soloLeaseValid) return state();
     human = next;
-    updateStatus(statusSentence());
+    updateStatus(
+      human.availability === "here" && human.role === "advising" && !soloLeaseValid
+        ? "Advising only: without a grant the model cannot take the click right from you."
+        : statusSentence()
+    );
     return state();
   }
 
@@ -363,7 +379,7 @@ export function installBrowserCompanion({ document, window, runtime }) {
     focusLabel = "Point to a page control";
     focusDetail = "No page content requested yet";
     if (enabled) {
-      model = { availability: "here", role: "acting" };
+      model = { availability: "here", role: "advising" };
       try {
         nativeDiscovery = await nativePageClient.discover();
       } catch {
@@ -388,7 +404,7 @@ export function installBrowserCompanion({ document, window, runtime }) {
     } else {
       companion = null;
       runtimeMode = "off";
-      model = { availability: "away", role: "observing" };
+      model = { availability: "away", role: "advising" };
       updateStatus("Off");
     }
     return state();
@@ -412,10 +428,8 @@ export function installBrowserCompanion({ document, window, runtime }) {
       surfaceLocation: "browser-side-panel",
       inPageUi: false,
       statusText,
-      human,
-      model,
-      allowParallel,
-      modelAuthorityValid: modelAuthorityValid(),
+      ...actors(),
+      modelAuthorityValid: soloLeaseValid,
       // 0.1 wire mirrors, derived - never set by hand.
       ...legacyPresence,
       soloLeaseValid,
@@ -478,12 +492,12 @@ export function installBrowserCompanion({ document, window, runtime }) {
       return;
     }
     try {
-      // An advising model still proposes - the human clicks. Only a model
-      // that is not here proposes nothing.
-      if (model.availability !== "here" && request.method === "offerAction") {
+      // An advising model still proposes - the human clicks. Only a model on
+      // standby proposes nothing.
+      if (model.availability === "standby" && request.method === "offerAction") {
         throw new CoworkProtocolError(
           "SESSION_READ_ONLY",
-          "A model that is not here proposes nothing"
+          "A model on standby proposes nothing"
         );
       }
       const result = await companion.agent[request.method](request.arguments);

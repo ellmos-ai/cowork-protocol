@@ -1,4 +1,4 @@
-import { buildWorkModePresentation, CLARIFY_STEPS } from "./reference-ui.js";
+import { buildWorkModePresentation, STATUS_STEPS } from "./reference-ui.js";
 
 const $ = (selector) => document.querySelector(selector);
 // The 0.1 wire carries availability for the human and availability+role for
@@ -9,10 +9,10 @@ const MODEL_STATES = ["collaborating", "observing", "paused"];
 const IDLE_WORK_MODE = Object.freeze({
   mode: "idle",
   authority: "none",
-  allowParallel: false,
   authorityLapsed: false,
-  human: Object.freeze({ availability: "here", role: "observing" }),
-  model: Object.freeze({ availability: "away", role: "observing" })
+  doublingAvailable: false,
+  human: Object.freeze({ availability: "here", role: "advising", area: null }),
+  model: Object.freeze({ availability: "away", role: "advising", area: null })
 });
 const COCKPIT_BACKGROUND_KEY = "cowork.companion.cockpit-background.v1";
 const DEFAULT_COCKPIT_BACKGROUND = "#f8f1e4";
@@ -152,13 +152,19 @@ function render(state) {
   $("#relay-detail").textContent = connected
     ? presentation.modeDetail
     : "Waiting for one shared session";
+  // A model set to execute without a current grant is the one state worth
+  // spelling out: the cockpit says why the click right did not move.
+  const workMode = currentSession?.workMode ?? IDLE_WORK_MODE;
   $("#cockpit-status").textContent = connected
     ? currentSession?.computerUseAbortMessage
       ? `Computer Use stopped: ${currentSession.computerUseAbortMessage}`
       : computerUseActive
         ? "The red model pointer marks profile-filtered system control. Click again to stop."
-        : `${presentation.authorityLabel}. ${presentation.taskDetail}`
+        : workMode.authorityLapsed === true
+          ? `${presentation.authorityLabel}. The model needs a current grant with goal, budget and expiry before it can execute.`
+          : `${presentation.authorityLabel}. ${presentation.roleDetail}`
     : "Connect a page to awaken the relay.";
+  $("#relay-core").title = presentation.areaLabel;
 
   const pageVisibility = currentSession?.applicationSurfaceVisibility ?? "unknown";
   $("#page-availability").textContent = pageVisibility === "visible"
@@ -234,8 +240,8 @@ async function postControl(kind, body) {
 }
 
 // Every visible status word comes from packages/reference-ui.
-$("#clarify-steps").replaceChildren(
-  ...CLARIFY_STEPS.map((step) => {
+$("#status-steps").replaceChildren(
+  ...STATUS_STEPS.map((step) => {
     const item = document.createElement("span");
     const dot = document.createElement("i");
     dot.setAttribute("aria-hidden", "true");

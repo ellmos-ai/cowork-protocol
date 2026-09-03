@@ -23,17 +23,17 @@ test("the side panel exposes actors, relay, route, focus and command dock as one
   assert.match(html, /Higher token use/);
   assert.match(html, /class="command-dock"/);
   // The clarify strip is filled from packages/reference-ui, not written here.
-  assert.match(html, /class="protocol-rhythm" id="clarify-steps"/);
+  assert.match(html, /class="protocol-rhythm" id="status-steps"/);
   assert.doesNotMatch(html, /Point<\/span>/);
 });
 
 test("cockpit state is not encoded by color alone and motion can be removed", async () => {
   const css = await readFile(cssPath, "utf8");
-  assert.match(css, /\[data-human-state="here-observing"\]/);
+  assert.match(css, /\[data-human-state="here-advising"\]/);
   assert.match(css, /\[data-human-state="standby"\]/);
   assert.match(css, /\[data-human-state="away"\]/);
-  assert.match(css, /\[data-model-state="here-acting"\]/);
-  assert.match(css, /\[data-model-state="here-observing"\]/);
+  assert.match(css, /\[data-model-state="here-executing"\]/);
+  assert.match(css, /\[data-model-state="here-advising"\]/);
   assert.match(css, /\[data-model-state="standby"\]/);
   assert.match(css, /\[data-model-state="away"\]/);
   assert.match(css, /\[data-relay-state="to-model"\]/);
@@ -45,9 +45,14 @@ test("cockpit state is not encoded by color alone and motion can be removed", as
 
 test("the side panel reads its status words from the shared vocabulary", async () => {
   const script = await readFile(new URL("../sidepanel.js", import.meta.url), "utf8");
-  assert.match(script, /CLARIFY_STEPS/);
+  assert.match(script, /STATUS_STEPS/);
+  assert.match(script, /status-steps/);
   assert.match(script, /packages\/reference-ui\/src\/index\.js/);
   assert.match(script, /presentation\.modeDetail/);
+  // Question two of the status bar is answered per partner, from the shared
+  // vocabulary rather than from a string this panel writes.
+  assert.match(script, /presentation\.humanArea/);
+  assert.match(script, /presentation\.areaLabel/);
 });
 
 test("the visual acceptance captures a real narrow side-panel viewport", async () => {

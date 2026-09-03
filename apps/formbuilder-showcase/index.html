@@ -79,7 +79,7 @@
       </section>
     </section>
 
-    <aside class="cowork-panel" aria-labelledby="panel-title" data-cowork-brand="dialogue-relay" data-cowork-surface="embedded" data-human-state="here-acting" data-model-state="here-observing" data-relay-state="watching">
+    <aside class="cowork-panel" aria-labelledby="panel-title" data-cowork-brand="dialogue-relay" data-cowork-surface="embedded" data-human-state="here-executing" data-model-state="here-advising" data-relay-state="watching">
       <div class="panel-topline">
         <div class="cowork-lockup">
           <img class="cowork-brand-mark" src="../../packages/reference-ui/assets/cowork-dialogue-mark.svg" alt="">
@@ -96,7 +96,7 @@
         </div>
       </div>
 
-      <div class="protocol-rhythm" id="clarify-steps" aria-label="What this panel clarifies"></div>
+      <div class="protocol-rhythm" id="status-steps" aria-label="What this panel answers"></div>
       <p class="microcopy extension-note" id="extension-note" role="status" hidden></p>
 
       <section class="embedded-collaboration-deck" aria-labelledby="embedded-collaboration-title">
@@ -121,7 +121,7 @@
               </span>
               <span class="state-badge human-badge" aria-hidden="true"></span>
             </span>
-            <span class="actor-copy"><small>You</small><strong id="human-label">You are working</strong></span>
+            <span class="actor-copy"><small>You</small><strong id="human-label">You are executing</strong></span>
           </button>
 
           <div id="embedded-relay-core" class="embedded-relay-core" role="status" aria-live="polite" aria-label="Working together">
@@ -202,6 +202,7 @@
           <span class="metric" id="context-label">No context sent</span>
         </div>
         <p class="focus-target" id="focus-label">Point to or select a form field</p>
+        <p class="microcopy" id="area-label"></p>
         <div class="field-grid">
           <label>
             <span>Look at</span>
@@ -229,20 +230,12 @@
             <select id="work-mode"></select>
           </label>
         </div>
-        <label class="check-row">
-          <input id="allow-parallel" type="checkbox">
-          <span>Allow both at once</span>
-        </label>
         <p class="microcopy" id="mode-detail"></p>
         <p class="microcopy" id="authority-label"></p>
-      </section>
-
-      <section class="panel-section" aria-labelledby="task-heading">
         <div class="section-row">
-          <h3 id="task-heading"><span class="section-icon" aria-hidden="true">◆</span><span id="task-heading-text"></span></h3>
-          <span class="badge" id="task-badge"></span>
+          <p class="microcopy" id="role-detail"></p>
+          <span class="badge" id="role-badge"></span>
         </div>
-        <p class="microcopy" id="task-detail"></p>
         <div id="offer-list" class="offer-list" aria-live="polite">
           <p class="empty-state">Model proposals will appear here as clickable offers.</p>
         </div>
@@ -255,10 +248,11 @@
           <button class="text-button" id="toggle-agent" type="button">Pause agent</button>
         </div>
         <label>
-          <span>Solo task while I am away</span>
+          <span>Job to hand over</span>
           <input id="lease-goal" value="Complete only the focused field" maxlength="120">
         </label>
         <div class="button-row">
+          <button class="quiet-button" id="hand-over" type="button">Hand over, I’ll watch</button>
           <button class="quiet-button" id="away-short" type="button">I’m briefly away</button>
           <button class="quiet-button" id="away-long" type="button">I’m away longer</button>
           <button class="primary-small" id="return-human" type="button">I’m back</button>

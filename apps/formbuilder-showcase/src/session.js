@@ -5,26 +5,26 @@ import {
 } from "../../../packages/core/src/index.js";
 
 /**
- * The showcase session carries the two status variables per actor
- * (`availability` + `role`) plus whether simultaneous work is allowed.
- * Everything else - the work mode, who holds the click right, and the 0.1
- * presence values the wire still speaks - is derived by `resolveWorkMode`
- * and `toLegacyPresence`. There is no separate action-rights setting.
+ * The showcase session answers three questions per partner - present, working
+ * on what, executing or advising - and derives everything else. The work
+ * mode, who holds the click right and the 0.1 presence values the wire still
+ * speaks all come out of `resolveWorkMode` / `toLegacyPresence`. There is no
+ * action-rights setting and no simultaneity switch.
  */
 
-/** The four status states one actor cycles through when its figure is clicked. */
+/** The four status states one figure cycles through when it is clicked. */
 export const ACTOR_STATUS_CYCLE = Object.freeze([
-  Object.freeze({ availability: "here", role: "acting" }),
-  Object.freeze({ availability: "here", role: "observing" }),
-  Object.freeze({ availability: "standby", role: "observing" }),
-  Object.freeze({ availability: "away", role: "observing" })
+  Object.freeze({ availability: "here", role: "executing" }),
+  Object.freeze({ availability: "here", role: "advising" }),
+  Object.freeze({ availability: "standby", role: "advising" }),
+  Object.freeze({ availability: "away", role: "advising" })
 ]);
 
 /**
- * Next status in the cycle. Pass the *resolved* actor (session.workMode.human
- * / .model), not the stored one: after the conflict rule has taken a model's
- * authority away, the figure must cycle on from what the panel shows, not
- * from an intent the panel is not displaying.
+ * Next status in the cycle. Pass the *resolved* partner (session.workMode.human
+ * / .model), not the stored one: once a model without a grant has fallen back
+ * to advising, the figure must move on from what the panel shows, not from an
+ * intent the panel is not displaying.
  */
 export function nextActorStatus(actor) {
   const index = ACTOR_STATUS_CYCLE.findIndex(
@@ -50,13 +50,11 @@ function withWorkMode(state, now = new Date().toISOString()) {
   const workMode = resolveWorkMode({
     human: state.human,
     model: state.model,
-    allowParallel: state.allowParallel === true,
-    // The lease is the model's authority record while the human is gone.
-    // With the human here, their own presence is the live authority: every
-    // model action still passes a click-gated offer or a spoken directive,
-    // and the hand on the mouse can take it back at any moment.
-    modelAuthorityValid:
-      state.human?.availability === "here" || leaseIsValid(state.lease, now)
+    // The security core: only a live grant or solo lease - with its goal,
+    // call budget and expiry - lets the model execute. A present human is
+    // NOT a substitute for that record. Without one the model advises and
+    // its proposals still need a human click.
+    modelAuthorityValid: leaseIsValid(state.lease, now)
   });
   const legacy = toLegacyPresence(workMode);
   return {
@@ -64,13 +62,26 @@ function withWorkMode(state, now = new Date().toISOString()) {
     workMode,
     // 0.1 wire mirrors: presence events, solo leases and the nine WebMCP
     // tools keep their published shapes. Derived, never set by hand.
-    // `agentEngagement` deliberately stays out of the session: the Desktop
-    // Companion owns that field on the replicated state and would read a
-    // stale copy back as a control value.
+    // `agentEngagement` is published too: a consumer that has to guess it
+    // guesses "collaborating" and then disagrees with this panel about who
+    // is executing. While a Companion is the authority this surface commits
+    // nothing, so its own value is never overwritten.
     humanPresence: legacy.humanPresence,
     agentPresence: legacy.agentPresence,
+    agentEngagement: legacy.agentEngagement,
     effectiveMode: legacy.effectiveMode
   };
+}
+
+export function createShowcaseSession() {
+  return withWorkMode({
+    human: { availability: "here", role: "executing", area: null },
+    model: { availability: "here", role: "advising", area: null },
+    attentionMode: "pointer",
+    changeCausality: true,
+    lease: null,
+    returnSummary: null
+  });
 }
 
 /**
@@ -80,18 +91,11 @@ function withWorkMode(state, now = new Date().toISOString()) {
  * the panel keeps rendering the work mode from before the Companion moved.
  */
 export function adoptSessionState(state) {
-  return withWorkMode({ ...state, ...fromLegacyPresence(state) });
-}
-
-export function createShowcaseSession() {
+  const legacy = fromLegacyPresence(state);
   return withWorkMode({
-    human: { availability: "here", role: "acting" },
-    model: { availability: "here", role: "observing" },
-    allowParallel: false,
-    attentionMode: "pointer",
-    changeCausality: true,
-    lease: null,
-    returnSummary: null
+    ...state,
+    human: { ...legacy.human, area: state.human?.area ?? null },
+    model: { ...legacy.model, area: state.model?.area ?? null }
   });
 }
 
@@ -125,8 +129,7 @@ export function transitionShowcaseSession(state, event) {
       {
         ...state,
         human: event.human ?? state.human,
-        model: event.model ?? state.model,
-        allowParallel: event.allowParallel ?? state.allowParallel
+        model: event.model ?? state.model
       },
       event.now
     );
@@ -136,11 +139,10 @@ export function transitionShowcaseSession(state, event) {
     return withWorkMode(
       {
         ...state,
-        human: {
-          availability: event.duration === "long" ? "away" : "standby",
-          role: "observing"
-        },
-        model: { availability: "here", role: "acting" },
+        // Nobody who is away is working on anything; the area the lease
+        // covers belongs to the model from here on.
+        human: { availability: event.duration === "long" ? "away" : "standby", role: "advising", area: null },
+        model: { availability: "here", role: "executing", area: event.area ?? state.human.area },
         lease: event.lease,
         leaseCallsUsed: 0,
         returnSummary: null
@@ -153,10 +155,10 @@ export function transitionShowcaseSession(state, event) {
     const receipts = event.receipts ?? [];
     return withWorkMode({
       ...state,
-      human: { availability: "here", role: "acting" },
-      // The conflict rule already takes the model's authority the moment the
-      // human is back; storing the lapse keeps state and display in step.
-      model: { ...state.model, role: "observing" },
+      human: { availability: "here", role: "executing", area: event.area ?? null },
+      // The lease ends with the return, so the model's authority and its
+      // claimed area end with it too.
+      model: { ...state.model, role: "advising", area: null },
       lease: null,
       returnSummary: {
         verified: receipts.filter((receipt) => receipt.status === "verified").length,
@@ -169,22 +171,31 @@ export function transitionShowcaseSession(state, event) {
   if (event.type === "AGENT_PAUSED") {
     return withWorkMode({
       ...state,
-      model: { availability: "standby", role: "observing" }
+      model: { availability: "standby", role: "advising", area: null }
     });
   }
 
   if (event.type === "AGENT_RESUMED") {
     return withWorkMode({
       ...state,
-      model: { availability: "here", role: "observing" }
+      model: { ...state.model, availability: "here", role: "advising" }
     });
   }
 
   if (event.type === "CLOCK_TICK") {
-    const nextState = state.lease === undefined || leaseHasExpired(state.lease, event.now)
-      ? { ...state, lease: null, leaseCallsUsed: 0 }
-      : state;
-    return withWorkMode(nextState, event.now);
+    const expired = state.lease === undefined || leaseHasExpired(state.lease, event.now);
+    return withWorkMode(
+      {
+        ...state,
+        // Areas are derived from the focused target and the live grant; the
+        // caller passes the current pair on every tick so the two can never
+        // drift apart.
+        human: event.human ?? state.human,
+        model: event.model ?? state.model,
+        ...(expired ? { lease: null, leaseCallsUsed: 0 } : {})
+      },
+      event.now
+    );
   }
 
   if (event.type === "SOLO_ATTEMPT_STARTED") {

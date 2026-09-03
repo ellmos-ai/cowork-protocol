@@ -118,6 +118,19 @@ async function waitForValue(call, expression, predicate, attempts = 60) {
   throw new Error(`Timed out waiting for browser state: ${JSON.stringify(latest)}`);
 }
 
+// The Companion disables its actor controls while a control request is in
+// flight (`controlBusy`). Clicking through that window is silently swallowed
+// and shifts the whole cycle by one, so wait for the control to come back
+// before pressing it.
+async function clickCompanionControl(call, selector) {
+  await waitForValue(
+    call,
+    `document.querySelector(${JSON.stringify(selector)})?.disabled === false`,
+    (value) => value === true
+  );
+  return trustedClick(call, selector);
+}
+
 async function trustedClick(call, selector) {
   const point = await evaluateValue(call, `(() => {
     const element = document.querySelector(${JSON.stringify(selector)});
@@ -452,7 +465,9 @@ try {
       value?.sessionId === initial.snapshot.sessionId
   );
 
-  await trustedClick(companionWindowCall, "#model-control");
+  // The model starts advising (the page publishes the derived engagement, and
+  // the default is the offer-and-click rhythm), so no click is needed to reach
+  // the advising turn.
   const observingCompanion = await waitForValue(
     companionWindowCall,
     `(() => ({
@@ -460,7 +475,7 @@ try {
       relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null,
       label: document.querySelector("#model-label")?.textContent ?? null
     }))()`,
-    (value) => value?.modelState === "here-observing" && value?.relayState === "watching"
+    (value) => value?.modelState === "here-advising" && value?.relayState === "watching"
   );
   await captureFrame(
     companionWindowCall,
@@ -468,7 +483,7 @@ try {
     "companion-02-observing.png"
   );
 
-  await trustedClick(companionWindowCall, "#model-control");
+  await clickCompanionControl(companionWindowCall, "#model-control");
   const pausedCompanion = await waitForValue(
     companionWindowCall,
     `(() => ({
@@ -484,13 +499,13 @@ try {
     "companion-03-paused.png"
   );
 
-  await trustedClick(companionWindowCall, "#model-control");
+  await clickCompanionControl(companionWindowCall, "#model-control");
   await waitForValue(
     companionWindowCall,
     `document.querySelector(".companion-cockpit")?.dataset.modelState ?? null`,
-    (value) => value === "here-acting"
+    (value) => value === "here-advising"
   );
-  await trustedClick(companionWindowCall, "#human-control");
+  await clickCompanionControl(companionWindowCall, "#human-control");
   const awayWithoutLease = await waitForValue(
     companionWindowCall,
     `(() => ({
@@ -505,20 +520,22 @@ try {
     companionReportDirectory,
     "companion-04-away-without-lease.png"
   );
-  await trustedClick(companionWindowCall, "#human-control");
+  await clickCompanionControl(companionWindowCall, "#human-control");
   await waitForValue(
     companionWindowCall,
     `document.querySelector(".companion-cockpit")?.dataset.humanState ?? null`,
     (value) => value === "away"
   );
-  await trustedClick(companionWindowCall, "#human-control");
+  await clickCompanionControl(companionWindowCall, "#human-control");
   await waitForValue(
     companionWindowCall,
     `(() => ({
       humanState: document.querySelector(".companion-cockpit")?.dataset.humanState ?? null,
       relayState: document.querySelector(".companion-cockpit")?.dataset.relayState ?? null
     }))()`,
-    (value) => value?.humanState === "here-observing" && value?.relayState === "live"
+    // Back at the screen with the seat set to work but no grant yet: nobody
+    // holds the click right, and the cockpit says so instead of pretending.
+    (value) => value?.humanState === "here-advising" && value?.relayState === "dormant"
   );
   const beforeDelegation = companionHost.readSnapshot("browser-surface-link");
   const delegatedAt = new Date();
@@ -536,7 +553,7 @@ try {
     sourceSurfaceId: beforeDelegation.state.surface.primarySurfaceId,
     at: delegatedAt.toISOString()
   });
-  await trustedClick(companionWindowCall, "#human-control");
+  await clickCompanionControl(companionWindowCall, "#human-control");
   const delegatedSolo = await waitForValue(
     companionWindowCall,
     `(() => ({
@@ -552,17 +569,24 @@ try {
     companionReportDirectory,
     "companion-05-delegated-solo.png"
   );
-  await trustedClick(companionWindowCall, "#human-control");
+  await clickCompanionControl(companionWindowCall, "#human-control");
   await waitForValue(
     companionWindowCall,
     `document.querySelector(".companion-cockpit")?.dataset.humanState ?? null`,
     (value) => value === "away"
   );
-  await trustedClick(companionWindowCall, "#human-control");
-  await waitForValue(
+  await clickCompanionControl(companionWindowCall, "#human-control");
+  // Back at the screen while the grant still covers the model: the model
+  // executes and the human advises. This is the concept's headline turn, and
+  // the Companion is the only surface with a real model seat to show it on.
+  const modelExecutingWhileWatched = await waitForValue(
     companionWindowCall,
-    `document.querySelector(".companion-cockpit")?.dataset.humanState ?? null`,
-    (value) => value === "here-observing"
+    `(() => ({
+      humanState: document.querySelector(".companion-cockpit")?.dataset.humanState ?? null,
+      modelState: document.querySelector(".companion-cockpit")?.dataset.modelState ?? null,
+      label: document.querySelector("#relay-label")?.textContent ?? null
+    }))()`,
+    (value) => value?.humanState === "here-advising" && value?.modelState === "here-executing"
   );
   await evaluateValue(companionWindowCall, `(() => {
     document.querySelector("#conversation-input").value = "Continue in the Companion.";
@@ -596,18 +620,20 @@ try {
     ["companion surface kind", companionSnapshot?.state?.surface?.kind, "desktop"],
     ["companion UI provider", visibleCompanion.providerId, "cowork-reference-ui"],
     ["companion title", visibleCompanion.title, "Desktop Companion"],
-    ["companion work mode", visibleCompanion.mode, "Together · model acts"],
+    ["companion work mode", visibleCompanion.mode, "Sparring · you execute"],
     ["companion application surface", visibleCompanion.applicationSurface, "Page active"],
-    ["human status", visibleCompanion.humanState, "here-observing"],
-    ["model status", visibleCompanion.modelState, "here-acting"],
+    ["human status", visibleCompanion.humanState, "here-executing"],
+    ["model status", visibleCompanion.modelState, "here-advising"],
     ["model identity", visibleCompanion.modelIdentity, "preferred-model"],
-    ["relay state", visibleCompanion.relayState, "live"],
+    ["relay state", visibleCompanion.relayState, "watching"],
     ["cockpit is visible", visibleCompanion.cockpitVisible, true],
     ["no horizontal overflow", visibleCompanion.horizontalOverflow <= 0, true],
     ["advising label", observingCompanion.label, "Model is advising"],
     ["standby relay", pausedCompanion.relayState, "dormant"],
     ["away without authority", awayWithoutLease.detail, "No one holds the click right right now."],
-    ["delegated solo status", delegatedSolo.modelState, "here-acting"],
+    ["the model executes while the human watches", modelExecutingWhileWatched.modelState, "here-executing"],
+    ["and that turn is named as sparring", modelExecutingWhileWatched.label, "Sparring · model executes"],
+    ["delegated solo status", delegatedSolo.modelState, "here-executing"],
     ["delegated solo label", delegatedSolo.label, "Model works alone"],
     ["audio controls", visibleCompanion.audioControlCount, 3],
     ["chosen background", chosenBackground.color, "#eaf2ff"],

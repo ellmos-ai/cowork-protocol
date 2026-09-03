@@ -1,7 +1,7 @@
 import {
   buildCockpitPresentation
 } from "./modules/apps/browser-companion/src/cockpit-presentation.js";
-import { CLARIFY_STEPS } from "./modules/packages/reference-ui/src/index.js";
+import { STATUS_STEPS } from "./modules/packages/reference-ui/src/index.js";
 
 const $ = (selector) => document.querySelector(selector);
 const root = $(".cowork-cockpit");
@@ -37,10 +37,10 @@ function presentationInput(state) {
   return {
     mode: state?.mode ?? "off",
     executionMode: state?.executionMode ?? "structured",
-    human: state?.human ?? { availability: "here", role: "acting" },
-    model: state?.model ?? { availability: "away", role: "observing" },
-    allowParallel: state?.allowParallel === true,
-    modelAuthorityValid: state?.modelAuthorityValid !== false,
+    human: state?.human ?? { availability: "here", role: "executing", area: null },
+    model: state?.model ?? { availability: "away", role: "advising", area: null },
+    // The grant is the only authority record, so its absence is the default.
+    modelAuthorityValid: state?.modelAuthorityValid === true,
     contextLevel: Number.isInteger(state?.contextLevel) ? state.contextLevel : 0
   };
 }
@@ -72,11 +72,16 @@ function render(state) {
     "aria-pressed",
     String(presentation.modelState.startsWith("here"))
   );
+  // Question two of the status bar, per partner: what each one is on.
+  $("#human-area").textContent = presentation.humanArea ?? "You";
+  $("#model-area").textContent = presentation.modelArea ?? "Model";
+  $("#human-area").title = presentation.areaLabel;
+  $("#model-area").title = presentation.areaLabel;
   $("#mode").textContent = presentation.modeLabel;
   $("#relay-core").setAttribute("aria-label", presentation.modeLabel);
   $("#relay-label").textContent = presentation.modeLabel;
   $("#relay-detail").textContent = presentation.modeDetail;
-  $("#relay-detail").title = `${presentation.authorityLabel}. ${presentation.taskDetail}`;
+  $("#relay-detail").title = `${presentation.authorityLabel}. ${presentation.roleDetail}`;
   $("#route-explainer").textContent = presentation.routeExplainer;
   $("#seat-note").textContent = presentation.seatNote;
 
@@ -140,8 +145,8 @@ async function refresh() {
 }
 
 // Every visible status word comes from packages/reference-ui.
-$("#clarify-steps").replaceChildren(
-  ...CLARIFY_STEPS.map((step) => {
+$("#status-steps").replaceChildren(
+  ...STATUS_STEPS.map((step) => {
     const item = document.createElement("span");
     const dot = document.createElement("i");
     dot.setAttribute("aria-hidden", "true");

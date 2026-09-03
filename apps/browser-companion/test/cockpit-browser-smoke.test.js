@@ -16,15 +16,15 @@ function validState(overrides = {}) {
     horizontallyClippedControls: [],
     unnamedControls: [],
     visibleControlCount: 8,
-    humanState: "here-observing",
-    modelState: "here-acting",
+    humanState: "here-advising",
+    modelState: "here-executing",
     relayState: "live",
     route: "bridge",
     executionMode: "structured",
     computerUseIndicatorVisible: false,
-    modeLabel: "Together · model acts",
-    humanLabel: "You are watching",
-    modelLabel: "Model is working",
+    modeLabel: "Sparring · model executes",
+    humanLabel: "You are advising",
+    modelLabel: "Model is executing",
     humanBadge: "◉",
     modelBadge: "✓",
     ...overrides
@@ -34,7 +34,7 @@ function validState(overrides = {}) {
 test("cockpit browser evidence requires four truthful visual states in a narrow viewport", () => {
   const report = validateCockpitBrowserObservation({
     browser: "Chrome/152",
-    screenshots: ["cowork-model.png", "model-solo.png", "cowork-human.png", "human-solo.png"],
+    screenshots: ["sparring-model.png", "model-solo.png", "sparring-human.png", "human-solo.png"],
     focusLabel: "Selected: Registration title",
     contextLevel: "1",
     keyboardOrder: [
@@ -56,8 +56,8 @@ test("cockpit browser evidence requires four truthful visual states in a narrow 
     states: [
       validState(),
       validState({ humanState: "away", relayState: "to-model", modeLabel: "Model works alone", humanLabel: "You are away", humanBadge: "↗" }),
-      validState({ humanState: "here-acting", modelState: "here-observing", relayState: "watching", modeLabel: "Together · you act", humanLabel: "You are working", humanBadge: "●", modelLabel: "Model is advising", modelBadge: "◉" }),
-      validState({ humanState: "here-acting", modelState: "standby", relayState: "dormant", modeLabel: "You work alone", humanLabel: "You are working", humanBadge: "●", modelLabel: "Model on standby", modelBadge: "Ⅱ" })
+      validState({ humanState: "here-executing", modelState: "here-advising", relayState: "watching", modeLabel: "Sparring · you execute", humanLabel: "You are executing", humanBadge: "●", modelLabel: "Model is advising", modelBadge: "◉" }),
+      validState({ humanState: "here-executing", modelState: "standby", relayState: "dormant", modeLabel: "You work alone", humanLabel: "You are executing", humanBadge: "●", modelLabel: "Model on standby", modelBadge: "Ⅱ" })
     ]
   });
 
@@ -78,7 +78,7 @@ test("cockpit browser evidence fails closed on overflow, clipping or missing lab
       () => validateCockpitBrowserObservation({
         browser: "Chrome/152",
         screenshots: ["a.png", "b.png", "c.png", "d.png"],
-        states: [validState(), validState({ humanState: "away", relayState: "to-model", modeLabel: "Model works alone" }), validState({ humanState: "here-acting", modelState: "here-observing", relayState: "watching", modeLabel: "Together · you act" }), broken]
+        states: [validState(), validState({ humanState: "away", relayState: "to-model", modeLabel: "Model works alone" }), validState({ humanState: "here-executing", modelState: "here-advising", relayState: "watching", modeLabel: "Sparring · you execute" }), broken]
       }),
       /cockpit/i
     );

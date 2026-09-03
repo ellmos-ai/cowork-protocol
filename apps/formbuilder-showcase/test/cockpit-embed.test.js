@@ -39,7 +39,7 @@ test("the embedded cockpit carries pose, aura and reduced-motion state selectors
   assert.match(css, /\.embedded-collaboration-deck/);
   assert.match(css, /\[data-human-state="standby"\]/);
   assert.match(css, /\[data-human-state="away"\]/);
-  assert.match(css, /\[data-model-state="here-observing"\]/);
+  assert.match(css, /\[data-model-state="here-advising"\]/);
   assert.match(css, /\[data-model-state="standby"\]/);
   assert.match(css, /\[data-model-state="away"\]/);
   assert.match(css, /\[data-relay-state="live"\]/);
@@ -47,18 +47,27 @@ test("the embedded cockpit carries pose, aura and reduced-motion state selectors
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test("the panel's clarify strip and mode choices come from the shared vocabulary", async () => {
+test("the panel's status strip and mode choices come from the shared vocabulary", async () => {
   const html = await readFile(htmlPath, "utf8");
   const app = await readFile(appPath, "utf8");
 
   // The four clarify steps and the six work-mode choices are rendered from
   // packages/reference-ui, so the surface holds no second copy of the wording.
-  assert.match(html, /id="clarify-steps"[^>]*><\/div>/);
+  assert.match(html, /class="protocol-rhythm" id="status-steps"/);
   assert.match(html, /<select id="work-mode"><\/select>/);
   assert.doesNotMatch(html, /id="action-mode"/);
   assert.doesNotMatch(html, /Action rights/);
-  assert.match(html, /id="allow-parallel"[^>]*type="checkbox"/);
-  assert.match(app, /CLARIFY_STEPS\.map/);
-  assert.match(app, /WORK_MODE_CHOICES\.map/);
+  assert.doesNotMatch(
+    html,
+    /id="allow-parallel"/,
+    "doubling follows from disjoint areas, not from a switch"
+  );
+  // Staying or leaving changes who is present, never what the model may do:
+  // both handover buttons mint the same one grant.
+  assert.match(html, /id="hand-over"[^>]*type="button"/);
+  assert.match(app, /function mintDemoLease/);
+  assert.match(app, /function handOverWhileWatching/);
+  assert.match(app, /STATUS_STEPS\.map/);
+  assert.match(app, /workModeChoices\(/);
   assert.match(app, /statusForWorkModeChoice/);
 });

@@ -9,9 +9,9 @@ an application provider and synchronized UI replica.
 The current Windows prototype includes:
 
 - an independently movable Edge/Chrome app window in the shared Cowork design;
-- a clickable human/model cockpit with green collaboration, blue observation,
-  yellow short-away and visibly paused states, plus a relay that animates only
-  when the authoritative mode permits work;
+- a clickable human/model cockpit with green executing, blue advising, yellow
+  standby and visibly disconnected states, plus a relay that animates only when
+  the authoritative mode permits work;
 - the actual server-side model identifier beneath the model actor, without
   exposing endpoint or credential data to the browser surface;
 - a palette button with five light presets and a free color input; the selected
@@ -38,9 +38,14 @@ Click the human figure to cycle present, briefly away and away longer. Click
 the model figure to cycle collaborating, observing and paused. Those are the
 0.1 presence values this Companion commits to the shared session; the cockpit
 renders the work mode they resolve to, in the same words every other Cowork
-surface uses. An away human does not imply autonomous work: without a current
-bounded solo lease the relay shows `Nobody is acting`; with a lease it changes
-to `Model works alone` and flows toward the model.
+surface uses.
+
+The model executes only against a current grant - goal, budget, expiry. A
+present human is not a substitute: set the model to work without a lease and the
+cockpit shows it advising and says the grant is missing, rather than promising a
+click right that `executeSoloAction` would refuse in the same breath. With a
+current lease the relay shows `Sparring · model executes` while you are here and
+`Model works alone` once you step away.
 
 Run it with an explicit comma-separated origin allowlist:
 

@@ -4,28 +4,30 @@ import test from "node:test";
 import {
   ACTOR_STATUS_CYCLE,
   buildCockpitPresentation,
-  nextActorStatus
+  nextActorStatus,
+  nextAvailableStatus
 } from "../src/cockpit-presentation.js";
 
-const HERE_ACTING = { availability: "here", role: "acting" };
-const HERE_OBSERVING = { availability: "here", role: "observing" };
-const STANDBY = { availability: "standby", role: "observing" };
-const AWAY = { availability: "away", role: "observing" };
+const AREA = "Event registration";
+const OTHER_AREA = "Speaker list";
+const HERE_EXECUTING = { availability: "here", role: "executing" };
+const HERE_ADVISING = { availability: "here", role: "advising" };
+const STANDBY = { availability: "standby", role: "advising" };
+const AWAY = { availability: "away", role: "advising" };
 
 function build(overrides = {}) {
   return buildCockpitPresentation({
     mode: "native-cowork",
     executionMode: "structured",
-    human: HERE_ACTING,
-    model: HERE_OBSERVING,
-    allowParallel: false,
+    human: { ...HERE_EXECUTING, area: AREA },
+    model: { ...HERE_ADVISING, area: AREA },
     modelAuthorityValid: true,
     contextLevel: 0,
     ...overrides
   });
 }
 
-test("both here and the human acting means the human holds the click right", () => {
+test("both here on one area, the human executing, means the human holds the click right", () => {
   assert.deepEqual(build(), {
     route: "native",
     routeLabel: "Native Cowork",
@@ -33,20 +35,25 @@ test("both here and the human acting means the human holds the click right", () 
     executionLabel: "Structured actions",
     computerUseActive: false,
     providerId: "cowork-reference-ui",
-    mode: "cowork",
+    mode: "sparring",
     authority: "human",
-    modeLabel: "Together · you act",
-    modeDetail: "You click. The model watches and suggests.",
+    modeLabel: "Sparring · you execute",
+    modeDetail: "You act, the model advises. Say the word and it swaps.",
     relayState: "watching",
-    humanState: "here-acting",
-    humanLabel: "You are working",
+    humanState: "here-executing",
+    humanLabel: "You are executing",
     humanTone: "green",
-    modelState: "here-observing",
+    humanArea: AREA,
+    modelState: "here-advising",
     modelLabel: "Model is advising",
     modelTone: "green",
-    taskLabel: "Advise",
-    taskDetail: "Explains and proposes. Nothing changes without your click.",
+    modelArea: AREA,
+    roleLabel: "Advising",
+    roleDetail: "Explains and proposes. Nothing changes without your click.",
+    areaLabel: "Both on Event registration",
     authorityLabel: "You hold the click right",
+    authorityLapsed: false,
+    doublingAvailable: false,
     routeExplainer:
       "Native — this page speaks Cowork Protocol. This panel relays the page's own tools; " +
       "offers appear in the page's Cowork panel and are clicked there.",
@@ -56,6 +63,43 @@ test("both here and the human acting means the human holds the click right", () 
     contextLevel: 0,
     contextLabel: "Focus only"
   });
+});
+
+// The security core: a role is an intent, the grant is the evidence.
+test("a model set to execute without a current grant does not execute", () => {
+  const lapsed = build({
+    human: { ...HERE_ADVISING, area: AREA },
+    model: { ...HERE_EXECUTING, area: AREA },
+    modelAuthorityValid: false
+  });
+  assert.equal(lapsed.authorityLapsed, true);
+  assert.equal(lapsed.modelState, "here-advising");
+  assert.equal(lapsed.roleLabel, "Advising");
+  assert.equal(lapsed.authority, "none");
+  assert.equal(lapsed.mode, "idle");
+  assert.equal(lapsed.relayState, "dormant");
+
+  // The same statuses with a grant do execute - so it is the record that
+  // decides, not the wording.
+  const granted = build({
+    human: { ...HERE_ADVISING, area: AREA },
+    model: { ...HERE_EXECUTING, area: AREA },
+    modelAuthorityValid: true
+  });
+  assert.equal(granted.authorityLapsed, false);
+  assert.equal(granted.modelState, "here-executing");
+  assert.equal(granted.authority, "model");
+  assert.equal(granted.modeLabel, "Sparring · model executes");
+
+  // A present human is not an authority record either.
+  const humanPresent = build({
+    human: { ...HERE_EXECUTING, area: AREA },
+    model: { ...HERE_EXECUTING, area: AREA },
+    modelAuthorityValid: false
+  });
+  assert.equal(humanPresent.authorityLapsed, true);
+  assert.equal(humanPresent.modelState, "here-advising");
+  assert.equal(humanPresent.authority, "human");
 });
 
 test("the panel never claims a model seat it does not have", () => {
@@ -70,58 +114,80 @@ test("the panel never claims a model seat it does not have", () => {
 });
 
 test("an unattached panel explains how to attach instead of naming a seat", () => {
-  const presentation = build({ mode: "off", model: AWAY });
+  const presentation = build({
+    mode: "off",
+    human: { ...HERE_EXECUTING, area: null },
+    model: { ...AWAY, area: null }
+  });
   assert.equal(
     presentation.routeExplainer,
     "Not attached. Click the toolbar icon on a page to attach this panel."
   );
   assert.equal(presentation.seatNote, "No page attached.");
   assert.equal(presentation.modelState, "away");
-  assert.equal(presentation.taskLabel, "Disconnected");
+  assert.equal(presentation.modelLabel, "No model connected");
+  assert.equal(presentation.roleLabel, "No seat");
+  assert.equal(presentation.areaLabel, "Nothing claimed yet");
 });
 
-test("the hand on the mouse wins when both act and parallel work is not allowed", () => {
-  const conflict = build({ model: HERE_ACTING });
-  assert.equal(conflict.mode, "cowork");
-  assert.equal(conflict.authority, "human");
-  assert.equal(conflict.modelState, "here-observing");
-  assert.equal(conflict.modeLabel, "Together · you act");
+test("doubling needs two areas, not a switch", () => {
+  const sameArea = build({
+    human: { ...HERE_EXECUTING, area: AREA },
+    model: { ...HERE_EXECUTING, area: AREA }
+  });
+  assert.equal(sameArea.mode, "sparring");
+  assert.equal(sameArea.authority, "human");
+  assert.equal(sameArea.doublingAvailable, false);
 
-  const parallel = build({ model: HERE_ACTING, allowParallel: true });
-  assert.equal(parallel.mode, "parallel");
-  assert.equal(parallel.authority, "both");
-  assert.equal(parallel.modeLabel, "Both at once");
-  assert.equal(parallel.authorityLabel, "Both hold the click right");
-  assert.equal(parallel.relayState, "live");
+  const separateAreas = build({
+    human: { ...HERE_EXECUTING, area: AREA },
+    model: { ...HERE_EXECUTING, area: OTHER_AREA }
+  });
+  assert.equal(separateAreas.mode, "doubling");
+  assert.equal(separateAreas.authority, "both");
+  assert.equal(separateAreas.doublingAvailable, true);
+  assert.equal(separateAreas.modeLabel, "Doubling");
+  assert.equal(separateAreas.areaLabel, "You: Event registration · Model: Speaker list");
+  assert.equal(separateAreas.authorityLabel, "Both hold the click right, each in its own area");
 });
 
-test("observing is advising: it comments and proposes, it does not click", () => {
+test("advising is the advisory seat: it comments and proposes, it does not click", () => {
   const advising = build();
-  assert.equal(advising.modelState, "here-observing");
-  assert.equal(advising.modelLabel, "Model is advising");
-  assert.equal(advising.taskLabel, "Advise");
+  assert.equal(advising.modelState, "here-advising");
+  assert.equal(advising.roleDetail, "Explains and proposes. Nothing changes without your click.");
   assert.equal(advising.relayState, "watching");
 
-  const modelActs = build({ human: HERE_OBSERVING, model: HERE_ACTING });
-  assert.equal(modelActs.mode, "cowork");
-  assert.equal(modelActs.authority, "model");
-  assert.equal(modelActs.modeLabel, "Together · model acts");
-  assert.equal(modelActs.relayState, "live");
-  assert.equal(modelActs.authorityLabel, "The model holds the click right");
+  const modelExecutes = build({
+    human: { ...HERE_ADVISING, area: AREA },
+    model: { ...HERE_EXECUTING, area: AREA }
+  });
+  assert.equal(modelExecutes.mode, "sparring");
+  assert.equal(modelExecutes.authority, "model");
+  assert.equal(modelExecutes.relayState, "live");
+  assert.equal(modelExecutes.roleLabel, "Executing");
+  assert.equal(modelExecutes.authorityLabel, "The model holds the click right");
 });
 
-test("a standby model makes the present human the only worker", () => {
-  const presentation = build({ mode: "off", model: STANDBY });
-  assert.equal(presentation.route, "off");
-  assert.equal(presentation.mode, "human-solo");
-  assert.equal(presentation.modelState, "standby");
-  assert.equal(presentation.modeLabel, "You work alone");
-  assert.equal(presentation.relayState, "dormant");
-  assert.equal(presentation.taskLabel, "Stand by");
+test("a model on standby is connected but not working, and away has no seat at all", () => {
+  const standby = build({ model: { ...STANDBY, area: AREA } });
+  assert.equal(standby.mode, "human-solo");
+  assert.equal(standby.modelState, "standby");
+  assert.equal(standby.modelLabel, "Model on standby");
+  assert.equal(standby.roleLabel, "Standing by");
+  assert.equal(standby.relayState, "dormant");
+
+  const away = build({ model: { ...AWAY, area: null } });
+  assert.equal(away.modelState, "away");
+  assert.equal(away.modelLabel, "No model connected");
+  assert.equal(away.roleLabel, "No seat");
+  assert.equal(away.areaLabel, "You: Event registration");
 });
 
 test("absence becomes model solo only with a valid authority record", () => {
-  const solo = build({ human: STANDBY, model: HERE_ACTING });
+  const solo = build({
+    human: { ...STANDBY, area: AREA },
+    model: { ...HERE_EXECUTING, area: AREA }
+  });
   assert.equal(solo.humanState, "standby");
   assert.equal(solo.humanLabel, "You are briefly away");
   assert.equal(solo.mode, "model-solo");
@@ -129,21 +195,25 @@ test("absence becomes model solo only with a valid authority record", () => {
   assert.equal(solo.relayState, "to-model");
 
   const refused = build({
-    human: STANDBY,
-    model: HERE_ACTING,
+    human: { ...STANDBY, area: AREA },
+    model: { ...HERE_EXECUTING, area: AREA },
     modelAuthorityValid: false
   });
   assert.equal(refused.mode, "idle");
-  assert.equal(refused.modelState, "here-observing");
+  assert.equal(refused.authorityLapsed, true);
   assert.equal(refused.relayState, "dormant");
 });
 
 test("long absence and a disconnected model stay visibly idle", () => {
-  const presentation = build({ mode: "off", human: AWAY, model: AWAY });
+  const presentation = build({
+    mode: "off",
+    human: { ...AWAY, area: null },
+    model: { ...AWAY, area: null }
+  });
   assert.equal(presentation.humanState, "away");
   assert.equal(presentation.humanLabel, "You are away");
   assert.equal(presentation.mode, "idle");
-  assert.equal(presentation.modeLabel, "Nobody is acting");
+  assert.equal(presentation.modeLabel, "Nobody is executing");
   assert.equal(presentation.authorityLabel, "Nobody holds the click right");
 });
 
@@ -169,18 +239,36 @@ test("computer use is a separate expensive execution signal, never a connector a
 });
 
 test("unknown actor states fail closed instead of inventing a visual mode", () => {
-  assert.throws(() => build({ human: { availability: "maybe", role: "acting" } }), /actor status/);
-  assert.throws(() => build({ model: { availability: "here", role: "background" } }), /actor status/);
+  assert.throws(() => build({ human: { availability: "maybe", role: "executing" } }), /actor status/);
+  assert.throws(() => build({ model: { availability: "here", role: "lurking" } }), /actor status/);
+  assert.throws(() => build({ human: { ...HERE_EXECUTING, area: "  " } }), /actor status/);
 });
 
 test("a figure click cycles the four statuses in a stable order", () => {
-  assert.deepEqual(ACTOR_STATUS_CYCLE, [HERE_ACTING, HERE_OBSERVING, STANDBY, AWAY]);
-  assert.deepEqual(nextActorStatus(HERE_ACTING), HERE_OBSERVING);
-  assert.deepEqual(nextActorStatus(HERE_OBSERVING), STANDBY);
+  assert.deepEqual(ACTOR_STATUS_CYCLE, [HERE_EXECUTING, HERE_ADVISING, STANDBY, AWAY]);
+  assert.deepEqual(nextActorStatus(HERE_EXECUTING), HERE_ADVISING);
+  assert.deepEqual(nextActorStatus(HERE_ADVISING), STANDBY);
   assert.deepEqual(nextActorStatus(STANDBY), AWAY);
-  assert.deepEqual(nextActorStatus(AWAY), HERE_ACTING);
+  assert.deepEqual(nextActorStatus(AWAY), HERE_EXECUTING);
   // Availability alone identifies an actor that is not here, whatever role a
   // caller passes with it.
-  assert.deepEqual(nextActorStatus({ availability: "standby", role: "acting" }), AWAY);
+  assert.deepEqual(nextActorStatus({ availability: "standby", role: "executing" }), AWAY);
   assert.throws(() => nextActorStatus({ availability: "unknown" }), /actor status/);
+});
+
+test("the cycle skips what this surface cannot grant instead of faking it", () => {
+  // No grant: executing is unreachable, so the model cycles advising -> standby.
+  const noGrant = (candidate) =>
+    candidate.availability === "here" && candidate.role === "executing";
+  assert.deepEqual(nextAvailableStatus(HERE_ADVISING, noGrant), STANDBY);
+  assert.deepEqual(nextAvailableStatus(AWAY, noGrant), HERE_ADVISING);
+
+  // No seat at all: nothing but away is reachable, and the cycle says so
+  // rather than clicking a seat into existence.
+  assert.equal(nextAvailableStatus(AWAY, (candidate) => candidate.availability !== "away"), null);
+
+  // No grant for the human either: the two here-statuses stay reachable.
+  const cannotLeave = (candidate) => candidate.availability !== "here";
+  assert.deepEqual(nextAvailableStatus(HERE_EXECUTING, cannotLeave), HERE_ADVISING);
+  assert.deepEqual(nextAvailableStatus(HERE_ADVISING, cannotLeave), HERE_EXECUTING);
 });

@@ -45,10 +45,15 @@ test("the Companion derives its actor language from the shared presentation", as
   assert.match(app, /buildWorkModePresentation/);
   assert.match(app, /currentSession\?\.workMode/);
   // Status words come from the shared vocabulary, not from this surface.
-  assert.match(app, /CLARIFY_STEPS/);
+  assert.match(app, /STATUS_STEPS/);
   assert.match(app, /presentation\.modeDetail/);
   assert.match(app, /presentation\.authorityLabel/);
-  assert.match(html, /class="protocol-rhythm" id="clarify-steps"/);
+  assert.match(app, /presentation\.roleDetail/);
+  assert.match(app, /presentation\.areaLabel/);
+  // The security core has to be visible, not just enforced.
+  assert.match(app, /authorityLapsed/);
+  assert.match(app, /goal, budget and expiry/);
+  assert.match(html, /class="protocol-rhythm" id="status-steps"/);
   assert.doesNotMatch(html, /Point<\/span>/);
   assert.match(app, /cockpit\.dataset\.humanState/);
   assert.match(app, /cockpit\.dataset\.modelState/);
@@ -64,11 +69,11 @@ test("the Companion derives its actor language from the shared presentation", as
 test("actor states use pose, symbols and reduced-motion fallbacks in addition to aura", async () => {
   const css = await readFile(cssPath, "utf8");
 
-  assert.match(css, /\[data-human-state="here-observing"\]/);
+  assert.match(css, /\[data-human-state="here-advising"\]/);
   assert.match(css, /\[data-human-state="standby"\]/);
   assert.match(css, /\[data-human-state="away"\]/);
-  assert.match(css, /\[data-model-state="here-acting"\]/);
-  assert.match(css, /\[data-model-state="here-observing"\]/);
+  assert.match(css, /\[data-model-state="here-executing"\]/);
+  assert.match(css, /\[data-model-state="here-advising"\]/);
   assert.match(css, /\[data-model-state="standby"\]/);
   assert.match(css, /\[data-model-state="away"\]/);
   assert.match(css, /\[data-relay-state="live"\]/);

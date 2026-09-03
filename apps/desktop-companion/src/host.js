@@ -44,7 +44,11 @@ function readAgentEngagement(state) {
   if (["collaborating", "observing", "paused"].includes(state.agentEngagement)) {
     return state.agentEngagement;
   }
-  return state.agentPresence === "paused" ? "paused" : "collaborating";
+  // Fail closed, and agree with packages/core `fromLegacyPresence`: a missing
+  // engagement field means the offer-and-click rhythm, so the model advises.
+  // Defaulting to "collaborating" would claim the model is executing, which
+  // without a grant is exactly the authority the protocol refuses to give it.
+  return state.agentPresence === "paused" ? "paused" : "observing";
 }
 
 function hasCurrentSoloLease(state, at) {
@@ -71,21 +75,33 @@ function resolveCompanionMode({ state, humanPresence, agentPresence, agentEngage
 }
 
 /**
- * The two status variables per actor, read back out of the 0.1 presence values
- * the Companion mutates on the replicated state. The Companion offers no
- * simultaneous-work control, so it never claims one; the solo lease is the
- * model's authority record while the human is gone.
+ * The three status variables per actor, read back out of the 0.1 presence
+ * values the Companion mutates on the replicated state.
+ *
+ * The solo lease is the model's authority record, and the only one. A human
+ * sitting in front of the screen is not a substitute: `executeSoloAction`
+ * demands a lease either way, so granting authority on presence alone would
+ * make the cockpit promise a click right that does not exist - and, because
+ * `canExecute` and `canPropose` are mutually exclusive, would leave the model
+ * unable to execute *or* propose. Without a record it visibly advises.
+ *
+ * Both partners share the connected page as their area, except a model
+ * working under a lease, which is on that lease's goal.
  */
-function resolveCompanionWorkMode({ state, agentEngagement, at }) {
+function resolveCompanionWorkMode({ state, agentEngagement, at, area }) {
+  const { human, model } = fromLegacyPresence({
+    humanPresence: state.humanPresence,
+    agentPresence: state.agentPresence,
+    agentEngagement
+  });
+  const leaseValid = hasCurrentSoloLease(state, at);
   return resolveWorkMode({
-    ...fromLegacyPresence({
-      humanPresence: state.humanPresence,
-      agentPresence: state.agentPresence,
-      agentEngagement
-    }),
-    allowParallel: false,
-    modelAuthorityValid:
-      state.humanPresence === "present" || hasCurrentSoloLease(state, at)
+    human: { ...human, area },
+    model: {
+      ...model,
+      area: leaseValid ? state.lease?.goal ?? area : area
+    },
+    modelAuthorityValid: leaseValid
   });
 }
 
@@ -428,7 +444,8 @@ export function createCompanionSessionHost({
           workMode: resolveCompanionWorkMode({
             state: snapshot.state,
             agentEngagement,
-            at: now()
+            at: now(),
+            area: value.hello?.surfaceId ?? snapshot.state.surface?.primarySurfaceId ?? null
           }),
           surfaceKind: snapshot.state.surface?.kind,
           applicationSurfaceVisibility:

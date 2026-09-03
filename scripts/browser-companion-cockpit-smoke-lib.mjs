@@ -1,26 +1,28 @@
-// Four work modes, each reached through the two status variables per actor -
-// there is no action-rights control left to set separately.
+// Four work modes, each reached through the three status variables per
+// partner - who is here, which area, executing or advising. There is no
+// action-rights control left to set separately, and no doubling switch:
+// doubling needs two different areas, which one relayed page cannot give.
 const EXPECTED_STATES = Object.freeze([
   Object.freeze({
-    humanState: "here-observing",
-    modelState: "here-acting",
+    humanState: "here-advising",
+    modelState: "here-executing",
     relayState: "live",
-    modeLabel: "Together · model acts"
+    modeLabel: "Sparring · model executes"
   }),
   Object.freeze({
     humanState: "away",
-    modelState: "here-acting",
+    modelState: "here-executing",
     relayState: "to-model",
     modeLabel: "Model works alone"
   }),
   Object.freeze({
-    humanState: "here-acting",
-    modelState: "here-observing",
+    humanState: "here-executing",
+    modelState: "here-advising",
     relayState: "watching",
-    modeLabel: "Together · you act"
+    modeLabel: "Sparring · you execute"
   }),
   Object.freeze({
-    humanState: "here-acting",
+    humanState: "here-executing",
     modelState: "standby",
     relayState: "dormant",
     modeLabel: "You work alone"

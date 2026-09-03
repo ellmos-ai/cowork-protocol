@@ -171,13 +171,18 @@ async function keyboardOrder(call) {
 // variables per actor and cycles a figure from the *resolved* status, so the
 // panel under test resolves the very same matrix the extension does.
 const fixtureSource = `(() => {
+  // One area for both: this stub relays a single page, so the two are never
+  // on different areas and doubling never becomes available.
+  const AREA = "Event registration";
   const state = {
     enabled: true,
-    mode: "legacy-host-companion",
+    mode: "native-cowork",
     executionMode: "structured",
-    human: { availability: "here", role: "observing" },
-    model: { availability: "here", role: "acting" },
-    allowParallel: false,
+    human: { availability: "here", role: "advising", area: AREA },
+    model: { availability: "here", role: "executing", area: AREA },
+    // The stub stands in for a runtime that holds a current grant, so the
+    // panel can be seen rendering every mode. The shipped extension mints
+    // none - its seat note says so, and its model therefore only advises.
     modelAuthorityValid: true,
     soloLeaseValid: true,
     contextLevel: 0,
@@ -187,19 +192,21 @@ const fixtureSource = `(() => {
     pendingOffer: { offerId: "offer-cockpit-proof", summary: "Apply suggested title: Team meetup registration" }
   };
   const cycle = [
-    { availability: "here", role: "acting" },
-    { availability: "here", role: "observing" },
-    { availability: "standby", role: "observing" },
-    { availability: "away", role: "observing" }
+    { availability: "here", role: "executing" },
+    { availability: "here", role: "advising" },
+    { availability: "standby", role: "advising" },
+    { availability: "away", role: "advising" }
   ];
-  // The conflict rule demotes a model that acts while the human acts, so the
-  // stub cycles on from what the panel shows, not from the stored intent.
+  // Two executors on the same area is sparring, not doubling: the model is
+  // demoted and the human keeps the click right. The stub therefore cycles on
+  // from what the panel shows, not from the stored intent.
   const resolved = (side) => {
     const actor = state[side];
-    if (actor.availability !== "here") return { availability: actor.availability, role: "observing" };
-    if (side === "model" && actor.role === "acting" && !state.allowParallel &&
-      state.human.availability === "here" && state.human.role === "acting") {
-      return { availability: "here", role: "observing" };
+    if (actor.availability !== "here") return { availability: actor.availability, role: "advising" };
+    if (side === "model" && actor.role === "executing" &&
+      (!state.modelAuthorityValid || (state.human.availability === "here" &&
+        state.human.role === "executing" && state.human.area === actor.area))) {
+      return { availability: "here", role: "advising" };
     }
     return actor;
   };
@@ -207,7 +214,7 @@ const fixtureSource = `(() => {
     const current = resolved(side);
     const index = cycle.findIndex((candidate) => candidate.availability === current.availability &&
       (current.availability !== "here" || candidate.role === current.role));
-    state[side] = cycle[(index + 1) % cycle.length];
+    state[side] = { ...cycle[(index + 1) % cycle.length], area: AREA };
   };
   const envelope = () => ({ ok: true, result: { state: structuredClone(state) } });
   const sendMessage = async (message) => {
@@ -219,8 +226,8 @@ const fixtureSource = `(() => {
     } else if (message.type === "cowork:sidepanel:toggle") {
       state.enabled = !state.enabled;
       state.model = state.enabled
-        ? { availability: "here", role: "acting" }
-        : { availability: "away", role: "observing" };
+        ? { availability: "here", role: "advising", area: AREA }
+        : { availability: "away", role: "advising", area: null };
     } else if (message.type === "cowork:sidepanel:read-focus") {
       state.focusLabel = "Selected: Registration title";
       state.focusDetail = "Stable field · text input";
@@ -310,11 +317,11 @@ try {
   const states = [];
   const screenshots = [];
 
-  // 1 - both here, the model acts while the human watches.
+  // 1 - both here on one area, the model executes while the human advises.
   states.push(await observeState(call));
-  screenshots.push(await captureFrame(call, "cockpit-01-cowork-model.png"));
+  screenshots.push(await captureFrame(call, "cockpit-01-sparring-model.png"));
 
-  // 2 - the human leaves; the lease keeps the model working alone.
+  // 2 - the human leaves; the grant keeps the model executing alone.
   await trustedClick(call, "#human-control");
   await waitForValue(call, humanState, (value) => value === "standby");
   await trustedClick(call, "#human-control");
@@ -322,13 +329,14 @@ try {
   states.push(await observeState(call));
   screenshots.push(await captureFrame(call, "cockpit-02-model-solo.png"));
 
-  // 3 - the human returns and the hand on the mouse takes the click right back.
+  // 3 - the human returns; two executors on one area is sparring, and the
+  // click right goes back to the human.
   await trustedClick(call, "#human-control");
-  await waitForValue(call, humanState, (value) => value === "here-acting");
+  await waitForValue(call, humanState, (value) => value === "here-executing");
   states.push(await observeState(call));
-  screenshots.push(await captureFrame(call, "cockpit-03-cowork-human.png"));
+  screenshots.push(await captureFrame(call, "cockpit-03-sparring-human.png"));
 
-  // 4 - the model stands by; the human works alone.
+  // 4 - the model stands by, connected but not working; the human is alone.
   await trustedClick(call, "#model-control");
   await waitForValue(call, modelState, (value) => value === "standby");
   states.push(await observeState(call));
