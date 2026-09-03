@@ -12,6 +12,7 @@ Cowork Protocol is the submission to The WebMCP Challenge (2026). The FormBuilde
 
 ## Concepts
 
+- [Panel tour and walkthrough](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/panel-tour.md): the annotated Cowork panel, every control explained, one session start to finish
 - [Three in one: one protocol, one human surface, three hosts](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/hosts.md)
 - [Work modes](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/work-modes.md): presence and role per actor decide the mode and who holds the click right
 - [Integrating an existing app](https://github.com/ellmos-ai/cowork-protocol/blob/main/apps/formbuilder-showcase/INTEGRATION.md)
