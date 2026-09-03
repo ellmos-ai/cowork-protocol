@@ -70,6 +70,7 @@ import { createRecognitionSession, selectSpeechVoice } from "./speech-controller
 import { replyToShowcaseTurn } from "./local-conversation.js";
 import { createModelSeat } from "./model-seat.js";
 import { adviseCommentForHumanChange } from "./advisor-comment.js";
+import { startCompanionAgentRelay } from "./companion-agent-relay.js";
 
 const SESSION_ID = "formbuilder-showcase";
 const EMBEDDED_SURFACE_ID = "formbuilder:embedded";
@@ -171,6 +172,9 @@ let advisorComment = null; // GAP-06: latest advisor comment on a human change, 
 let pageVersion = 1;
 let capabilityLevel = "unavailable";
 let registrationController = null;
+// The page runs its own tools. Held here so the Companion relay can run the
+// same callbacks for a local agent that WebMCP runs for a browser agent.
+let coworkToolHandlers = {};
 let offerCounter = 0;
 let changeCounter = 0;
 let recognitionSession = null;
@@ -538,6 +542,13 @@ async function openInCompanion() {
       link,
       linkSessionId: acknowledgement.linkSessionId
     };
+    // A local agent's tool calls wait on the Companion until this page pulls
+    // them: the Companion stays the session authority and never reaches in.
+    startCompanionAgentRelay({
+      link,
+      linkSessionId: acknowledgement.linkSessionId,
+      handlers: coworkToolHandlers
+    });
     session = adoptSessionState(companionReplicaSnapshot.state);
     let visibilityWarning = null;
     try {
@@ -1929,16 +1940,8 @@ function configureSpeech() {
 }
 
 async function configureWebMcp() {
-  if (!document.modelContext || typeof document.modelContext.registerTool !== "function") {
-    capabilityLevel = "unavailable";
-    setStatus("WebMCP is unavailable in this browser. The local click-gated demo still works.");
-    render();
-    return;
-  }
-
   try {
-    registrationController = await registerNativeCoworkTools({
-      modelContext: document.modelContext,
+    coworkToolHandlers = {
       readFocus: () => {
         if (!focusPacket) {
           throw new CoworkProtocolError("STALE_FOCUS", "No FormBuilder field is focused");
@@ -1986,6 +1989,16 @@ async function configureWebMcp() {
         });
         return { ...response, presentation };
       }
+    };
+    if (!document.modelContext || typeof document.modelContext.registerTool !== "function") {
+      capabilityLevel = "unavailable";
+      setStatus("WebMCP is unavailable in this browser. The local click-gated demo still works.");
+      render();
+      return;
+    }
+    registrationController = await registerNativeCoworkTools({
+      modelContext: document.modelContext,
+      ...coworkToolHandlers
     });
     capabilityLevel = "native";
     setStatus("Nine Native WebMCP tools registered: focus, context, causal changes, presence, offers, solo execution, feedback, conversation inbox, and bounded reply.");

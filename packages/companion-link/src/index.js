@@ -370,6 +370,50 @@ export function createHttpCompanionLink({
       });
     },
 
+    // Tool calls a local agent placed on the Companion. The page pulls them the
+    // same way it pulls deltas - the Companion never reaches into the page.
+    async pullAgentRequests({ linkSessionId }) {
+      requiredText(linkSessionId, "linkSessionId");
+      if (!joinedSessions.has(linkSessionId)) {
+        throw new CompanionLinkError(
+          "INVALID_COMPANION_MESSAGE",
+          "Companion agent requests require a joined session"
+        );
+      }
+      const response = await post(
+        `/sessions/${encodeURIComponent(linkSessionId)}/agent-requests/read`,
+        {}
+      );
+      if (
+        response?.protocolVersion !== PROTOCOL_VERSION ||
+        response?.type !== "companion-agent-requests" ||
+        !Array.isArray(response.requests)
+      ) {
+        throw new CompanionLinkError(
+          "INVALID_COMPANION_MESSAGE",
+          "Companion agent request batch was not a versioned Cowork envelope"
+        );
+      }
+      return cloneJson(response, "Companion agent requests").requests;
+    },
+
+    async reportAgentResult({ linkSessionId, requestId, result = null, error = null }) {
+      requiredText(linkSessionId, "linkSessionId");
+      requiredText(requestId, "requestId");
+      return post(
+        `/sessions/${encodeURIComponent(linkSessionId)}/agent-requests/result`,
+        error === null
+          ? { requestId, result: cloneJson(result, "Cowork tool result") }
+          : {
+              requestId,
+              error: {
+                code: String(error.code ?? "TOOL_FAILED").slice(0, 120),
+                message: String(error.message ?? "The Cowork tool failed").slice(0, 200)
+              }
+            }
+      );
+    },
+
     async pushDeltas({ linkSessionId, batch }) {
       requiredText(linkSessionId, "linkSessionId");
       if (

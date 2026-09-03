@@ -96,3 +96,88 @@ presentation.
 Browser Local Network Access permission remains user-mediated. The host never
 binds to a non-loopback interface. The tray is currently Windows-specific; the
 session host and web surface are ordinary Node/browser components.
+
+## Use the Companion as a tool from Claude Code, Codex CLI or agy
+
+The Companion is not only a window. Any local agent that speaks MCP can call
+the same nine Cowork tools a browser agent calls on the page, so a coding
+agent in your terminal and a model in the browser work on one session with one
+tool set. The MCP server publishes its tool list by reading the page's own
+WebMCP registration, so the two surfaces cannot drift apart.
+
+Two processes are involved, and both must run:
+
+```powershell
+npm run start:companion-host   # the session authority, http://127.0.0.1:47831
+npm run start:companion-mcp    # the stdio MCP server your agent spawns
+```
+
+You do not start the second one yourself; your agent spawns it. Point it at
+this file with an absolute path:
+
+**Claude Code**
+
+```powershell
+claude mcp add cowork-companion -- node C:/_Local_DEV/repos/cowork-protocol/apps/desktop-companion/src/mcp-server.js
+```
+
+or, per project, in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "cowork-companion": {
+      "command": "node",
+      "args": ["C:/_Local_DEV/repos/cowork-protocol/apps/desktop-companion/src/mcp-server.js"],
+      "env": { "COWORK_COMPANION_ENDPOINT": "http://127.0.0.1:47831/cowork/v1" }
+    }
+  }
+}
+```
+
+**Codex CLI** — in `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.cowork-companion]
+command = "node"
+args = ["C:/_Local_DEV/repos/cowork-protocol/apps/desktop-companion/src/mcp-server.js"]
+```
+
+**agy and other agents** — the server is an ordinary stdio MCP server with no
+arguments and no dependencies; see your agent's MCP configuration for where its
+command belongs.
+
+`COWORK_COMPANION_ENDPOINT` overrides the default `http://127.0.0.1:47831/cowork/v1`,
+and `COWORK_COMPANION_LINK_SESSION` names one link session when several pages
+are connected at once.
+
+### What a local agent may and may not do
+
+The tools carry the same authority rules as in the browser, because the page
+enforces them and the page runs the call: `cowork_offer_action` only creates the
+inert offer a human still has to click, and `cowork_execute_solo` still needs a
+current lease. The MCP route adds no authority; it adds a caller.
+
+A tool call travels agent → Companion → page → agent. The Companion holds the
+call until the linked page pulls it, so:
+
+- with no page linked, or a page that does not answer within 15 seconds, the
+  call fails with `PAGE_UNREACHABLE` — it never silently succeeds;
+- a hidden or backgrounded page polls slowly or not at all, so expect
+  `PAGE_UNREACHABLE` there too;
+- a tool the page refuses (`STALE_FOCUS`, `SESSION_PAUSED`, a lapsed lease)
+  reaches the agent as an MCP tool error carrying that code.
+
+The Companion window names the connected client and counts its calls, and says
+so when there is no page for those calls to run on.
+
+Known gap, measured by `npm run smoke:companion-mcp`: an offer an agent makes
+over MCP is created correctly and stays inert, but while the Companion is
+connected it currently has no surface to be clicked on - the connected page
+collapses its own offer list, and the Companion window does not render offers
+yet. The offer exists and is refused execution; a human simply cannot approve it
+from either surface today.
+
+Measured: the stdio handshake, the tool list and the full agent → page → agent
+round trip, in `npm test` and in `npm run smoke:companion-mcp` against a real
+Chrome page. A live Claude Code, Codex CLI or agy session has not been measured.

@@ -129,6 +129,19 @@ function render(state) {
     "aria-hidden",
     String(!currentSession?.computerUseIndicatorVisible)
   );
+  // A local agent reaches this Companion over MCP, not through the page, so
+  // the seat line above cannot show it. Without a linked page its tool calls
+  // have nowhere to run, and saying so here beats a timeout the agent alone sees.
+  const agent = state.agent ?? { client: null, toolCalls: 0, pageLinked: false };
+  const agentCalls = `${agent.toolCalls} tool call${agent.toolCalls === 1 ? "" : "s"}`;
+  $("#agent-link").textContent = agent.client === null
+    ? "No agent connected over MCP."
+    : agent.pageLinked
+      ? `Agent via MCP: ${agent.client} · ${agentCalls}`
+      : `Agent via MCP: ${agent.client} · No page linked - tool calls will fail with PAGE_UNREACHABLE`;
+  $("#agent-link").dataset.agent = agent.client === null
+    ? "none"
+    : agent.pageLinked ? "linked" : "unreachable";
   $("#human-label").textContent = presentation.humanLabel;
   $("#model-label").textContent = presentation.modelLabel;
   const modelIdentity = currentSession?.modelIdentity ?? "No model connected";

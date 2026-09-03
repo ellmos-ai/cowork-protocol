@@ -20,6 +20,7 @@
     "smoke:builder": "node scripts/formbuilder-builder-browser-smoke.mjs",
     "smoke:companion": "node scripts/browser-companion-smoke.mjs",
     "smoke:companion-cockpit": "node scripts/browser-companion-cockpit-smoke.mjs",
+    "smoke:companion-mcp": "node scripts/companion-mcp-smoke.mjs",
     "smoke:companion-native": "node scripts/browser-companion-native-smoke.mjs",
     "smoke:companion-webmcp": "node scripts/browser-companion-webmcp-smoke.mjs",
     "smoke:contrast": "node scripts/pixel-contrast-browser-smoke.mjs",
@@ -29,6 +30,7 @@
     "preview:pages": "node scripts/serve.mjs 4174 dist",
     "start": "node scripts/serve.mjs",
     "start:companion-host": "node apps/desktop-companion/src/cli.js",
+    "start:companion-mcp": "node apps/desktop-companion/src/mcp-server.js",
     "start:model": "node scripts/serve-model.mjs",
     "test": "node --test"
   },

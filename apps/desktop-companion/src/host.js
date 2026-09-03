@@ -341,6 +341,10 @@ export function createCompanionSessionHost({
       authority,
       gateway,
       submittedTurns: new Map(),
+      // Tool calls a local agent placed, waiting for the page to pull them,
+      // and the callers waiting for the page's answer.
+      agentRequests: [],
+      awaitingAgentResults: new Map(),
       linkSessionId,
       lastPageContactAt
     };
@@ -435,6 +439,137 @@ export function createCompanionSessionHost({
     return status;
   }
 
+  // A local agent (Claude Code, Codex CLI, any MCP client) calls a Cowork tool
+  // on this host; the page runs it. The Companion is the session authority, so
+  // it holds the request until the page pulls it, and answers the agent with
+  // whatever the page returned - or with PAGE_UNREACHABLE, never with silence.
+  function resolveAgentSession(linkSessionId) {
+    if (typeof linkSessionId === "string" && linkSessionId !== "") {
+      const linkSession = sessions.get(linkSessionId);
+      if (!linkSession) {
+        throw new CompanionHostError(
+          "PAGE_UNREACHABLE",
+          "The named Companion link session is unavailable",
+          503
+        );
+      }
+      return linkSession;
+    }
+    const linked = [...sessions.values()].filter(
+      (value) => value.lastPageContactAt !== null
+    );
+    if (linked.length === 0) {
+      throw new CompanionHostError(
+        "PAGE_UNREACHABLE",
+        "No Cowork page is linked to this Companion",
+        503
+      );
+    }
+    if (linked.length > 1) {
+      throw new CompanionHostError(
+        "AMBIGUOUS_LINK_SESSION",
+        "Several pages are linked; name one linkSessionId",
+        409
+      );
+    }
+    return linked[0];
+  }
+
+  // Async throughout, so a rejected call never arrives as a synchronous throw
+  // at a caller that is awaiting it.
+  async function callAgentTool({
+    name,
+    arguments: toolArguments = {},
+    linkSessionId = null,
+    clientName = null
+  }) {
+    if (!AGENT_TOOL_NAMES.has(name)) {
+      throw new CompanionHostError(
+        "UNKNOWN_TOOL",
+        "That tool is not part of the Cowork tool set",
+        404
+      );
+    }
+    if (
+      !toolArguments ||
+      typeof toolArguments !== "object" ||
+      Array.isArray(toolArguments)
+    ) {
+      throw new CompanionHostError(
+        "INVALID_TOOL_ARGUMENTS",
+        "Cowork tool arguments must be a JSON object"
+      );
+    }
+    const linkSession = resolveAgentSession(linkSessionId);
+    if (
+      linkSession.agentRequests.length + linkSession.awaitingAgentResults.size >=
+      MAX_PENDING_AGENT_REQUESTS
+    ) {
+      throw new CompanionHostError(
+        "AGENT_QUEUE_FULL",
+        "Too many Cowork tool calls are already waiting for this page",
+        429
+      );
+    }
+    if (typeof clientName === "string" && clientName.trim() !== "") {
+      agentRelay.clientName = clientName.trim().slice(0, 120);
+    }
+    agentRelay.toolCalls += 1;
+    const requestId = randomUUID();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        linkSession.awaitingAgentResults.delete(requestId);
+        linkSession.agentRequests = linkSession.agentRequests.filter(
+          (request) => request.requestId !== requestId
+        );
+        reject(new CompanionHostError(
+          "PAGE_UNREACHABLE",
+          "The linked Cowork page did not answer this tool call",
+          504
+        ));
+      }, agentRequestTimeoutMilliseconds);
+      linkSession.awaitingAgentResults.set(requestId, { resolve, reject, timer });
+      linkSession.agentRequests.push({
+        requestId,
+        name,
+        arguments: cloneJson(toolArguments),
+        at: now()
+      });
+    });
+  }
+
+  function takeAgentRequests(linkSession) {
+    const requests = linkSession.agentRequests;
+    linkSession.agentRequests = [];
+    return requests;
+  }
+
+  function settleAgentRequest(linkSession, { requestId, result = null, error = null }) {
+    const waiting = linkSession.awaitingAgentResults.get(requestId);
+    if (!waiting) {
+      throw new CompanionHostError(
+        "AGENT_REQUEST_NOT_FOUND",
+        "No Cowork tool call is waiting under that id",
+        404
+      );
+    }
+    linkSession.awaitingAgentResults.delete(requestId);
+    clearTimeout(waiting.timer);
+    if (error !== null && error !== undefined) {
+      // The page refused or failed the call. That is a tool failure, and it
+      // reaches the agent as one - reporting it as success would tell an agent
+      // a change happened that the page never made.
+      waiting.reject(new CompanionHostError(
+        typeof error.code === "string" && error.code !== "" ? error.code.slice(0, 120) : "TOOL_FAILED",
+        typeof error.message === "string" ? error.message.slice(0, 200) : "The Cowork page rejected the tool call",
+        422
+      ));
+      return { settled: "error" };
+    }
+    waiting.resolve(result === undefined ? null : cloneJson(result));
+    return { settled: "result" };
+  }
+
   async function readUiState() {
     const computerUseStatus = await readComputerUseStatus();
     return {
@@ -442,6 +577,13 @@ export function createCompanionSessionHost({
       type: "companion-ui-state",
       // Host-wide: the cockpit needs it before any page has connected.
       computerUseAvailable: computerUse !== null,
+      agent: {
+        client: agentRelay.clientName,
+        toolCalls: agentRelay.toolCalls,
+        pageLinked: [...sessions.values()].some(
+          (value) => value.lastPageContactAt !== null
+        )
+      },
       sessions: [...sessions].map(([linkSessionId, value]) => {
         const snapshot = value.authority.readSnapshot();
         const agentEngagement = value.gateway === null
@@ -783,6 +925,36 @@ export function createCompanionSessionHost({
       writeJson(response, 200, await readUiState());
       return;
     }
+    // Local agents speak to this route, and only local agents can: a browser
+    // always attaches Origin to a cross-origin POST, so its absence is what
+    // separates a process on this machine from a page trying the same call.
+    const agentToolMatch = requestUrl.pathname.match(
+      /^\/cowork\/v1\/agent\/tools\/([^/]+)$/
+    );
+    if (request.method === "POST" && agentToolMatch) {
+      if (typeof request.headers.origin === "string") {
+        writeJson(response, 403, { code: "AGENT_ROUTE_IS_LOCAL_ONLY" });
+        return;
+      }
+      try {
+        const body = await readJson(request);
+        const result = await callAgentTool({
+          name: decodeURIComponent(agentToolMatch[1]),
+          arguments: body?.arguments ?? {},
+          linkSessionId: body?.linkSessionId ?? null,
+          clientName: body?.clientName ?? null
+        });
+        writeJson(response, 200, { result });
+      } catch (error) {
+        const status = error instanceof CompanionHostError ? error.status : 500;
+        const code = error instanceof CompanionHostError
+          ? error.code
+          : "COMPANION_HOST_ERROR";
+        writeJson(response, status, { code, message: error.message });
+      }
+      return;
+    }
+
     const boundAddress = server.address();
     const localUiOrigin = formatLoopbackOrigin(
       hostname,
@@ -991,6 +1163,40 @@ export function createCompanionSessionHost({
         writeJson(response, 200, batch, origin);
         return;
       }
+      const agentPullMatch = url.pathname.match(
+        /^\/cowork\/v1\/sessions\/([^/]+)\/agent-requests\/read$/
+      );
+      const agentResultMatch = url.pathname.match(
+        /^\/cowork\/v1\/sessions\/([^/]+)\/agent-requests\/result$/
+      );
+      if (request.method === "POST" && agentPullMatch) {
+        const linkSession = touchPageSession(
+          decodeURIComponent(agentPullMatch[1]),
+          origin
+        );
+        writeJson(response, 200, {
+          protocolVersion: PROTOCOL_VERSION,
+          linkVersion: LINK_VERSION,
+          type: "companion-agent-requests",
+          requests: takeAgentRequests(linkSession)
+        }, origin);
+        return;
+      }
+      if (request.method === "POST" && agentResultMatch) {
+        const linkSession = touchPageSession(
+          decodeURIComponent(agentResultMatch[1]),
+          origin
+        );
+        const body = await readJson(request);
+        if (typeof body?.requestId !== "string" || body.requestId === "") {
+          throw new CompanionHostError(
+            "INVALID_COMPANION_MESSAGE",
+            "A Cowork tool result must name the request it answers"
+          );
+        }
+        writeJson(response, 200, settleAgentRequest(linkSession, body), origin);
+        return;
+      }
       if (request.method === "POST" && match) {
         const linkSessionId = decodeURIComponent(match[1]);
         touchPageSession(linkSessionId, origin);
@@ -1069,6 +1275,10 @@ export function createCompanionSessionHost({
       return authority.readDeltas(options);
     },
     reportSurface,
+    callAgentTool,
+    readAgentRelay() {
+      return { ...agentRelay };
+    },
     submitModelTurn,
     updateModelEngagement,
     readModelStatus(linkSessionId) {
