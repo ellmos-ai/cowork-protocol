@@ -38,12 +38,14 @@ flowchart TB
   HUMAN["Human\nfocus, speech, click, presence"]
   AGENT["Web agent\nhypothesis, proposal, scoped work"]
   BROWSER["WebMCP-capable browser\nModelContext mediation"]
-  SURFACES["Interchangeable surfaces\nEmbed, PiP, Side Panel, Desktop/tray or provider chat"]
+  SURFACES["Interchangeable surfaces\nembedded panel, extension side panel, Desktop Companion or provider chat"]
   SESSION["Session Authority\nrevision, surface lease, model-seat lease"]
   CONTEXT["Context Manager\ncompact summary and bounded recent turns"]
   GATEWAY["Model Gateway\none serialized inference queue"]
   CORE["Protocol Core\ncausal events, budgets, rights, leases"]
   MODE["Work modes\npresent, area and role per partner"]
+  SEAT["Model seat\ndemo, direct, page host, companion or none"]
+  LOCALAGENTS["Local agents over MCP\nClaude Code, Codex CLI"]
   NATIVE["Native WebMCP Connector"]
   WEBBRIDGE["WebMCP Bridge"]
   LEGACY["Legacy DOM/A11y/Visual-request Bridge"]
@@ -55,7 +57,8 @@ flowchart TB
   SURFACES <-->|"commands and versioned projections"| SESSION
   SESSION -->|"Cowork-owned context"| CONTEXT
   CONTEXT <-->|"one bounded turn at a time"| GATEWAY
-  GATEWAY <-->|"exclusive Cowork model seat"| AGENT
+  GATEWAY <-->|"exclusive Cowork model-seat lease"| SEAT
+  SEAT <-->|"whoever holds the seat answers the turn"| AGENT
   SURFACES -.->|"provider-owned private chat context"| AGENT
   SESSION <-->|"presence, modes, rights and causal journal"| CORE
   CORE <-->|"resolveWorkMode: who executes, who advises"| MODE
@@ -71,6 +74,7 @@ flowchart TB
   LEGACYPAGE <-->|"pointer focus and trusted visible click"| EXTENSION
   EXTENSION <-->|"bounded host callbacks"| LEGACY
   EXTENSION -->|"registers four Cowork tools over WebMCP"| BROWSER
+  LOCALAGENTS -->|"tools/call into the Desktop Companion"| SURFACES
   NATIVE <--> |"stable fields and verified actions"| FORM
   FORM -->|"observed ChangeEvent with cause refs"| CORE
 ```
@@ -78,8 +82,12 @@ flowchart TB
 Text alternative: the visible surface is replaceable. Every Cowork-owned
 surface reads and writes one versioned Session Authority; one Context Manager
 stores only a compact summary and recent bounded turns, and one Model Gateway
-serializes inference under an exclusive renewable model-seat lease. A foreign
-provider chat may use the Protocol Core while retaining its private context.
+serializes inference under an exclusive renewable model-seat lease. That one
+active seat resolves to a scripted demo helper, a direct OpenAI-compatible
+connection, a same-origin page host, the connected Desktop Companion, or
+nothing at all, and local agents such as Claude Code or Codex CLI reach the
+Companion as an MCP tool server. A foreign provider chat may use the Protocol
+Core while retaining its private context.
 The core enforces modes, rights and causal events, while connectors translate
 application or browser data into the same contract. Those modes are not a
 separate setting: three answers per partner, present, working on what and in

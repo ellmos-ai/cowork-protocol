@@ -610,6 +610,45 @@ removed controls on every field-list render, which would have thrown; that
 line is gone. The builder smoke additionally asserts that all nine removed ids
 are absent from the DOM, so a partial fold cannot pass unnoticed.
 
+### Local agents over MCP
+
+A local agent can now use the Cowork Companion as a tool. The Companion runs a
+stdio MCP server (`apps/desktop-companion/src/mcp-server.js`, `npm run
+start:companion-mcp`) that publishes the same nine `cowork_*` tools the page
+registers over WebMCP. The list is produced by running that registration, not
+by restating its schemas, so the two surfaces cannot drift apart.
+
+Each `tools/call` reaches the Companion over loopback HTTP, waits in a
+per-session queue until the linked page pulls it, and returns whatever the page
+answered. The route adds a caller, not authority: offers stay inert and solo
+execution still requires a lease, because the page enforces both and the page
+runs the call. A browser cannot place calls on that route - it is refused when
+an `Origin` header is present, which a cross-origin browser request always
+carries.
+
+**Measured on this tree** (2026-09-03):
+
+- Node tests: 478 of 478 passed, 0 failed; 23 of them new (15 for the MCP server and the host relay, 8 for the page-side relay)
+- `npm run smoke:companion-mcp`: exit 0 on Chrome/152.0.7977.65. A real MCP client process speaks stdio JSON-RPC to the server: the handshake returns `protocolVersion 2025-06-18` and `serverInfo.name cowork-companion`, `tools/list` returns the nine names in the same order the page registers them, `cowork_read_focus` returns a packet for the focused `form-field:full-name`, and `cowork_offer_action` creates an offer with `requiresHumanConfirmation: true` while the field stays empty
+- `npm run smoke:surface` and `npm run smoke:companion-cockpit`: exit 0 after the host and page changes; `check:secrets` PASS, `check:architecture` exit 0
+- failure paths are asserted, not assumed: no linked page, a page that never answers within 15 seconds, a page that refuses the call, an unknown tool, and a website trying the local agent route each produce the expected code
+
+**A gap the smoke found and reports rather than hides.** An offer made over MCP
+is created correctly and stays inert, but while the Companion is connected it
+currently has no surface a human can click: the connected page collapses its
+own offer list (`.cowork-panel.is-companion-connected` hides everything but the
+topline), and the Companion window renders no offers. Measured in the smoke as
+`offerReachableByHuman: { reachable: false, display: "grid", width: 0,
+panelCollapsedByCompanion: true }`. The smoke therefore proves the offer up to
+its inert state and records the gap; it does not claim a completed human click
+in that state.
+
+**Provenance, for honesty:** the `coworkToolDefinitions()` export in
+`packages/native-webmcp/src/index.js` was written for this work but landed in
+commit `7061b45` ("fix(smoke): count `<summary>` in the zoom reflow check
+too"), swept in by another agent's wide `git add` in the shared clone. It was
+not reverted; it is the export the MCP server and its drift test depend on.
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;
@@ -621,3 +660,4 @@ are absent from the DOM, so a partial fold cannot pass unnoticed.
 - sending a filled-in FormBuilder Studio form by mail and collecting responses back into one place (noted as a roadmap item, not a claim, in `apps/formbuilder-showcase/README.md`).
 - the FormBuilder Studio's own three Cowork sections were removed and their behaviour folded into the one Cowork panel (see "One Cowork surface (panel fold)" above). The separate-presence-readout gap this list previously carried is closed by the grant being adopted as the session lease. The fold is measured: the gate numbers in that section are results, not placeholders.
 - `builder-directive-classifier.js`'s recognized phrases (required/optional/move up or down/"make this the first question") are a small, disclosed keyword heuristic, the same kind of scripted stand-in `local-conversation.js` already is - not a claim that the Builder understands natural language.
+- a real Claude Code, Codex CLI or agy session using the Companion over MCP: the stdio client in `npm run smoke:companion-mcp` is a test client written for this repository, and no run by a shipped agent has been measured.
