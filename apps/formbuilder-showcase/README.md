@@ -17,7 +17,8 @@ panel serves the Studio canvas the same way it serves the fixed sample form
 below the workspace, and every suggestion still needs your real click. The
 same protocol also runs with no Cowork surface at all, behind a browser
 extension, or behind the Desktop Companion; see the level table in the
-[repository README](../../README.md).
+[repository README](../../README.md) and
+[what each host adds and does not claim](../../docs/hosts.md).
 Its form-rendering engine is derived from the pre-existing MIT-licensed
 FormBuilder web companion (see [`FORMBUILDER-NOTICE.md`](FORMBUILDER-NOTICE.md)
 and the repository-level [`PREEXISTING-AND-NEW.md`](../../PREEXISTING-AND-NEW.md));

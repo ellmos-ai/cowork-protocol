@@ -593,6 +593,11 @@ the previous batch, where these numbers would be wrong):
 - `npm run smoke:accessibility`: exit 0; 38 interactive controls, 38 named AX nodes, 38 unique Tab stops, 38 focus-visible stops, 0 px horizontal overflow. 44 before the fold, 36 after it, 38 once the WebMCP help became a collapsible section and `<summary>` was counted as the keyboard control it is - the DOM selector and the AX role allowlist had both been missing it
 - `npm run smoke:contrast`: exit 0; 1398 audited text items across 11 states, 0 unsupported ranges, minimum contrast 4.5656:1
 - the other six Chrome smokes (`webmcp`, `surface`, `model-host`, `companion`, `companion-native`, `companion-cockpit`): exit 0 each. The native tool count stays unread in headless Chrome without the WebMCP flag (`nativeToolCountUnchanged: null`), so no claim is made about it here
+- provenance, for honesty: the browser-companion work of a second agent
+  working in the same clone was swept into two of the panel-fold commits by a
+  `git add -A`. It was not reverted, because it is real and tested work - it is
+  what raised the test total from 445 to 455 - but it landed under commit
+  messages that do not describe it.
 - build artifacts: `build:pages` 35 files (25 modules reachable from `app.js`, no unresolved import), `build:companion` 21 files
 
 **Selectors repointed in the same change.** Two smokes drove ids that the
