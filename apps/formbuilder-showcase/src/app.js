@@ -35,6 +35,7 @@ import {
 } from "../../../packages/integration-contract/src/index.js";
 import {
   REFERENCE_UI_PROVIDER_ID,
+  createStepIcon,
   STATUS_STEPS,
   statusForWorkModeChoice,
   workModeChoices
@@ -114,9 +115,7 @@ $("#lease-microcopy").textContent = DEMO_LEASE_MICROCOPY;
 $("#status-steps").replaceChildren(
   ...STATUS_STEPS.map((step) => {
     const item = document.createElement("span");
-    const dot = document.createElement("i");
-    dot.setAttribute("aria-hidden", "true");
-    item.append(dot, step.label);
+    item.append(createStepIcon(step.icon, document), step.label);
     item.title = step.question;
     return item;
   })

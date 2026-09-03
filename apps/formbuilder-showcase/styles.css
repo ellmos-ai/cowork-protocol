@@ -431,7 +431,7 @@ textarea { resize: vertical; }
   font-weight: 800;
 }
 .surface-button:hover { border-color: var(--cowork-gold); background: #fff7e7; }
-.surface-button > span:first-child { color: var(--cowork-coral); font-size: 1rem; line-height: 1; }
+.surface-button .ui-icon { color: var(--cowork-coral); }
 .protocol-rhythm { display: grid; grid-template-columns: repeat(4, 1fr); gap: .38rem; margin: .15rem .3rem .8rem; }
 .protocol-rhythm span {
   display: inline-flex;
@@ -451,7 +451,7 @@ textarea { resize: vertical; }
 .protocol-rhythm span:nth-child(2) { border-color: rgba(176,125,30,.35); color: #76500b; }
 .protocol-rhythm span:nth-child(3) { border-color: rgba(219,56,36,.28); color: #a83222; }
 .protocol-rhythm span:nth-child(4) { border-color: rgba(10,122,114,.3); color: var(--cowork-teal); }
-.protocol-rhythm i { width: .38rem; height: .38rem; border-radius: 50%; background: currentColor; }
+.protocol-rhythm .ui-icon { width: .82rem; height: .82rem; }
 .presence-strip { gap: .55rem; padding: .55rem; background: #f9f3e8; }
 .presence-person {
   flex: 1;
@@ -581,6 +581,7 @@ textarea { resize: vertical; }
 .panel-section, .receipt-panel { border-color: rgba(176,125,30,.18); background: rgba(250,245,235,.82); }
 .panel-section:nth-of-type(even) { background: rgba(255,255,255,.76); }
 .section-icon { display: inline-grid; place-items: center; width: 1.45rem; height: 1.45rem; margin-right: .4rem; border-radius: .46rem; color: white; background: var(--cowork-teal); font-size: .78rem; }
+.section-icon .ui-icon { width: .95rem; height: .95rem; stroke-width: 1.9; }
 .demo-button { background: var(--cowork-teal); }
 .audio-button { background: var(--cowork-gold); }
 .mode-badge { color: #8d271a; border-color: rgba(255,96,74,.24); background: #fff0ed; }
@@ -600,6 +601,9 @@ textarea { resize: vertical; }
    the column side by side, and every control has to stay reachable. */
 .workspace-tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 .9rem; }
 .workspace-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
   padding: .62rem 1.1rem;
   border: 1px solid var(--line);
   border-radius: .9rem;

@@ -1,4 +1,4 @@
-import { buildWorkModePresentation, STATUS_STEPS } from "./reference-ui.js";
+import { buildWorkModePresentation, createStepIcon, STATUS_STEPS } from "./reference-ui.js";
 
 const $ = (selector) => document.querySelector(selector);
 // The 0.1 wire carries availability for the human and availability+role for
@@ -262,9 +262,7 @@ async function postControl(kind, body) {
 $("#status-steps").replaceChildren(
   ...STATUS_STEPS.map((step) => {
     const item = document.createElement("span");
-    const dot = document.createElement("i");
-    dot.setAttribute("aria-hidden", "true");
-    item.append(dot, step.label);
+    item.append(createStepIcon(step.icon, document), step.label);
     item.title = step.question;
     return item;
   })

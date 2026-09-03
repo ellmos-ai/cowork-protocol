@@ -30,8 +30,8 @@
       <!-- Two canvases, one panel: only the chosen one is on the page, so the
            panel can never report attention on a surface nobody can see. -->
       <div class="workspace-tabs" role="tablist" aria-label="Choose a canvas to work on">
-        <button type="button" role="tab" class="workspace-tab" id="workspace-tab-studio" aria-controls="workspace-panel-studio" aria-selected="true">Build your own form</button>
-        <button type="button" role="tab" class="workspace-tab" id="workspace-tab-sample" aria-controls="workspace-panel-sample" aria-selected="false">Fill the sample form</button>
+        <button type="button" role="tab" class="workspace-tab" id="workspace-tab-studio" aria-controls="workspace-panel-studio" aria-selected="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.6 5.8A1.2 1.2 0 0 1 5.8 4.6h12.4a1.2 1.2 0 0 1 1.2 1.2v12.4a1.2 1.2 0 0 1-1.2 1.2H5.8a1.2 1.2 0 0 1-1.2-1.2Z"/><path d="M12 8.6v6.8"/><path d="M8.6 12h6.8"/></svg><span>Build your own form</span></button>
+        <button type="button" role="tab" class="workspace-tab" id="workspace-tab-sample" aria-controls="workspace-panel-sample" aria-selected="false"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 4.6h8.2L19 9.4v10a1.2 1.2 0 0 1-1.2 1.2H6a1.2 1.2 0 0 1-1.2-1.2V5.8A1.2 1.2 0 0 1 6 4.6Z"/><path d="M14.2 4.6V9.4H19"/><path d="M8.4 14.4l2.2 2.2 4.4-4.6"/></svg><span>Fill the sample form</span></button>
       </div>
 
     <section class="builder-studio form-surface" id="workspace-panel-studio" role="tabpanel" aria-labelledby="builder-title">
@@ -173,8 +173,8 @@
         <div class="surface-actions" aria-label="Cowork surface">
           <span class="metric"><span id="surface-label">Embedded</span> · S<span id="session-revision">0</span></span>
           <span class="mode-badge" id="mode-badge">Cowork</span>
-          <button class="surface-button" id="detach-cowork" type="button" aria-label="Detach Cowork panel" aria-pressed="false"><span aria-hidden="true">↗</span><span>Pop out</span></button>
-          <button class="surface-button" id="open-companion" type="button" aria-label="Open the Cowork Desktop Companion"><span aria-hidden="true">◇</span><span>Desktop Companion</span></button>
+          <button class="surface-button" id="detach-cowork" type="button" aria-label="Detach Cowork panel" aria-pressed="false"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M13.6 4.6H19.4V10.4"/><path d="M19.4 4.6 12.6 11.4"/><path d="M18 13.8v4.6A1.6 1.6 0 0 1 16.4 20H5.6A1.6 1.6 0 0 1 4 18.4V7.6A1.6 1.6 0 0 1 5.6 6H10.2"/></svg><span>Pop out</span></button>
+          <button class="surface-button" id="open-companion" type="button" aria-label="Open the Cowork Desktop Companion"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6.4A1.4 1.4 0 0 1 5.4 5h13.2A1.4 1.4 0 0 1 20 6.4v8.2a1.4 1.4 0 0 1-1.4 1.4H5.4A1.4 1.4 0 0 1 4 14.6Z"/><path d="M12 16v3"/><path d="M8.6 19h6.8"/></svg><span>Desktop Companion</span></button>
         </div>
       </div>
 
@@ -246,14 +246,14 @@
       </section>
 
       <details class="panel-section webmcp-help" id="webmcp-help">
-        <summary><span class="section-icon" aria-hidden="true">ⓘ</span>How to enable WebMCP in this browser<span class="badge" id="webmcp-help-state">checking…</span></summary>
+        <summary><span class="section-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4.4a7.6 7.6 0 1 1 0 15.2 7.6 7.6 0 0 1 0-15.2Z"/><path d="M12 11.2v4.8"/><path d="M12 8.3v.2"/></svg></span>How to enable WebMCP in this browser<span class="badge" id="webmcp-help-state">checking…</span></summary>
         <p class="microcopy" id="webmcp-help-browser"></p>
         <ol class="webmcp-steps" id="webmcp-help-steps"></ol>
       </details>
 
       <section class="panel-section model-seat" aria-labelledby="model-seat-heading">
         <div class="section-row">
-          <h3 id="model-seat-heading"><span class="section-icon" aria-hidden="true">◆</span>Model seat</h3>
+          <h3 id="model-seat-heading"><span class="section-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.6 8.4A1.6 1.6 0 0 1 8.2 6.8h7.6a1.6 1.6 0 0 1 1.6 1.6v7a1.6 1.6 0 0 1-1.6 1.6H8.2a1.6 1.6 0 0 1-1.6-1.6Z"/><path d="M12 6.8V4.4"/><path d="M9.9 11.2v1.4"/><path d="M14.1 11.2v1.4"/><path d="M4.2 11.6v2.6"/><path d="M19.8 11.6v2.6"/></svg></span>Model seat</h3>
           <span class="badge" id="model-seat-badge" data-tone="demo">Demo helper (scripted)</span>
         </div>
         <div class="showcase-addon">
@@ -291,7 +291,7 @@
 
       <section class="panel-section focus-readout" aria-labelledby="focus-heading">
         <div class="section-row">
-          <h3 id="focus-heading"><span class="section-icon" aria-hidden="true">◎</span>Attention lens</h3>
+          <h3 id="focus-heading"><span class="section-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.9 12S6.5 6.3 12 6.3 21.1 12 21.1 12 17.5 17.7 12 17.7 2.9 12 2.9 12Z"/><path d="M12 9.6a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Z"/></svg></span>Attention lens</h3>
           <span class="metric" id="context-label">No context sent</span>
         </div>
         <p class="focus-target" id="focus-label">Point to or select a form field</p>
@@ -317,7 +317,7 @@
 
       <section class="panel-section authorize-here" aria-labelledby="work-mode-heading">
         <div class="section-row">
-          <h3 id="work-mode-heading"><span class="section-icon" aria-hidden="true">◇</span><span id="work-mode-heading-text"></span></h3>
+          <h3 id="work-mode-heading"><span class="section-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7.4 8.4h11.2"/><path d="M15.4 5.2 18.6 8.4l-3.2 3.2"/><path d="M16.6 15.6H5.4"/><path d="M8.6 12.4 5.4 15.6l3.2 3.2"/></svg></span><span id="work-mode-heading-text"></span></h3>
           <label class="compact-select">
             <span class="visually-hidden" id="work-mode-select-label"></span>
             <select id="work-mode"></select>
@@ -339,7 +339,7 @@
 
       <section class="panel-section" aria-labelledby="audio-heading">
         <div class="section-row">
-          <h3 id="audio-heading"><span class="section-icon" aria-hidden="true">◉</span>Conversation</h3>
+          <h3 id="audio-heading"><span class="section-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.4 8A1.6 1.6 0 0 1 6 6.4h12A1.6 1.6 0 0 1 19.6 8v5.2a1.6 1.6 0 0 1-1.6 1.6H9.4L5.4 17.8v-3A1.6 1.6 0 0 1 4.4 13.2Z"/><path d="M8.4 10.6h7.2"/></svg></span>Conversation</h3>
           <span class="badge" id="model-transport-badge">Local demo helper</span>
         </div>
         <form id="conversation-form" class="conversation-form">
@@ -360,7 +360,7 @@
 
       <section class="receipt-panel authorize-here" aria-labelledby="receipt-heading">
         <div class="section-row">
-          <h3 id="receipt-heading"><span class="section-icon" aria-hidden="true">✓</span>Verified receipts</h3>
+          <h3 id="receipt-heading"><span class="section-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4.4a7.6 7.6 0 1 1 0 15.2 7.6 7.6 0 0 1 0-15.2Z"/><path d="M8.5 12.1l2.5 2.5 4.5-4.9"/></svg></span>Verified receipts</h3>
           <span class="metric" id="receipt-count">0</span>
         </div>
         <ol id="receipt-list" class="receipt-list" aria-live="polite"></ol>
@@ -369,7 +369,7 @@
 
       <section class="panel-section" aria-labelledby="presence-heading">
         <div class="section-row">
-          <h3 id="presence-heading"><span class="section-icon" aria-hidden="true">↗</span>Handoff</h3>
+          <h3 id="presence-heading"><span class="section-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.2 5.2v13.6"/><path d="M17.8 5.2v13.6"/><path d="M9.2 12h6.4"/><path d="M12.9 9.2 15.6 12l-2.7 2.8"/></svg></span>Handoff</h3>
           <button class="text-button" id="toggle-agent" type="button">Pause agent</button>
         </div>
         <label>

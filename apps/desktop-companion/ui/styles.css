@@ -452,7 +452,7 @@ h2 { margin: 0; font-size: 17px; letter-spacing: -.025em; }
 
 .protocol-rhythm { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 10px 0; color: var(--muted); font-size: 7px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 .protocol-rhythm span { min-width: 0; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
-.protocol-rhythm i { display: inline-block; width: 4px; height: 4px; margin-right: 3px; border-radius: 50%; background: var(--gold); vertical-align: middle; }
+.protocol-rhythm .ui-icon { width: 10px; height: 10px; margin-right: 3px; vertical-align: middle; }
 .status-card, .conversation-card { padding: 15px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.88); box-shadow: 0 12px 30px rgba(66,44,13,.07); }
 .status-card { border-top: 4px solid var(--coral); }
 .conversation-card { margin-top: 12px; border-top: 4px solid var(--teal); }

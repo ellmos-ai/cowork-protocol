@@ -191,7 +191,18 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.025em; }
 
 .protocol-rhythm { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 8px; color: var(--ink-muted); font-size: 7px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
 .protocol-rhythm span { min-width: 0; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
-.protocol-rhythm i { display: inline-block; width: 4px; height: 4px; margin-right: 3px; border-radius: 50%; background: var(--line-gold); vertical-align: middle; }
+.protocol-rhythm .ui-icon {
+  width: 10px;
+  height: 10px;
+  margin-right: 3px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: middle;
+}
 
 @keyframes relay-flow { to { stroke-dashoffset: -38; } }
 @keyframes relay-awake { 50% { transform: scale(1.13) rotate(8deg); filter: drop-shadow(0 0 5px #f2c65b); } }

@@ -1,7 +1,7 @@
 import {
   buildCockpitPresentation
 } from "./modules/apps/browser-companion/src/cockpit-presentation.js";
-import { STATUS_STEPS } from "./modules/packages/reference-ui/src/index.js";
+import { createStepIcon, STATUS_STEPS } from "./modules/packages/reference-ui/src/index.js";
 
 const $ = (selector) => document.querySelector(selector);
 const root = $(".cowork-cockpit");
@@ -150,9 +150,7 @@ async function refresh() {
 $("#status-steps").replaceChildren(
   ...STATUS_STEPS.map((step) => {
     const item = document.createElement("span");
-    const dot = document.createElement("i");
-    dot.setAttribute("aria-hidden", "true");
-    item.append(dot, step.label);
+    item.append(createStepIcon(step.icon, document), step.label);
     item.title = step.question;
     return item;
   })

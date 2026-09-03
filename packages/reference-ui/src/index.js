@@ -8,12 +8,64 @@ export const REFERENCE_UI_PROVIDER_ID = "cowork-reference-ui";
  * reads its wording from here. Never write these strings into a surface.
  * ------------------------------------------------------------------ */
 
-/** The three questions a Cowork surface answers, in reading order. */
+/** The three questions a Cowork surface answers, in reading order. Each step
+ *  carries its icon as bare path data, so every surface draws the same mark
+ *  without an icon font, a sprite or a second asset that could fail to load. */
 export const STATUS_STEPS = Object.freeze([
-  Object.freeze({ id: "present", label: "Present", question: "Who is here right now" }),
-  Object.freeze({ id: "area", label: "Working on", question: "Which page, task or field" }),
-  Object.freeze({ id: "role", label: "Role", question: "Executing or advising" })
+  Object.freeze({
+    id: "present",
+    label: "Present",
+    question: "Who is here right now",
+    icon: Object.freeze([
+      "M12 4.4a3.4 3.4 0 1 1 0 6.8 3.4 3.4 0 0 1 0-6.8Z",
+      "M4.9 19.6a7.1 7.1 0 0 1 14.2 0"
+    ])
+  }),
+  Object.freeze({
+    id: "area",
+    label: "Working on",
+    question: "Which page, task or field",
+    icon: Object.freeze([
+      "M4.4 8.6V5.9A1.5 1.5 0 0 1 5.9 4.4h2.7",
+      "M15.4 4.4h2.7a1.5 1.5 0 0 1 1.5 1.5v2.7",
+      "M19.6 15.4v2.7a1.5 1.5 0 0 1-1.5 1.5h-2.7",
+      "M8.6 19.6H5.9a1.5 1.5 0 0 1-1.5-1.5v-2.7",
+      "M12 11.9v.2"
+    ])
+  }),
+  Object.freeze({
+    id: "role",
+    label: "Role",
+    question: "Executing or advising",
+    icon: Object.freeze([
+      "M7.4 8.4h11.2",
+      "M15.4 5.2 18.6 8.4l-3.2 3.2",
+      "M16.6 15.6H5.4",
+      "M8.6 12.4 5.4 15.6l3.2 3.2"
+    ])
+  })
 ]);
+
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
+/**
+ * Draws one of the icons above into a surface's document. It lives here beside
+ * the words it belongs to: a surface never invents a mark of its own, exactly
+ * as it never invents a label of its own.
+ */
+export function createStepIcon(paths, doc) {
+  const svg = doc.createElementNS(SVG_NAMESPACE, "svg");
+  svg.setAttribute("class", "ui-icon");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  for (const d of paths) {
+    const path = doc.createElementNS(SVG_NAMESPACE, "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+  return svg;
+}
 
 const HUMAN_STATUS = Object.freeze({
   "here-executing": Object.freeze({ label: "You are executing", badge: "●", tone: "green" }),
