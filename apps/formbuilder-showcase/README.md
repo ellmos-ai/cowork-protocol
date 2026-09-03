@@ -32,6 +32,12 @@ place to review returns — left open rather than half-built.
 
 Live: <https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/>
 
+**Panel tour → [`docs/panel-tour.md`](../../docs/panel-tour.md).** Every control
+in the Cowork panel beside the Studio, marked on an annotated screenshot of the
+live page and explained one by one: what each region is, what a click does, and
+what the model gets to see. It also shows the same session in the browser
+extension and in the Desktop Companion.
+
 ## One app, four ways to work in it
 
 | Mode | What you need | What happens |
