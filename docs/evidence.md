@@ -394,7 +394,7 @@ controls, 43 uniquely named AX nodes, 43 tab stops and 43 focus-visible controls
 link); the pixel-contrast audit resolves 1556 visible text items across 11
 rendered states with 0 unsupported backgrounds, 0 failures and a minimum
 contrast of 4.57; the native companion smoke still reports 9 WebMCP tools; the
-Pages artifact is 32 files and the extension artifact 21.
+Pages artifact is 35 files (after the two allowlist fixes 02c27e1 and 12c6d50, which ship model-seat.js, builder-model-suggester.js and openai-compatible.js) and the extension artifact 21. All nine Chrome 152 browser smokes exit 0 on this tree, measured before the two allowlist commits, which touch only scripts/build-pages.mjs.
 
 ## Explicitly not yet evidenced
 
