@@ -318,10 +318,11 @@ test("the Companion restores a joined session after its background host restarts
     const restartedHost = createCompanionSessionHost({
       allowedOrigins: [origin],
       port: 0,
-      sessionStorePath
+      sessionStorePath,
+      sendModelTurn: async () => ({ message: "Restored reply" })
     });
     try {
-      await restartedHost.listen();
+      const restartedAddress = await restartedHost.listen();
       assert.equal(restartedHost.sessionCount(), 1);
       assert.equal(
         restartedHost.readSnapshot("persistent-link").sessionId,
@@ -336,6 +337,25 @@ test("the Companion restores a joined session after its background host restarts
         restartedHost.readContext("persistent-link").recentTurns[0].turnId,
         "turn-1"
       );
+
+      // A restored session is held while no page speaks to us. Handing the job
+      // to the model there would be a handover to nobody, so the cockpit says
+      // what is missing rather than reporting a model that executes.
+      const restartedOrigin =
+        `http://${restartedAddress.hostname}:${restartedAddress.port}`;
+      const unlinked = await fetch(
+        `${restartedOrigin}/cowork/v1/ui/sessions/persistent-link/engagement`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: restartedOrigin },
+          body: JSON.stringify({ agentEngagement: "collaborating" })
+        }
+      );
+      assert.equal(unlinked.status, 409);
+      assert.deepEqual(await unlinked.json(), {
+        code: "PAGE_NOT_LINKED",
+        message: "Link a page first - the model has nothing to execute on"
+      });
     } finally {
       await restartedHost.close();
     }
@@ -592,9 +612,21 @@ test("the movable cockpit commits model engagement and fails closed while paused
     });
     assert.equal(modelRequests, 0);
 
-    assert.equal((await postUi(
+    // The seat click is the handover, and a grant is about something. With no
+    // field pointed at, the cockpit says so instead of granting into thin air.
+    const unfocused = await postUi(
       "/cowork/v1/ui/sessions/cockpit-link/engagement",
       { agentEngagement: "collaborating" }
+    );
+    assert.equal(unfocused.status, 409);
+    assert.deepEqual(await unfocused.json(), {
+      code: "NO_FOCUSED_TARGET",
+      message: "Point the page at a field first - a grant needs a target to be about"
+    });
+
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "observing" }
     )).status, 200);
     assert.equal((await postUi(
       "/cowork/v1/ui/sessions/cockpit-link/presence",
@@ -609,21 +641,57 @@ test("the movable cockpit commits model engagement and fails closed while paused
       "away presence without a delegated work lease must not look like agent solo"
     );
 
-    const beforeLease = host.readSnapshot("cockpit-link");
+    // The page speaks and points at a field. Now the same click is a real
+    // handover, and the Companion mints the grant itself - no trip back to
+    // the page for a button the cockpit does not have.
+    await link.pullDeltas({ linkSessionId: "cockpit-link", afterRevision: 0 });
+    const beforeFocus = host.readSnapshot("cockpit-link");
     await host.commitSession("cockpit-link", {
-      kind: "solo-lease-authorized",
+      kind: "focus-changed",
       nextState: {
-        ...beforeLease.state,
-        lease: {
-          leaseId: "cockpit-solo-lease",
-          goal: "Continue the bounded form task",
-          expiresAt: "2026-08-31T12:05:00.000Z"
+        ...beforeFocus.state,
+        focus: {
+          targetId: "form-field:email",
+          pageVersion: 3,
+          focus: { label: "Email", kind: "pointer" },
+          capabilityIds: ["form.set_value", "form.explain_field"]
         }
       },
-      expectedRevision: beforeLease.revision,
-      sourceSurfaceId: beforeLease.state.surface.primarySurfaceId,
+      expectedRevision: beforeFocus.revision,
+      sourceSurfaceId: beforeFocus.state.surface.primarySurfaceId,
       at: now
     });
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "collaborating" }
+    )).status, 200);
+    state = (await fetch(`${companionOrigin}/cowork/v1/ui/state`).then(
+      (response) => response.json()
+    )).sessions[0];
+    assert.equal(state.lease.goal, "Work on Email");
+    assert.equal(state.lease.origin, "human-click");
+    assert.equal(state.lease.maxCalls, 2);
+    assert.deepEqual(state.lease.allowedTargetIds, ["form-field:email"]);
+    assert.deepEqual(state.lease.allowedCapabilityIds, ["form.set_value"]);
+    assert.equal(state.workMode.authority, "model");
+    assert.equal(state.workMode.authorityLapsed, false);
+
+    // Clicking the seat off execution hands the job back and ends the grant.
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "observing" }
+    )).status, 200);
+    state = (await fetch(`${companionOrigin}/cowork/v1/ui/state`).then(
+      (response) => response.json()
+    )).sessions[0];
+    assert.equal(state.lease, null);
+    assert.equal(state.workMode.model.canExecute, false);
+    assert.equal(state.workMode.authorityLapsed, false);
+
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "collaborating" }
+    )).status, 200);
     await postUi(
       "/cowork/v1/ui/sessions/cockpit-link/presence",
       { humanPresence: "present" }

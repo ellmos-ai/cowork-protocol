@@ -51,6 +51,34 @@ heißt „gegangen" bzw. „kein Modellsitz verbunden".
 `explain` und `suggest` waren nie zwei Dinge und sind jetzt ein Zustand:
 beobachten heißt beraten, also kommentieren und vorschlagen.
 
+## Der Sitz-Klick ist die Autorisierung, die Modusauswahl ein Wunsch
+
+Beide fragen nach demselben Zustand und antworten bewusst verschieden.
+
+`sparring-model` in der Modusauswahl sagt, was man gern hätte. Ohne Grant
+schnappt die Auswahl auf den geltenden Modus zurück und die Oberfläche nennt,
+was fehlt. Eine Auswahl ist keine Autorisierung, und der Sicherheitskern
+darüber gilt auch für ein Auswahlfeld.
+
+Der Druck auf den Modellsitz ist keine Auswahl. Es ist ein vertrauenswürdiger
+Klick der Person, die die Autorität hält, auf den Akteur, dem sie den Job
+übergibt — und genau diese Geste hält ein Grant fest. Also prägt der Sitz einen:
+Ziel aus dem fokussierten Element, dasselbe Aufrufbudget und dieselbe
+Ablaufzeit wie beim Übergabeknopf der Fläche, sichtbar benannt. Ausgeführt wird
+in keinem Fall ohne Grant; die beiden Wege unterscheiden sich darin, wer die
+Geste gemacht hat.
+
+- **Eingebettetes Panel** — Mensch anwesend: übergeben und zusehen. Mensch
+  abwesend: der Away-Pfad, Modell solo innerhalb der Lease. Der nächste Druck
+  holt den Job zurück.
+- **Desktop Companion** — der Companion ist Session Authority und prägt den
+  Grant selbst, statt zurück auf die Seite zu verweisen. Ohne verknüpfte Seite
+  sagt er `PAGE_NOT_LINKED`, ohne fokussiertes Feld `NO_FOCUSED_TARGET`. Ein
+  Grant handelt von etwas, und er erfindet nicht, wovon.
+- **Browser-Erweiterung** — prägt keinen Grant, überspringt darum `executing`
+  und sagt warum. Dieselbe Regel dort, wo kein Autoritätsnachweis entstehen
+  kann.
+
 ## Der typische Ablauf, ohne eine einzige Einstellung
 
 Mensch tippt eine Direktive → daraus entsteht ein Grant → Modell führt aus,

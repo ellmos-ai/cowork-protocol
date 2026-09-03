@@ -1940,7 +1940,24 @@ function cycleActorStatus(side) {
   render();
 }
 
+// Choosing "sparring-model" in the work-mode select is a wish: it says what
+// the human would like and still snaps back without a grant. Pressing the
+// model's seat is not a wish, it is the gesture - a trusted click by the
+// person who holds the authority, on the actor they are handing the job to.
+// So the seat mints the grant the "Hand over, I'll watch" button mints, and
+// the next press takes the job back. The select keeps its snap-back; nothing
+// here weakens the rule that the model executes only inside a grant.
 function cycleModelCockpit() {
+  if (session.workMode.model.canExecute) {
+    returnHuman();
+    return;
+  }
+  const requested = nextActorStatus(session.workMode.model);
+  if (requested.availability === "here" && requested.role === "executing") {
+    if (session.workMode.human.availability === "here") handOverWhileWatching();
+    else startAway(session.humanPresence === "afk-long" ? "long" : "short");
+    return;
+  }
   cycleActorStatus("model");
 }
 

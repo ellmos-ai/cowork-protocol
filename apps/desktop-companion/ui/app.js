@@ -165,17 +165,20 @@ function render(state) {
   $("#relay-detail").textContent = connected
     ? presentation.modeDetail
     : "Waiting for one shared session";
-  // A model set to execute without a current grant is the one state worth
-  // spelling out: the cockpit says why the click right did not move.
+  // The seat click is the handover, so the cockpit names the grant that click
+  // minted - goal, budget, expiry - and says how to take the job back.
   const workMode = currentSession?.workMode ?? IDLE_WORK_MODE;
+  const lease = currentSession?.lease ?? null;
   $("#cockpit-status").textContent = connected
     ? currentSession?.computerUseAbortMessage
       ? `Computer Use stopped: ${currentSession.computerUseAbortMessage}`
       : computerUseActive
         ? "The red model pointer marks profile-filtered system control. Click again to stop."
-        : workMode.authorityLapsed === true
-          ? `${presentation.authorityLabel}. The model needs a current grant with goal, budget and expiry before it can execute.`
-          : `${presentation.authorityLabel}. ${presentation.roleDetail}`
+        : workMode.model?.canExecute && lease !== null
+          ? `${presentation.authorityLabel}. Grant "${lease.goal}", up to ${lease.maxCalls} actions, until ${formatContact(lease.expiresAt)}. Click the model's seat to take the job back.`
+          : workMode.authorityLapsed === true
+            ? `${presentation.authorityLabel}. Click the model's seat to hand the job over - that click mints the grant with goal, budget and expiry.`
+            : `${presentation.authorityLabel}. ${presentation.roleDetail}`
     : "Connect a page to awaken the relay.";
   $("#relay-core").title = presentation.areaLabel;
 

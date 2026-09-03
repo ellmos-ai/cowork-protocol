@@ -71,6 +71,36 @@ function hasCurrentSoloLease(state, at) {
   );
 }
 
+// The same grant the page's "Hand over, I'll watch" button mints, in the same
+// shape and with the same defaults, so a page adopting this state can execute
+// under it - see apps/formbuilder-showcase LEASE_MAX_CALLS / LEASE_DURATION_MS.
+const COMPANION_LEASE_MAX_CALLS = 2;
+const COMPANION_LEASE_DURATION_MS = 120_000;
+
+function mintCompanionLease(state, at) {
+  const focus = state.focus;
+  const targetId = typeof focus?.targetId === "string" && focus.targetId !== ""
+    ? focus.targetId
+    : null;
+  if (targetId === null) return null;
+  const capabilityIds = Array.isArray(focus.capabilityIds)
+    ? focus.capabilityIds.filter((id) => id !== "form.explain_field")
+    : [];
+  return {
+    leaseId: `companion-lease-${Date.parse(at)}`,
+    // A trusted click in the local cockpit is a human origin, the same way the
+    // page's own handover buttons are.
+    origin: "human-click",
+    goal: `Work on ${focus.focus?.label ?? targetId}`,
+    allowedCapabilityIds: capabilityIds,
+    allowedTargetIds: [targetId],
+    maxCalls: COMPANION_LEASE_MAX_CALLS,
+    maxContextLevel: 2,
+    pageVersion: Number.isInteger(focus.pageVersion) ? focus.pageVersion : 1,
+    expiresAt: new Date(Date.parse(at) + COMPANION_LEASE_DURATION_MS).toISOString()
+  };
+}
+
 function resolveCompanionMode({ state, humanPresence, agentPresence, agentEngagement, at }) {
   const effectiveMode = resolvePresenceMode({
     humanPresence,
@@ -615,6 +645,7 @@ export function createCompanionSessionHost({
           modelIdentity: value.gateway === null ? null : modelProviderId,
           modelStatus: value.gateway?.readStatus() ?? null,
           lastConversation: snapshot.state.lastConversation ?? null,
+          lease: snapshot.state.lease ?? null,
           computerUseAvailable: computerUse !== null,
           executionMode:
             computerUseStatus?.activeSessionId === snapshot.sessionId &&
@@ -865,12 +896,37 @@ export function createCompanionSessionHost({
     const snapshot = linkSession.authority.readSnapshot();
     const agentPresence = agentEngagement === "paused" ? "paused" : "active";
     const changedAt = now();
+    // The cockpit click on the model's seat IS the handover. The Companion is
+    // the session authority, so it mints the grant itself instead of sending
+    // the human back to the page for a button the cockpit does not have.
+    // Cycling the seat off execution hands the job back and ends the grant.
+    let lease = null;
+    if (agentEngagement === "collaborating") {
+      if (linkSession.lastPageContactAt === null) {
+        throw new CompanionHostError(
+          "PAGE_NOT_LINKED",
+          "Link a page first - the model has nothing to execute on",
+          409
+        );
+      }
+      lease = mintCompanionLease(snapshot.state, changedAt);
+      if (lease === null) {
+        throw new CompanionHostError(
+          "NO_FOCUSED_TARGET",
+          "Point the page at a field first - a grant needs a target to be about",
+          409
+        );
+      }
+    }
     const nextState = {
       ...snapshot.state,
+      lease,
       agentPresence,
       agentEngagement,
       effectiveMode: resolveCompanionMode({
-        state: snapshot.state,
+        // The grant that was just minted has to count towards the mode, or the
+        // cockpit would report the state it had a moment ago.
+        state: { ...snapshot.state, lease },
         humanPresence: snapshot.state.humanPresence,
         agentPresence,
         agentEngagement,
