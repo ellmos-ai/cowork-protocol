@@ -8,6 +8,17 @@ captured in Chrome 152 with `--enable-features=WebMCP,WebMCPTesting` at a
 them, measures the marked regions in the browser and redraws the overlay, so
 the boxes cannot drift away from what they point at.
 
+> **The image below is the panel as it is deployed, before the section
+> folds.** `capture.mjs` shoots the live showcase URL, so it cannot picture
+> a branch that has not been deployed yet. Since that shot was taken, each
+> section became a disclosure: Model seat, Attention lens and Role open,
+> Conversation not foldable, Handoff and Verified receipts closed until a
+> grant, an absence or a first receipt opens them. The Role section keeps
+> its mode selector and its proposals in the open and folds its
+> explanation into *What this mode means*, which is where the demo control
+> now lives. The regions and their numbers are unchanged; some of them are
+> now one click away. Re-run the capture once this is live.
+
 ![The embedded Cowork panel with ten numbered regions marked](../design/panel-tour/panel-annotated.png)
 
 The panel is one instrument. A switcher above the canvas chooses which surface

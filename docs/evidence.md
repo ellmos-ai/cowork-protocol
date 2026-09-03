@@ -702,6 +702,63 @@ Gate numbers for that change:
 - every smoke that reads sample-form fields now activates the "Fill the sample form" tab with a trusted click first; `smoke:contrast` switches back to the Studio tab for its Studio section, and the zoom census in `smoke:webmcp` deliberately still runs on the default canvas
 - the switcher's two tab buttons pass the pixel contrast audit unchanged (minimum contrast 4.57); `flex-wrap` on the tab row was required, because at 200 % zoom the two labels overflowed the column horizontally
 
+## The panel folds, and says what its marks mean
+
+A reader met the whole panel at once: six sections, every control of every one
+of them, and seven Unicode glyphs standing in for icons. The sections are now
+native disclosures. Model seat, Attention lens and Role stay open because they
+carry the live state; Conversation is deliberately not foldable, because a
+shared session that can hide its own talk is no longer shared; Handoff and
+Verified receipts start closed and open themselves the moment a grant, an
+absence or a first receipt exists. A fold the reader sets by hand is kept in
+`localStorage` behind try/catch; a fold the panel opens for them is help for
+that sitting and is never written back. The mode selector and the pause control
+left their heading rows on the way in - a control inside a `<summary>` answers
+the click meant for the disclosure.
+
+The marks come from one family now: monoline, a 24-unit box, stroked in
+`currentColor`, written inline. The three status steps carry their path data in
+`packages/reference-ui`, beside the labels they belong to, so the embedded
+panel, the extension side panel and the Desktop Companion draw the same three
+without any of them holding a copy. No icon font, no sprite, no asset that can
+fail to load. `Push to talk` and `Stop voice` show a microphone and a crossed
+microphone, on both surfaces that carry them.
+
+Two wordings were added where the panel had been silent: the proposals now say
+that a click there is the authorization, and a line under them says how a
+proposal goes away - 60 seconds (`OFFER_LIFETIME_MS` in `builder-cowork.js`,
+`60_000` in `app.js`), at most three at once (`MAX_PENDING_OFFERS`, and the
+view model's `slice(0, 3)`), and an edit of your own clears the stale ones
+(the page-version filter in `expireOffers`). There is no Dismiss control,
+because it would only do early what already happens.
+
+Gate numbers for that change:
+
+- `node --test`: 483 of 483 passed, 0 failed
+- `smoke:accessibility`, `smoke:webmcp`, `smoke:surface`, `smoke:builder`,
+  `smoke:contrast`, `smoke:companion`, `smoke:companion-cockpit`,
+  `smoke:companion-native`, `smoke:companion-webmcp` and `smoke:companion-mcp`
+  all exit 0 on Chrome/152.0.7977.77 and .65; `check:secrets` PASS;
+  `check:architecture` exit 0; `build:pages` 36 files, `build:companion` 21
+- `CURRENT_INTERACTIVE_CONTROL_COUNT` re-measured **35 → 34** on the canvas the
+  workspace opens on: five section summaries join the walk, the Role section's
+  detail disclosure trades its demo button for a summary of its own, and the
+  folded Handoff section takes its six controls out of the default view. At the
+  390 px viewport the walk reports 34 interactive, 34 named in the AX tree, 34
+  reachable, 34 focus-visible, 34 unique in the Tab sequence, horizontal
+  overflow 0
+- the nine native tool names and the tool count are untouched; this change is
+  the surface only
+- `smoke:contrast` still audits ten states with a minimum contrast of 4.57
+- three smokes and the panel tour open the Handoff section, and two of them the
+  Role detail, before reaching into either: a trusted click needs the control
+  visible, which is exactly the step a reader takes. Nothing was removed from
+  what they prove
+- not re-captured: `design/panel-tour/`. `capture.mjs` shoots the deployed
+  showcase URL, so the annotated panel image still shows the panel before the
+  folds; `docs/panel-tour.md` says so at the image. The capture script is ready
+  for the next run
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;
