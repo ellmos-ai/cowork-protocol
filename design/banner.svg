@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 400" width="1600" height="400" role="img" aria-labelledby="t d">
+  <title id="t">Cowork Protocol — one protocol, one human surface, three hosts</title>
+  <desc id="d">Banner: the Dialogue and Relay Orbit mark on the left (coral human orbit, turquoise model orbit, gold spark), the wordmark Cowork Protocol, the line "Native when available. Bridged when necessary." and three small host glyphs for embedded page, browser extension and desktop companion.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fffdf8"/>
+      <stop offset="100%" stop-color="#f7edd6"/>
+    </linearGradient>
+    <linearGradient id="coral" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff9182"/><stop offset="55%" stop-color="#ff604a"/><stop offset="100%" stop-color="#db3824"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34e3d3"/><stop offset="50%" stop-color="#16b5a8"/><stop offset="100%" stop-color="#0a7a72"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff4d4"/><stop offset="50%" stop-color="#e5be6b"/><stop offset="100%" stop-color="#b07d1e"/>
+    </linearGradient>
+    <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M30 0H0V30" fill="none" stroke="#4d4127" stroke-opacity=".06"/>
+    </pattern>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#241c15" flood-opacity=".14"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="400" fill="url(#bg)"/>
+  <rect width="1600" height="400" fill="url(#grid)"/>
+  <circle cx="1480" cy="40" r="260" fill="#5948c8" fill-opacity=".07"/>
+  <circle cx="80" cy="380" r="220" fill="#e7be55" fill-opacity=".16"/>
+
+  <!-- mark -->
+  <g transform="translate(200,200) scale(1.55)" filter="url(#shadow)">
+    <circle r="82" fill="none" stroke="#e8dfd1" stroke-width="2" stroke-dasharray="4 6"/>
+    <path d="M -60 -50 C -30 -80 50 -80 70 -50 C 85 -25 65 5 30 10" fill="none" stroke="url(#coral)" stroke-width="22" stroke-linecap="round"/>
+    <circle cx="-60" cy="-50" r="16" fill="url(#coral)" stroke="#fffef9" stroke-width="4"/>
+    <path d="M 60 50 C 30 80 -50 80 -70 50 C -85 25 -65 -5 -30 -10" fill="none" stroke="url(#teal)" stroke-width="22" stroke-linecap="round"/>
+    <circle cx="60" cy="50" r="16" fill="url(#teal)" stroke="#fffef9" stroke-width="4"/>
+    <path d="M 0 -24 Q 0 0 24 0 Q 0 0 0 24 Q 0 0 -24 0 Q 0 0 0 -24 Z" fill="url(#gold)"/>
+    <circle r="6" fill="#fffef9"/>
+  </g>
+
+  <!-- wordmark -->
+  <g font-family="Inter, 'Segoe UI', system-ui, sans-serif" fill="#241c15">
+    <text x="400" y="150" font-size="88" font-weight="850" letter-spacing="-3">Cowork <tspan fill="#0a7a72">Protocol</tspan></text>
+    <text x="402" y="205" font-size="30" font-weight="600" fill="#536078">Native when available. Bridged when necessary.</text>
+    <text x="402" y="262" font-size="24" font-weight="700" fill="#241c15">One protocol · one human surface · three hosts</text>
+    <text x="402" y="300" font-size="20" fill="#536078">bounded attention · inert offers · one real click · verified receipts · explicit presence</text>
+  </g>
+
+  <!-- three host glyphs -->
+  <g transform="translate(1180,120)" fill="none" stroke="#241c15" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" font-family="Inter, 'Segoe UI', system-ui, sans-serif">
+    <!-- embedded page with panel -->
+    <g>
+      <rect x="0" y="0" width="100" height="72" rx="10" fill="#ffffff"/>
+      <rect x="62" y="10" width="28" height="52" rx="4" fill="#fff0ec" stroke="#ff604a"/>
+      <path d="M12 18h38M12 32h30M12 46h34"/>
+      <text x="50" y="105" font-size="16" font-weight="700" fill="#241c15" stroke="none" text-anchor="middle">Embedded</text>
+    </g>
+    <!-- browser with side panel -->
+    <g transform="translate(140,0)">
+      <rect x="0" y="0" width="100" height="72" rx="10" fill="#ffffff"/>
+      <path d="M0 18h100"/>
+      <circle cx="12" cy="9" r="2.5" fill="#241c15"/><circle cx="22" cy="9" r="2.5" fill="#241c15"/><circle cx="32" cy="9" r="2.5" fill="#241c15"/>
+      <rect x="66" y="24" width="26" height="42" rx="4" fill="#e6f7f4" stroke="#0a7a72"/>
+      <text x="50" y="105" font-size="16" font-weight="700" fill="#241c15" stroke="none" text-anchor="middle">Extension</text>
+    </g>
+    <!-- desktop monitor -->
+    <g transform="translate(280,0)">
+      <rect x="0" y="0" width="100" height="62" rx="10" fill="#ffffff"/>
+      <path d="M50 62v10M30 74h40"/>
+      <rect x="14" y="12" width="72" height="38" rx="5" fill="#fff8e6" stroke="#e5be6b"/>
+      <circle cx="30" cy="31" r="6" fill="#ff604a" stroke="none"/><circle cx="70" cy="31" r="6" fill="#0a7a72" stroke="none"/>
+      <path d="M38 31h24" stroke="#e5be6b" stroke-width="4"/>
+      <text x="50" y="105" font-size="16" font-weight="700" fill="#241c15" stroke="none" text-anchor="middle">Desktop</text>
+    </g>
+  </g>
+</svg>

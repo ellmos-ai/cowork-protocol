@@ -1,5 +1,7 @@
 # Cowork Protocol
 
+![Cowork Protocol — one protocol, one human surface, three hosts](design/banner.svg)
+
 Cowork Protocol is a small collaboration contract for people and web agents. It gives an agent the smallest useful context, makes proposed changes visible, keeps human clicks distinct from agent calls, and supports tightly scoped solo work while the human is away.
 
 > Native when available. Bridged when necessary.
