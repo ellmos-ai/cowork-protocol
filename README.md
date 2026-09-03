@@ -134,10 +134,12 @@ npm run build:companion
 npm run smoke:companion
 npm run smoke:companion-cockpit
 npm run smoke:companion-native
+npm run smoke:companion-webmcp
 npm run smoke:model-host
 npm run smoke:webmcp
 npm run smoke:surface
 npm run smoke:accessibility
+npm run smoke:builder
 npm run smoke:contrast
 ```
 
@@ -341,7 +343,8 @@ returning page catches up from its last revision.
 
 `npm run smoke:companion-cockpit` renders the shipped Side Panel code at an
 exact 390×844 CSS viewport with a bounded runtime fixture. It captures and
-validates Cowork, observe-only, paused and leased Agent-Solo states, requires
+validates the four work modes one relayed page can reach - sparring either way
+round, the model working alone and the human working alone - requires
 zero horizontal overflow, named controls and the complete nine-control
 keyboard order, and executes the real focus and context instruments. Set
 `COWORK_COMPANION_EVIDENCE_DIR` to retain the four PNG frames and JSON report.
@@ -352,6 +355,14 @@ and the smoke fails if they falsely display the Computer Use pointer.
 With WebMCP enabled on FormBuilder, the extension must discover nine Cowork
 tools in the page's main execution world, return a native focus packet, keep
 the legacy fallback inactive and keep all extension UI outside the page DOM.
+
+`npm run smoke:companion-webmcp` covers the route in between. On a fixture page
+with no Cowork tools of its own, the extension registers `cowork_read_focus`,
+`cowork_request_context`, `cowork_offer_action` and `cowork_read_presence`
+through WebMCP and answers them from its own bounded relay, so any WebMCP agent
+in the browser can read focus and propose there. The Side Panel reports this as
+the `bridge-webmcp` route and still carries no model seat of its own; the
+proposed value changes nothing until a trusted click in the panel.
 
 `npm run smoke:webmcp` starts the showcase and an isolated Chrome profile, enables the current Chrome WebMCP testing features, and discovers exactly the nine Cowork tools. It executes ten tool calls: focus, one-shot context, two inert visible offers, latest change, latest feedback, latest conversation turn, one bounded reply, `cowork_read_presence` and `cowork_execute_solo`. Chrome DevTools dispatches trusted clicks that authorize the exact visible field values, human feedback, the local helper offer, the WebMCP reply offer, and a real Delegated-lease "briefly away" click; the solo call afterward is verified directly through `document.modelContext.executeTool()` with no click at all, matching a genuine AFK model call. Neither offer tool nor reply tool authorizes or applies a value on its own. In the same browser runtime, a host-supplied two-tool calendar fixture proves the portable bridge: two read calls execute, an oversized result becomes a 1,200-character preview, and the booking mutation remains `offer-only` without reaching the host executor. The report distinguishes `browserHostClaim: true` from `foreignLiveSiteClaim: false`. It requires Chrome 150 or newer; set `COWORK_CHROME_PATH` when Chrome is installed outside the usual Windows, macOS or Linux locations. It never uses a personal browser profile or a non-local page.
 
