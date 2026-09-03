@@ -633,7 +633,7 @@ carries.
 - `npm run smoke:surface` and `npm run smoke:companion-cockpit`: exit 0 after the host and page changes; `check:secrets` PASS, `check:architecture` exit 0
 - failure paths are asserted, not assumed: no linked page, a page that never answers within 15 seconds, a page that refuses the call, an unknown tool, and a website trying the local agent route each produce the expected code
 
-**The click gap this work opened, and closed.** While the Companion was
+**The click gap this work opened, and closed in `4281fde`.** While the Companion was
 connected, the page collapsed its whole panel, so an offer made over MCP was
 correct and inert but had no surface a human could click. Two causes, both
 fixed: `.cowork-panel.is-companion-connected` now keeps the offer list and the
