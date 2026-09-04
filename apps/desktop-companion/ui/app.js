@@ -404,6 +404,19 @@ $("#conversation-form").addEventListener("submit", async (event) => {
   }
 });
 
+// "No speech turn created" was the answer to every failure, so a blocked
+// microphone, a missing one and an unreachable speech service all looked the
+// same and none of them said what to do about it.
+const SPEECH_ERROR_MESSAGES = {
+  "not-allowed": "The microphone is blocked. Allow it for this window in the address bar, then press Talk again.",
+  "service-not-allowed": "The browser refused the speech service for this window. Allow the microphone in the address bar, then press Talk again.",
+  "audio-capture": "No microphone was found. Connect one, or type your turn instead.",
+  network: "The browser's speech service is not reachable. Type your turn instead.",
+  "no-speech": "Nothing was heard. Press Talk again and speak after the beep.",
+  aborted: "Listening stopped before anything was heard.",
+  "start-failed": "Listening could not start - it may already be running. Wait a moment and press Talk again."
+};
+
 $("#talk").addEventListener("click", () => {
   const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
   if (!Recognition) {
@@ -411,15 +424,33 @@ $("#talk").addEventListener("click", () => {
     return;
   }
   const recognition = new Recognition();
+  recognition.lang = navigator.language || "en-US";
   recognition.interimResults = false;
+  let heard = false;
   recognition.onresult = (event) => {
+    heard = true;
     $("#conversation-input").value = event.results[0][0].transcript;
     $("#status").textContent = "Transcript ready. Send when you choose.";
   };
-  recognition.onerror = () => {
-    $("#status").textContent = "No speech turn created.";
+  recognition.onerror = (event) => {
+    heard = true;
+    $("#status").textContent =
+      SPEECH_ERROR_MESSAGES[event?.error] ??
+      `Listening failed: ${event?.error ?? "unknown reason"}. Type your turn instead.`;
   };
-  recognition.start();
+  // Without this the cockpit stays on "Listening…" forever once the browser
+  // ends the session on its own. The button itself needs no re-enabling:
+  // render() owns its disabled state and runs every second.
+  recognition.onend = () => {
+    if (!heard) $("#status").textContent = "Listening stopped. Press Talk to try again.";
+  };
+  try {
+    recognition.start();
+  } catch {
+    // A second start on a running recognition throws InvalidStateError.
+    $("#status").textContent = SPEECH_ERROR_MESSAGES["start-failed"];
+    return;
+  }
   $("#status").textContent = "Listening… pause naturally.";
 });
 

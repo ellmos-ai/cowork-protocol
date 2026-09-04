@@ -199,6 +199,21 @@ The lens says so while it is in force: `Working across: Whole form (4 fields)`.
 no pointer - so a solo agent reads its targets from the grant, which
 `cowork_read_presence` now carries.
 
+### A grant on the Studio canvas can act, not only propose
+
+Both canvases mint grants, and until now only one of them could spend a grant
+without a human hand. On the Studio, an agent under a canvas-scoped grant adds
+a field through `cowork_execute_solo` with no offer and no click. The Studio
+does not issue a grant of its own for this: it adopts the one the human minted,
+so the goal, the scope, the call budget and the expiry are exactly what was
+granted, and the same `authorizeSoloAction` gates every call.
+
+Why it matters in practice: the offer list holds three open offers and refuses
+a fourth with `CONTEXT_BUDGET_EXCEEDED`. Building a form of thirty-five
+questions through offers therefore means thirty-five clicks, one at a time.
+Under a grant it is thirty-five solo calls inside a budget the human set - and
+the budget is the limit that matters, not the list.
+
 ### The seat click is the authorization; the mode picker is a wish
 
 Both can ask for the same state, and they answer differently on purpose.

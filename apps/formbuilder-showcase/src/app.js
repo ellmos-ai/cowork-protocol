@@ -50,6 +50,7 @@ import {
 } from "./formbuilder-use-case.js";
 import { initBuilderStudio } from "./builder-view.js";
 import { initBuilderCowork } from "./builder-cowork-ui.js";
+import { BUILDER_CANVAS_TARGET_ID } from "./builder-cowork.js";
 import {
   adoptSessionState,
   buildLeaseExpiryEffect,
@@ -325,6 +326,11 @@ let offerCounter = 0;
 let changeCounter = 0;
 let recognitionSession = null;
 let leaseCallsUsed = 0;
+// Declared up here because authorityState() reads both while the module is
+// still initializing - the Studio bridge and the workspace switcher are
+// wired at the end of this file.
+let builderCowork = null;
+let activeWorkspace = "studio";
 // The page version this lease's own next call expects - see executeSoloAction.
 let leasePageVersion = null;
 // What the model actually changed under the running grant, so a returning
@@ -470,13 +476,23 @@ function currentAreas(state) {
 
 function authorityState(nextSession = session) {
   const sessionReceipts = nextSession.receipts ?? receipts;
+  const studioActive = activeWorkspace === "studio";
   return {
     ...nextSession,
-    focus: focusPacket,
-    // The Companion is the session authority and has no DOM of its own. It
-    // can only mint a whole-form grant if the page says what "the whole form"
-    // is, so the page publishes its target list alongside the single focus.
-    canvasTargetIds: fields.map((field) => `form-field:${field.dataset.fieldId}`),
+    // Two canvases, one session: the panel's lens can sit on the demo form or
+    // on the Studio, and the store carried only the first. A Companion reading
+    // this state found nothing while the human pointed at the Studio, so its
+    // seat click had nothing to grant about.
+    focus: focusPacket ?? (studioActive ? builderCowork?.readFocusPacket() ?? null : null),
+    // The Companion is the session authority and has no DOM of its own. It can
+    // only mint a whole-canvas grant if the page says what "the whole canvas"
+    // is - and that depends on which canvas the human is on.
+    canvasTargetIds: studioActive
+      ? [BUILDER_CANVAS_TARGET_ID]
+      : fields.map((field) => `form-field:${field.dataset.fieldId}`),
+    canvasCapabilityIds: studioActive
+      ? ["form-add-field"]
+      : ["form.set_value", "form.clear_value"],
     pageVersion,
     capabilityLevel,
     pendingOfferIds: offers.slice(-3).map((offer) => offer.offerId),
@@ -573,7 +589,6 @@ const conversationInbox = createConversationInbox();
 let conversationTransportLabel = modelSeat.resolve().transportLabel;
 let extensionAttached = false;
 let seatWasEmpty = null;
-let builderCowork = null;
 // The Studio canvas is this panel's second attention target:
 // `{ fieldId, label }` while the human points at a Builder field, null
 // while they are on the demo form. Only one of the two is ever set.
@@ -587,7 +602,6 @@ const WORKSPACE_AREAS = Object.freeze({
   sample: { tab: "#workspace-tab-sample", panel: "#workspace-panel-sample", name: "Sample form" }
 });
 const WORKSPACE_STORAGE_KEY = "cowork-workspace-area";
-let activeWorkspace = "studio";
 try {
   const storedWorkspace = window.localStorage.getItem(WORKSPACE_STORAGE_KEY);
   if (storedWorkspace !== null && Object.hasOwn(WORKSPACE_AREAS, storedWorkspace)) {
@@ -2155,6 +2169,52 @@ function handOverWhileWatching() {
   return true;
 }
 
+/**
+ * One field added to the Studio canvas under the running grant, with no offer
+ * and no click. The grant is the human's - minted by the panel's handover
+ * buttons or by the Companion's seat click - and the Studio adopts it rather
+ * than issuing one of its own, so scope, budget and expiry stay exactly what
+ * was granted. The receipt joins the panel's list like every other one.
+ */
+function executeStudioSoloAction({ capabilityId, value }) {
+  if (!builderCowork) {
+    throw new CoworkProtocolError("STALE_FOCUS", "The Studio canvas is not available on this page");
+  }
+  if (capabilityId !== "form-add-field") {
+    throw new CoworkProtocolError(
+      "CAPABILITY_UNAVAILABLE",
+      `Solo work on the Studio canvas is limited to form-add-field, not ${capabilityId}`
+    );
+  }
+  const lease = session.lease;
+  builderCowork.adoptGrant(lease);
+  const receipt = builderCowork.soloAddField({
+    value,
+    humanPresence: session.humanPresence
+  });
+  // Counting here as well keeps the panel's budget line and cowork_read_presence
+  // honest: the Studio's own counter is not the one they read.
+  commitSession(
+    "solo-attempt-started",
+    transitionShowcaseSession(session, { type: "SOLO_ATTEMPT_STARTED" }),
+    { causeRefs: [`lease:${lease.leaseId}`] }
+  );
+  leaseCallsUsed = session.leaseCallsUsed;
+  commitSession(
+    "solo-receipt-recorded",
+    transitionShowcaseSession(session, { type: "RECEIPT_RECORDED", receipt }),
+    { causeRefs: [`lease:${lease.leaseId}`] }
+  );
+  receipts = session.receipts;
+  setStatus(
+    receipt.status === "verified"
+      ? `The model added a field to the Studio canvas alone (${leaseCallsUsed}/${lease.maxCalls} calls used).`
+      : `VERIFICATION_FAILED: ${receipt.verificationSummary}`
+  );
+  render();
+  return receipt;
+}
+
 function executeSoloAction({ capabilityId, targetId, value }) {
   if (!session.workMode.model.canExecute) {
     throw new CoworkProtocolError(
@@ -2164,6 +2224,13 @@ function executeSoloAction({ capabilityId, targetId, value }) {
   }
   if (!session.lease) {
     throw new CoworkProtocolError("LEASE_EXPIRED", "No solo lease is active");
+  }
+  // The Studio canvas is the other place solo work can land, and its target is
+  // the canvas itself rather than a control. Without this an agent under a
+  // canvas-scoped grant could only offer fields for a human to click, three at
+  // a time - unusable for building a long form.
+  if (targetId === BUILDER_CANVAS_TARGET_ID) {
+    return executeStudioSoloAction({ capabilityId, value });
   }
   const control = document.getElementById(targetId.replace("form-field:", ""));
   if (!control) {
