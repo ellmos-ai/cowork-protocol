@@ -372,7 +372,12 @@ export function createPresenceEvent(input) {
     agentPresence: input.agentPresence,
     effectiveMode: resolvePresenceMode(input),
     reason: input.reason,
-    changedBy: input.changedBy
+    changedBy: input.changedBy,
+    // A grant over several targets is the only way a solo agent learns what
+    // it may touch: nobody pointed, so the focus lens has nothing to answer.
+    // Optional and null by default, so a presence event without a grant keeps
+    // exactly the shape it always had.
+    grant: input.grant ?? null
   };
 }
 

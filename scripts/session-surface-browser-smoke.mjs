@@ -499,6 +499,21 @@ try {
     "companion-03-paused.png"
   );
 
+  // K3: waking the model asks for "model executes", and that used to be
+  // refused here for a missing pointer - the cockpit has none, and a human at
+  // it is not pointing at the page. The linked page publishes what its form
+  // consists of, so the click now hands the job over for real.
+  await clickCompanionControl(companionWindowCall, "#model-control");
+  const cockpitSeatHandsOver = await waitForValue(
+    companionWindowCall,
+    `(() => ({
+      modelState: document.querySelector(".companion-cockpit")?.dataset.modelState ?? null,
+      status: document.querySelector("#cockpit-status")?.textContent ?? null
+    }))()`,
+    (value) => value?.modelState === "here-executing"
+  );
+  // Clicking on takes the job back and ends that grant, which is the state the
+  // away-without-a-lease check below is about.
   await clickCompanionControl(companionWindowCall, "#model-control");
   await waitForValue(
     companionWindowCall,
@@ -697,6 +712,8 @@ try {
     companionActorCockpitClaim: true,
     independentActorStateClaim: true,
     leaseTruthfulnessClaim: true,
+    cockpitSeatHandsOverWithoutPointer: cockpitSeatHandsOver.modelState,
+
     delegatedSoloVisualClaim: true,
     sharedModelGatewayClaim: true,
     companionAudioControlsClaim: true,

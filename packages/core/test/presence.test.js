@@ -19,8 +19,32 @@ test("presence is exposed as a compact protocol event with an effective mode", (
       agentPresence: "active",
       effectiveMode: "agent-solo",
       reason: "Human granted a two-minute field task",
-      changedBy: "human"
+      changedBy: "human",
+      grant: null
     }
+  );
+});
+
+test("presence carries the grant a solo agent has to read its targets from", () => {
+  const grant = {
+    goal: "Fill in the visible form fields",
+    targetIds: ["form-field:full-name", "form-field:email"],
+    targetCount: 2,
+    capabilityIds: ["form.set_value"],
+    callsUsed: 0,
+    maxCalls: 6,
+    expiresAt: "2026-09-04T00:02:00.000Z"
+  };
+  assert.deepEqual(
+    createPresenceEvent({
+      humanPresence: "afk-short",
+      agentPresence: "active",
+      leaseValid: true,
+      reason: grant.goal,
+      changedBy: "human",
+      grant
+    }).grant,
+    grant
   );
 });
 

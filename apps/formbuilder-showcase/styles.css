@@ -445,6 +445,11 @@ textarea { resize: vertical; }
   color: #6b4e05;
   background: #fff5da;
 }
+/* On the fixed demo form the same highlight marks an existing field the model
+   filled while nobody was there - not a field it invented, as in the Studio. */
+#demo-form .form-field.is-new-since-handover::before {
+  content: "✦ Filled while you were away";
+}
 
 .cowork-panel {
   position: sticky;

@@ -419,7 +419,7 @@ test("the Companion routes Cowork-owned turns through one shared Model Gateway",
     });
     assert.deepEqual(reply, {
       reply: { message: "I can continue with the focused field." },
-      delivery: { offered: 0, rejected: 0, reason: null }
+      delivery: { offered: 0, executed: 0, rejected: 0, reason: null }
     });
     assert.equal(modelRequests.length, 1);
     assert.equal(modelRequests[0].context.recentTurns.at(-1).text, "Please continue.");
@@ -521,7 +521,7 @@ test("the loopback host serves a movable reference surface for the shared sessio
     );
     assert.equal(replyResponse.status, 200);
     assert.deepEqual(await replyResponse.json(), {
-      delivery: { offered: 0, rejected: 0, reason: null },
+      delivery: { offered: 0, executed: 0, rejected: 0, reason: null },
       reply: { message: "Shared Companion reply" }
     });
   } finally {
@@ -612,8 +612,9 @@ test("the movable cockpit commits model engagement and fails closed while paused
     });
     assert.equal(modelRequests, 0);
 
-    // The seat click is the handover, and a grant is about something. With no
-    // field pointed at, the cockpit says so instead of granting into thin air.
+    // The seat click is the handover, and a grant is about something. A page
+    // that has published no targets at all gets a refusal - but "no pointer"
+    // alone no longer is one: see the whole-form grant asserted below.
     const unfocused = await postUi(
       "/cowork/v1/ui/sessions/cockpit-link/engagement",
       { agentEngagement: "collaborating" }
@@ -621,7 +622,7 @@ test("the movable cockpit commits model engagement and fails closed while paused
     assert.equal(unfocused.status, 409);
     assert.deepEqual(await unfocused.json(), {
       code: "NO_FOCUSED_TARGET",
-      message: "Point the page at a field first - a grant needs a target to be about"
+      message: "The linked page reported no fields to work on - a grant needs a target to be about"
     });
 
     assert.equal((await postUi(
@@ -708,6 +709,152 @@ test("the movable cockpit commits model engagement and fails closed while paused
       "agent-solo",
       "the same away gesture may animate toward the model after a bounded lease exists"
     );
+
+    // K3: a human at the cockpit is not pointing at the page, and one who has
+    // stepped away cannot point at all. Once the page has published what its
+    // form consists of, the seat click grants over the whole form instead of
+    // refusing - the widened lens the demo form's own buttons also mint.
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "observing" }
+    )).status, 200);
+    const beforeCanvas = host.readSnapshot("cockpit-link");
+    await host.commitSession("cockpit-link", {
+      kind: "focus-cleared",
+      nextState: {
+        ...beforeCanvas.state,
+        focus: null,
+        pageVersion: 7,
+        canvasTargetIds: [
+          "form-field:full-name",
+          "form-field:email",
+          "form-field:role",
+          "form-field:access-needs"
+        ]
+      },
+      expectedRevision: beforeCanvas.revision,
+      sourceSurfaceId: beforeCanvas.state.surface.primarySurfaceId,
+      at: now
+    });
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "collaborating" }
+    )).status, 200);
+    state = (await fetch(`${companionOrigin}/cowork/v1/ui/state`).then(
+      (response) => response.json()
+    )).sessions[0];
+    assert.equal(state.lease.goal, "Fill in the visible form fields");
+    assert.equal(state.lease.origin, "human-click");
+    assert.equal(state.lease.pageVersion, 7);
+    assert.equal(state.lease.allowedTargetIds.length, 4);
+    assert.equal(state.lease.maxCalls, 6, "one call per field plus the demo reserve");
+    assert.ok(
+      !state.lease.allowedCapabilityIds.includes("form.explain_field"),
+      "explaining is not acting, so it stays out of every grant"
+    );
+  } finally {
+    await host.close();
+  }
+});
+
+test("a model answer under an away whole-form grant is delivered as solo work, not as an offer nobody is there to click", async () => {
+  const origin = "https://forms.example";
+  const host = createCompanionSessionHost({
+    allowedOrigins: [origin],
+    port: 0,
+    createLinkSessionId: () => "solo-link",
+    sendModelTurn: async () => ({
+      message: "Filling the two empty fields.",
+      speak: "",
+      offers: [
+        {
+          capabilityId: "form.set_value",
+          targetId: "form-field:email",
+          value: "ada@example.test",
+          summary: "Set Email to ada@example.test"
+        },
+        {
+          capabilityId: "form.set_value",
+          targetId: "form-field:not-in-grant",
+          value: "nope",
+          summary: "Outside the grant"
+        }
+      ],
+      omittedOffers: 0
+    })
+  });
+  const address = await host.listen();
+  try {
+    const authority = createCoworkSessionAuthority({
+      sessionId: "solo-session",
+      initialState: {
+        humanPresence: "afk-short",
+        agentPresence: "active",
+        effectiveMode: "agent-solo",
+        lease: {
+          leaseId: "whole-form",
+          origin: "human-click",
+          goal: "Fill in the visible form fields",
+          allowedCapabilityIds: ["form.set_value"],
+          allowedTargetIds: ["form-field:full-name", "form-field:email"],
+          maxCalls: 6,
+          pageVersion: 1,
+          expiresAt: new Date(Date.now() + 120_000).toISOString()
+        }
+      },
+      primarySurface: { surfaceId: "formbuilder:embedded", kind: "embedded" }
+    });
+    const link = createHttpCompanionLink({
+      endpoint: `http://${address.hostname}:${address.port}/cowork/v1`,
+      fetchImpl: (url, init) => fetch(url, {
+        ...init,
+        headers: { ...init.headers, origin }
+      })
+    });
+    const snapshot = authority.readSnapshot();
+    await link.join({
+      hello: createCompanionHello({
+        sessionId: snapshot.sessionId,
+        surfaceId: "formbuilder:embedded",
+        revision: snapshot.revision,
+        origin
+      }),
+      snapshot
+    });
+    const ranOnPage = [];
+    const relay = setInterval(async () => {
+      for (const request of await link.pullAgentRequests({ linkSessionId: "solo-link" })) {
+        ranOnPage.push(request);
+        await link.reportAgentResult({
+          linkSessionId: "solo-link",
+          requestId: request.requestId,
+          result: { status: "verified" }
+        });
+      }
+    }, 20);
+    try {
+      const answered = await host.submitModelTurn("solo-link", {
+        turnId: "solo-turn",
+        input: { transcript: "Please fill the form." }
+      });
+      assert.deepEqual(answered.delivery, {
+        offered: 1,
+        executed: 1,
+        rejected: 0,
+        reason: null
+      });
+      assert.deepEqual(
+        ranOnPage.map((request) => [request.name, request.arguments.targetId]),
+        [
+          ["cowork_execute_solo", "form-field:email"],
+          ["cowork_offer_action", "form-field:not-in-grant"]
+        ],
+        "only a target inside the grant is executed; anything else still waits for a click"
+      );
+      assert.equal(ranOnPage[0].arguments.summary, undefined);
+    } finally {
+      clearInterval(relay);
+    }
   } finally {
     await host.close();
   }
@@ -1094,7 +1241,7 @@ test("a model offer reaches the linked page and a failed turn says so on both su
       turnId: "offer-turn",
       input: { transcript: "Fill in the form fields please." }
     });
-    assert.deepEqual(answered.delivery, { offered: 1, rejected: 0, reason: null });
+    assert.deepEqual(answered.delivery, { offered: 1, executed: 0, rejected: 0, reason: null });
     assert.equal(ranOnPage.length, 1);
     assert.equal(ranOnPage[0].name, "cowork_offer_action");
     assert.equal(ranOnPage[0].arguments.value, "ada@example.test");

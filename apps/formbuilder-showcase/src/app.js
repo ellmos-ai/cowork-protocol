@@ -92,6 +92,19 @@ const LEASE_DURATION_MS = 120_000;
 // receipts - only the budget differs, and the panel says which one is in
 // force.
 const BUILDER_GRANT_MAX_CALLS = 6;
+// The two default jobs, one per scope. An empty "Job to hand over" used to
+// refuse the handover outright; it now names the obvious job for the scope
+// being granted and writes it back into the visible input (K3).
+const FOCUSED_FIELD_GOAL = "Complete only the focused field";
+const WHOLE_FORM_GOAL = "Fill in the visible form fields";
+const WHOLE_CANVAS_GOAL = "Draft the rest of this form";
+// Which strings the panel may exchange for another scope's default. Anything
+// the human typed is theirs and is never rewritten.
+const LEASE_GOAL_DEFAULTS = new Set([
+  FOCUSED_FIELD_GOAL,
+  WHOLE_FORM_GOAL,
+  WHOLE_CANVAS_GOAL
+]);
 const integrationDeclaration = createProtocolHostDeclaration({
   hostId: "formbuilder-showcase",
   transports: ["webmcp"],
@@ -311,6 +324,11 @@ let offerCounter = 0;
 let changeCounter = 0;
 let recognitionSession = null;
 let leaseCallsUsed = 0;
+// The page version this lease's own next call expects - see executeSoloAction.
+let leasePageVersion = null;
+// What the model actually changed under the running grant, so a returning
+// human sees the evidence highlighted instead of having to hunt for it.
+let soloTouchedTargetIds = [];
 let responseDownloadUrl = null;
 let pendingChangeCause = null;
 let leaseExpiryTimer = null;
@@ -398,6 +416,29 @@ function fieldLabelForTarget(targetId) {
   return fields.find((field) => field.dataset.fieldId === fieldId)?.dataset.label ?? null;
 }
 
+/** What the running grant is about, in the panel's own words: one field names
+ *  the field, a widened lens names the form and how much of it it covers. */
+function leaseAreaLabel(lease) {
+  const targetIds = lease?.allowedTargetIds ?? [];
+  if (targetIds.length > 1) return `Whole form (${targetIds.length} fields)`;
+  return fieldLabelForTarget(targetIds[0]) ?? lease?.goal ?? null;
+}
+
+// GAP-03 on the demo form, the same way the Studio already does it: what the
+// model changed while the human was away is marked on return, not narrated.
+function highlightSoloTargets(targetIds) {
+  for (const field of fields) {
+    field.classList.toggle(
+      "is-new-since-handover",
+      targetIds.includes(`form-field:${field.dataset.fieldId}`)
+    );
+  }
+}
+
+function clearSoloHighlights() {
+  highlightSoloTargets([]);
+}
+
 // The area each partner claims is observed, never configured: the human is
 // on the field the attention lens points at, the model on the field its
 // lease covers. The wording for it lives in packages/reference-ui.
@@ -431,6 +472,10 @@ function authorityState(nextSession = session) {
   return {
     ...nextSession,
     focus: focusPacket,
+    // The Companion is the session authority and has no DOM of its own. It
+    // can only mint a whole-form grant if the page says what "the whole form"
+    // is, so the page publishes its target list alongside the single focus.
+    canvasTargetIds: fields.map((field) => `form-field:${field.dataset.fieldId}`),
     pageVersion,
     capabilityLevel,
     pendingOfferIds: offers.slice(-3).map((offer) => offer.offerId),
@@ -1359,12 +1404,28 @@ function render() {
     $("#area-label").textContent = `${AREA_STEP.label}: ${builderFocus.label} (Studio canvas)`;
   }
   const builderGrant = builderCowork?.readActiveGrant() ?? null;
+  // K3: while a widened grant runs, the lens says so. Nobody pointed at a
+  // field, so naming one would be a lie; the grant is what is in force. The
+  // Studio's grant is canvas-scoped by construction (one canvas target), the
+  // demo form's widens to a target per field - so each names its own count.
+  const wideLabel =
+    builderGrant !== null
+      ? `Whole canvas (${document.querySelectorAll("#builder-field-list .form-field").length} fields)`
+      : (session.lease?.allowedTargetIds?.length ?? 0) > 1
+        ? leaseAreaLabel(session.lease)
+        : null;
+  if (wideLabel !== null) {
+    $("#focus-label").textContent = `Working across: ${wideLabel}`;
+    $("#area-label").textContent = `${AREA_STEP.label}: ${wideLabel}`;
+  }
   $("#lease-microcopy").textContent =
     builderGrant !== null
       ? `Studio delegation running: "${builderGrant.goal}" - ${builderCowork.readCallsUsed()}/${builderGrant.maxCalls} draft(s) used. Press "I'm back" to end it and see what changed.`
-      : builderFocus !== null
-        ? BUILDER_LEASE_MICROCOPY
-        : DEMO_LEASE_MICROCOPY;
+      : (session.lease?.allowedTargetIds?.length ?? 0) > 1
+        ? `Whole-form grant running: "${session.lease.goal}" - ${session.lease.allowedTargetIds.length} field(s), ${leaseCallsUsed}/${session.lease.maxCalls} call(s) used. Press "I'm back" to end it and see what changed.`
+        : builderFocus !== null
+          ? BUILDER_LEASE_MICROCOPY
+          : DEMO_LEASE_MICROCOPY;
 
   const humanHere = view.humanState.startsWith("here");
   const modelHere = view.modelState.startsWith("here");
@@ -1794,23 +1855,68 @@ function executeOffer(event, offer) {
   }
 }
 
-// The one grant this panel can mint: the fixed demo lease over the focused
-// field. Both handover buttons use it - staying or leaving changes who is
-// present, never what the model is allowed to do.
-function mintDemoLease() {
+// K3: the lens widens when nobody is pointing. A human who has stepped away
+// cannot point at a field, so a grant minted for them is about the form, not
+// about one field - every visible target with the capabilities its control
+// actually has. Derived from buildFocus() so the capability list can never
+// drift from the one the single-field lens hands out.
+function canvasLeaseScope() {
+  const packets = fields
+    .map((field) => buildFocus(field, "pointer"))
+    .filter((packet) => packet !== null);
+  if (packets.length === 0) return null;
+  return {
+    wholeCanvas: true,
+    targetIds: packets.map((packet) => packet.targetId),
+    capabilityIds: [
+      ...new Set(packets.flatMap((packet) => packet.capabilityIds))
+    ].filter((id) => id !== "form.explain_field"),
+    // One call per field, plus the two-attempt demo reserve, so an agent
+    // arriving after the seat's own pass still has a budget of its own.
+    maxCalls: packets.length + LEASE_MAX_CALLS
+  };
+}
+
+/**
+ * The job a handover is about. An empty description no longer refuses it, and
+ * a default left over from another scope is not silently reused either: a
+ * grant labelled "Complete only the focused field" that covers the whole form
+ * would say one thing and do another. Anything the human actually wrote is
+ * kept untouched - only the panel's own defaults are exchanged. The chosen
+ * text is written back into the visible input, so the human sees, and can
+ * still change, the goal they just granted.
+ */
+function resolveLeaseGoal(defaultGoal) {
+  const goalInput = $("#lease-goal");
+  const current = goalInput.value.trim();
+  if (current !== "" && !LEASE_GOAL_DEFAULTS.has(current)) return current;
+  goalInput.value = defaultGoal;
+  return defaultGoal;
+}
+
+function focusedLeaseScope() {
+  return {
+    wholeCanvas: false,
+    targetIds: [focusPacket.targetId],
+    capabilityIds: focusPacket.capabilityIds.filter((id) => id !== "form.explain_field"),
+    maxCalls: LEASE_MAX_CALLS
+  };
+}
+
+// The one grant this panel can mint. Pointing at a field while you stay keeps
+// it field-scoped (sparring at one field); stepping away always widens it to
+// the whole form, because someone who is not there cannot point.
+function mintDemoLease({ wholeCanvas = false } = {}) {
   if (session.model.availability !== "here") {
     setStatus("SESSION_PAUSED: bring the model back in before handing the work over.");
     return null;
   }
-  if (!focusPacket) {
-    setStatus("Point at a field before handing a job over.");
+  const scope = wholeCanvas || !focusPacket ? canvasLeaseScope() : focusedLeaseScope();
+  if (scope === null) {
+    setStatus("This form has no fields to hand over.");
     return null;
   }
-  const goal = $("#lease-goal").value.trim();
-  if (!goal) {
-    setStatus("A handed-over job needs a concrete task.");
-    return null;
-  }
+  const goal = resolveLeaseGoal(scope.wholeCanvas ? WHOLE_FORM_GOAL : FOCUSED_FIELD_GOAL);
   const now = Date.now();
   return {
     leaseId: `lease-${now}`,
@@ -1820,9 +1926,9 @@ function mintDemoLease() {
     // handlers check event.isTrusted - so "human-click" is accurate here.
     origin: "human-click",
     goal,
-    allowedCapabilityIds: focusPacket.capabilityIds.filter((id) => id !== "form.explain_field"),
-    allowedTargetIds: [focusPacket.targetId],
-    maxCalls: LEASE_MAX_CALLS,
+    allowedCapabilityIds: scope.capabilityIds,
+    allowedTargetIds: scope.targetIds,
+    maxCalls: scope.maxCalls,
     maxContextLevel: 2,
     pageVersion,
     expiresAt: new Date(now + LEASE_DURATION_MS).toISOString()
@@ -1835,6 +1941,8 @@ function mintDemoLease() {
 function adoptBuilderGrantAsLease(grant, humanPresence) {
   const lease = { ...grant, leaseId: grant.grantId, maxContextLevel: 2 };
   leaseCallsUsed = 0;
+  leasePageVersion = lease.pageVersion;
+  soloTouchedTargetIds = [];
   if (humanPresence === "present") {
     const status = statusForWorkModeChoice("sparring-model", session);
     commitSession(
@@ -1872,11 +1980,7 @@ async function builderHandover({ humanPresence, batch }) {
     setStatus("SESSION_PAUSED: bring the model back in before handing the work over.");
     return;
   }
-  const goal = $("#lease-goal").value.trim();
-  if (!goal) {
-    setStatus("A handed-over job needs a concrete task.");
-    return;
-  }
+  const goal = resolveLeaseGoal(WHOLE_CANVAS_GOAL);
   try {
     let grant = builderCowork.readActiveGrant();
     if (grant === null) {
@@ -1903,41 +2007,131 @@ async function builderHandover({ humanPresence, batch }) {
   render();
 }
 
-// Returns whether the job was actually handed over: mintDemoLease() refuses
-// without a pointed-at field and a stated goal, and the caller has to know
-// that rather than assume it worked.
+/** Which canvas a handover is about is decided by the canvas the human is on
+ *  - not by whether they are pointing at something on it. Requiring a pointer
+ *  was what made stepping away from the Studio fall through to the demo form
+ *  and refuse (K3). */
+function handoverGoesToStudio() {
+  return activeWorkspace === "studio" || builderCowork?.readActiveGrant() != null;
+}
+
+/**
+ * The model works alone: under a canvas-wide grant it fills the fields it is
+ * allowed to touch, one bounded turn per field through the very seat the
+ * human talks to - the demo helper answers with its scripted values, a real
+ * model with its own suggestion. Every write still goes through
+ * executeSoloAction, so each one is budgeted, planned, applied and verified
+ * exactly like a single solo call. Nothing here bypasses the grant.
+ */
+async function runSoloPass(lease) {
+  // Attention off means no page context is sent - so there is no lens for the
+  // model to work through, and a grant does not create one.
+  if (session.attentionMode === "off") {
+    setStatus("Attention is off, so the model has no lens to work through. Turn it on to let it work alone.");
+    return;
+  }
+  let filled = 0;
+  let skipped = 0;
+  for (const targetId of lease.allowedTargetIds) {
+    // The human coming back, or the budget running out, ends the pass -
+    // both are the grant working, not an error.
+    if (session.lease?.leaseId !== lease.leaseId) break;
+    if (leaseCallsUsed >= lease.maxCalls) break;
+    const field = fields.find(
+      (candidate) => `form-field:${candidate.dataset.fieldId}` === targetId
+    );
+    const control = currentControl(field);
+    if (!control || control.value.trim() !== "") continue;
+    const focus = buildFocus(field, "pointer");
+    if (focus === null) continue;
+    beginModelWorking(field);
+    render();
+    try {
+      const result = await conversationClient.submit({
+        transcript: lease.goal,
+        focusPacket: focus,
+        presence: {
+          humanPresence: session.humanPresence,
+          agentPresence: session.agentPresence,
+          mode: session.effectiveMode
+        }
+      });
+      const offer = result.sent
+        ? result.reply.offers.find(
+            (candidate) =>
+              candidate.targetId === targetId &&
+              lease.allowedCapabilityIds.includes(candidate.capabilityId)
+          )
+        : undefined;
+      if (offer === undefined) {
+        skipped += 1;
+        continue;
+      }
+      const receipt = executeSoloAction({
+        capabilityId: offer.capabilityId,
+        targetId,
+        value: offer.value
+      });
+      if (receipt.status === "verified") filled += 1;
+      else skipped += 1;
+    } catch (error) {
+      skipped += 1;
+      setStatus(describeFailure(error));
+    } finally {
+      endModelWorking();
+    }
+  }
+  setStatus(
+    filled === 0
+      ? `The model worked alone under "${lease.goal}" but filled nothing: ${skipped} field(s) refused or had no suggestion.`
+      : `The model filled ${filled} field${filled === 1 ? "" : "s"} alone under "${lease.goal}" (${leaseCallsUsed}/${lease.maxCalls} calls used). Press "I'm back" to see the receipts.`
+  );
+  render();
+}
+
+// Returns whether the job was actually handed over: mintDemoLease() still
+// refuses when the model is not here or the form has no fields, and the
+// caller has to know that rather than assume it worked. It no longer refuses
+// for a missing pointer or a missing goal - see mintDemoLease().
 function startAway(duration) {
-  if (builderFocus !== null || builderCowork?.readActiveGrant()) {
+  if (handoverGoesToStudio()) {
     void builderHandover({
       humanPresence: duration === "long" ? "afk-long" : "afk-short",
       batch: true
     });
     return true;
   }
-  const lease = mintDemoLease();
+  // Away always widens the lens: someone who is not there cannot point.
+  const lease = mintDemoLease({ wholeCanvas: true });
   if (lease === null) return false;
   const at = new Date().toISOString();
   leaseCallsUsed = 0;
+  leasePageVersion = lease.pageVersion;
+  soloTouchedTargetIds = [];
+  clearSoloHighlights();
   commitSession(
     "human-away",
     transitionShowcaseSession(session, {
       type: "HUMAN_AWAY",
       duration,
       lease,
-      area: fieldLabelForTarget(lease.allowedTargetIds[0]) ?? lease.goal,
+      area: leaseAreaLabel(lease),
       now: at
     }),
     { causeRefs: [`lease:${lease.leaseId}`], at }
   );
-  setStatus("The model works alone only inside the displayed two-minute field lease.");
+  setStatus(
+    `The model works alone across ${lease.allowedTargetIds.length} field(s) inside the displayed two-minute grant.`
+  );
   render();
+  void runSoloPass(lease);
   return true;
 }
 
 // Hand the job over and stay: the everyday case - you say what to do, the
 // model executes inside the grant, you watch and advise.
 function handOverWhileWatching() {
-  if (builderFocus !== null || builderCowork?.readActiveGrant()) {
+  if (handoverGoesToStudio()) {
     void builderHandover({ humanPresence: "present", batch: false });
     return true;
   }
@@ -1945,6 +2139,9 @@ function handOverWhileWatching() {
   if (lease === null) return false;
   const status = statusForWorkModeChoice("sparring-model", session);
   leaseCallsUsed = 0;
+  leasePageVersion = lease.pageVersion;
+  soloTouchedTargetIds = [];
+  clearSoloHighlights();
   commitSession(
     "work-handed-over",
     transitionShowcaseSession(
@@ -1975,8 +2172,14 @@ function executeSoloAction({ capabilityId, targetId, value }) {
 
   const activeLease = session.lease;
   const leaseId = activeLease.leaseId;
+  // Compare against this lease's own tracked expectation, not its frozen
+  // creation-time pageVersion: a verified call of this very lease advanced
+  // the live counter itself, and that is not staleness - it is the lease
+  // doing its job. Anything else changing the page still diverges from the
+  // tracked value and fails closed. Same reasoning as builder-cowork.js.
+  const expectedPageVersion = leasePageVersion ?? activeLease.pageVersion;
   const plan = planSoloFormBuilderMutation({
-    lease: activeLease,
+    lease: { ...activeLease, pageVersion: expectedPageVersion },
     now: new Date().toISOString(),
     humanPresence: session.humanPresence,
     agentPresence: session.agentPresence,
@@ -2000,12 +2203,18 @@ function executeSoloAction({ capabilityId, targetId, value }) {
     confidence: "high"
   });
   const verified = control.value === plan.verificationExpected;
+  // The write of this very lease moved the live counter on; carry that
+  // forward so the lease's next call is not mistaken for a stale page.
+  if (verified) {
+    leasePageVersion = pageVersion;
+    soloTouchedTargetIds = [...new Set([...soloTouchedTargetIds, targetId])].slice(-12);
+  }
   const receipt = createActionReceipt({
     offerId: `lease:${leaseId}:call-${callNumber}`,
     verified,
     observedChangeIds: verified && change ? [change.changeId] : [],
     verificationSummary: verified
-      ? `${focusedField?.dataset.label ?? "Leased field"} updated during Agent Solo`
+      ? `${fieldLabelForTarget(targetId) ?? "Leased field"} updated during Agent Solo`
       : "Solo action could not be verified",
     undoAvailable: plan.undoAvailable,
     pageVersion
@@ -2038,6 +2247,12 @@ function returnHuman() {
   }
   clearTimeout(leaseExpiryTimer);
   leaseExpiryTimer = null;
+  // The demo form's own return delta: mark the fields the model actually
+  // changed under the grant, so the evidence is visible where it happened.
+  const soloReturned = soloTouchedTargetIds;
+  highlightSoloTargets(soloReturned);
+  soloTouchedTargetIds = [];
+  leasePageVersion = null;
   offers = currentActionOffers({
     offers,
     now: new Date().toISOString(),
@@ -2056,7 +2271,9 @@ function returnHuman() {
   const message =
     builderDelta !== null
       ? `${builderDelta.summary} ${builderDelta.verifiedCount} verified, ${builderDelta.failedCount} failed.`
-      : `${summary.verified} verified, ${summary.failed} failed.`;
+      : soloReturned.length > 0
+        ? `The model changed ${soloReturned.length} field(s) while you were away, highlighted below. ${summary.verified} verified, ${summary.failed} failed.`
+        : `${summary.verified} verified, ${summary.failed} failed.`;
   setStatus(`Welcome back. ${message}`);
   speak(`Welcome back. ${message}`);
   render();
@@ -2235,7 +2452,21 @@ async function configureWebMcp() {
           leaseValid:
             session.lease !== null && Date.now() < Date.parse(session.lease.expiresAt),
           reason: session.lease?.goal ?? "Interactive Cowork session",
-          changedBy: "human"
+          changedBy: "human",
+          // A solo agent has no pointer to read: without a focused field
+          // cowork_read_focus answers STALE_FOCUS, which is correct. The
+          // grant is where its targets come from, so presence carries it.
+          grant: session.lease
+            ? {
+                goal: session.lease.goal,
+                targetIds: session.lease.allowedTargetIds,
+                targetCount: session.lease.allowedTargetIds.length,
+                capabilityIds: session.lease.allowedCapabilityIds,
+                callsUsed: leaseCallsUsed,
+                maxCalls: session.lease.maxCalls,
+                expiresAt: session.lease.expiresAt
+              }
+            : null
       }),
       executeSolo: executeSoloAction,
       readChanges: () =>
