@@ -249,7 +249,6 @@ let leasePageVersion = null;
 // What the model actually changed under the running grant, so a returning
 // human sees the evidence highlighted instead of having to hunt for it.
 let soloTouchedTargetIds = [];
-let soloPassRunning = false;
 let responseDownloadUrl = null;
 let pendingChangeCause = null;
 let leaseExpiryTimer = null;
@@ -1950,61 +1949,56 @@ async function runSoloPass(lease) {
     setStatus("Attention is off, so the model has no lens to work through. Turn it on to let it work alone.");
     return;
   }
-  soloPassRunning = true;
   let filled = 0;
   let skipped = 0;
-  try {
-    for (const targetId of lease.allowedTargetIds) {
-      // The human coming back, or the budget running out, ends the pass -
-      // both are the grant working, not an error.
-      if (session.lease?.leaseId !== lease.leaseId) break;
-      if (leaseCallsUsed >= lease.maxCalls) break;
-      const field = fields.find(
-        (candidate) => `form-field:${candidate.dataset.fieldId}` === targetId
-      );
-      const control = currentControl(field);
-      if (!control || control.value.trim() !== "") continue;
-      const focus = buildFocus(field, "pointer");
-      if (focus === null) continue;
-      beginModelWorking(field);
-      render();
-      try {
-        const result = await conversationClient.submit({
-          transcript: lease.goal,
-          focusPacket: focus,
-          presence: {
-            humanPresence: session.humanPresence,
-            agentPresence: session.agentPresence,
-            mode: session.effectiveMode
-          }
-        });
-        const offer = result.sent
-          ? result.reply.offers.find(
-              (candidate) =>
-                candidate.targetId === targetId &&
-                lease.allowedCapabilityIds.includes(candidate.capabilityId)
-            )
-          : undefined;
-        if (offer === undefined) {
-          skipped += 1;
-          continue;
+  for (const targetId of lease.allowedTargetIds) {
+    // The human coming back, or the budget running out, ends the pass -
+    // both are the grant working, not an error.
+    if (session.lease?.leaseId !== lease.leaseId) break;
+    if (leaseCallsUsed >= lease.maxCalls) break;
+    const field = fields.find(
+      (candidate) => `form-field:${candidate.dataset.fieldId}` === targetId
+    );
+    const control = currentControl(field);
+    if (!control || control.value.trim() !== "") continue;
+    const focus = buildFocus(field, "pointer");
+    if (focus === null) continue;
+    beginModelWorking(field);
+    render();
+    try {
+      const result = await conversationClient.submit({
+        transcript: lease.goal,
+        focusPacket: focus,
+        presence: {
+          humanPresence: session.humanPresence,
+          agentPresence: session.agentPresence,
+          mode: session.effectiveMode
         }
-        const receipt = executeSoloAction({
-          capabilityId: offer.capabilityId,
-          targetId,
-          value: offer.value
-        });
-        if (receipt.status === "verified") filled += 1;
-        else skipped += 1;
-      } catch (error) {
+      });
+      const offer = result.sent
+        ? result.reply.offers.find(
+            (candidate) =>
+              candidate.targetId === targetId &&
+              lease.allowedCapabilityIds.includes(candidate.capabilityId)
+          )
+        : undefined;
+      if (offer === undefined) {
         skipped += 1;
-        setStatus(describeFailure(error));
-      } finally {
-        endModelWorking();
+        continue;
       }
+      const receipt = executeSoloAction({
+        capabilityId: offer.capabilityId,
+        targetId,
+        value: offer.value
+      });
+      if (receipt.status === "verified") filled += 1;
+      else skipped += 1;
+    } catch (error) {
+      skipped += 1;
+      setStatus(describeFailure(error));
+    } finally {
+      endModelWorking();
     }
-  } finally {
-    soloPassRunning = false;
   }
   setStatus(
     filled === 0
