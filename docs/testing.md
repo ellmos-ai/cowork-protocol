@@ -80,7 +80,7 @@ The eval output deliberately uses `adapter-characters`, defined as JavaScript UT
 
 ## Reproducible juror dry-run
 
-Run `npm run proof` for a compact integration journey through the actual protocol and FormBuilder packages. The ten steps cover native field focus, a reasoned one-shot related-context request, a latest-only conversation turn with an exact-id reply, an offer that cannot authorize itself, a matching human click, verified causal change plus feedback, a scoped AFK lease, a collaborative `form-add-field` design step, a delegation grant whose spoken directive changes a field and then waits for a real verdict, and the real `formularerstellen-response-v1` export. The command exits non-zero if any step fails and reports both `browserClaim: false` and `hostTokenClaim: false` so this local proof cannot be mistaken for browser acceptance.
+Run `npm run proof` for a compact integration journey through the actual protocol and FormBuilder packages. The ten steps cover native field focus, a reasoned one-shot related-context request, a latest-only conversation turn with an exact-id reply, an offer that cannot authorize itself, a matching human click, verified causal change plus feedback, a scoped AFK lease, a collaborative `form-add-field` design step, a delegation grant whose utterance-authorized directive changes a field and then waits for a real verdict, and the real `formularerstellen-response-v1` export. The command exits non-zero if any step fails and reports both `browserClaim: false` and `hostTokenClaim: false` so this local proof cannot be mistaken for browser acceptance.
 
 ## Connected-browser acceptance snapshot
 

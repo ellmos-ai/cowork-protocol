@@ -4,6 +4,9 @@ This is the page's side of the contract, written for whatever is reading the
 tools: a WebMCP agent that discovered them in the browser, or an MCP client
 like Claude Code or Codex reaching the same nine tools through the Desktop
 Companion. Both see one surface and one rule — you propose, the human clicks.
+The MCP route is exercised by a test client written for this repository; a
+session by a shipped agent has not been measured yet, so read this as the
+contract you will meet rather than a report of one that ran.
 
 The examples build a form in FormBuilder Studio, which is the surface that
 carries the tools today. Nothing here is Studio-specific except the capability

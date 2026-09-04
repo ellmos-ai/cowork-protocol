@@ -68,7 +68,7 @@ Extension:  apps/browser-companion (Manifest V3, Chrome/Edge, unpacked)
    0.3.2 with no error badge. Ask me to confirm before continuing.
 6. Verify with me: open any ordinary web page with a text field, click the
    extension's toolbar icon (or press Ctrl+Shift+Y). The icon should show an
-   "ON" badge and a side panel titled "Browser Bridge" should open.
+   "ON" badge and a side panel titled "Cowork Protocol Bridge" should open.
    If it does not, read the errors on the extension card and the side panel's
    console, and report them to me instead of changing repository files.
 
