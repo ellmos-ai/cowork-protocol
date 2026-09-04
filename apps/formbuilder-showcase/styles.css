@@ -153,6 +153,49 @@ h3 { margin-bottom: 0; font-size: .95rem; }
 .cowork-panel.is-companion-connected > :not(.panel-topline):not(.system-status):not(.authorize-here) {
   display: none;
 }
+/* --- The bridge ------------------------------------------------------- *
+ * With no model on it the panel shows the mark, the sentence and the model
+ * seat: the seat is where a model arrives, so it is the one control that
+ * still means something. Everything else would answer a press with a refusal.
+ * The Companion rule above outranks this one and hides the seat too, because
+ * the session is not here any more. */
+.bridge-state { display: none; }
+.cowork-panel[data-bridge="resting"] .bridge-state,
+.cowork-panel[data-bridge="arriving"] .bridge-state,
+.cowork-panel[data-bridge="leaving"] .bridge-state {
+  display: grid;
+  justify-items: center;
+  gap: .55rem;
+  padding: 1.5rem .6rem 1.1rem;
+  text-align: center;
+}
+/* Only the bridge's own three states fold. A connected Companion is not one of
+   them: the rule above keeps the offer list and its receipts clickable here,
+   and folding them away would take the click with them. */
+.cowork-panel[data-bridge="resting"] > :not(.panel-topline):not(.bridge-state):not(.panel-section.model-seat),
+.cowork-panel[data-bridge="arriving"] > :not(.panel-topline):not(.bridge-state):not(.panel-section.model-seat),
+.cowork-panel[data-bridge="leaving"] > :not(.panel-topline):not(.bridge-state):not(.panel-section.model-seat) {
+  display: none;
+}
+.bridge-mark { position: relative; display: block; width: 3.4rem; height: 3.4rem; color: var(--teal, #0b7468); }
+.bridge-mark svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+#bridge-message { max-width: 30ch; font-size: 1rem; line-height: 1.35; }
+.bridge-mark::after {
+  content: ""; position: absolute; left: 11%; top: 44%;
+  width: .4rem; height: .4rem; border-radius: 50%;
+  background: #d6a94f; box-shadow: 0 0 .5rem rgba(214, 169, 79, .9); opacity: 0;
+}
+.cowork-panel[data-bridge="arriving"] .bridge-mark::after { animation: bridge-cross 1.4s ease-in-out both; }
+@keyframes bridge-cross {
+  0% { opacity: 0; transform: translateX(0); }
+  14% { opacity: 1; }
+  86% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(2.5rem); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cowork-panel[data-bridge="arriving"] .bridge-mark::after { opacity: 1; transform: translateX(1.25rem); }
+}
+
 .companion-authorization-note { display: none; }
 .cowork-panel.is-companion-connected .companion-authorization-note {
   display: block;

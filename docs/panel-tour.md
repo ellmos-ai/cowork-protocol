@@ -10,9 +10,25 @@ captured in Chrome 152 with `--enable-features=WebMCP,WebMCPTesting` at a
 them, measures the marked regions in the browser and redraws the overlay, so
 the boxes cannot drift away from what they point at. The current set was shot
 from a locally served copy of this branch
-(`COWORK_PANEL_TOUR_URL=http://127.0.0.1:4188/apps/formbuilder-showcase/`),
-because the section folds below are not deployed yet; re-run it against the
+(`COWORK_PANEL_TOUR_URL=http://127.0.0.1:4191/apps/formbuilder-showcase/`),
+because the resting bridge below is not deployed yet; re-run it against the
 live URL after the next deploy.
+
+## The bridge before anything crosses it
+
+![The panel with no model on it: the bridge mark, one sentence and the model seat](../design/panel-tour/panel-bridge-resting.png)
+
+This panel is a bridge, and a bridge has a place. With no model on it, it shows
+the mark, the sentence **No model is crossing the bridge.** and the model seat
+— the seat is where a model arrives, so it stays. Everything else would answer
+a press with a refusal, which is what the panel used to do.
+
+Demo mode is on when the page loads, so a disclosed scripted helper is already
+in the seat and the panel below is what you actually meet. Switch demo mode off
+and nothing else in, and the panel folds back to the picture above. Switch it
+on again and a mark travels the deck once before the instruments reopen.
+
+## The panel with a model on it
 
 Each section is a disclosure. Model seat, Attention lens and Role are open on
 arrival because they carry the live state. Conversation does not fold at all: a
@@ -281,15 +297,24 @@ Handing work over, and taking it back.
 *The model sees:* `cowork_execute_solo`, and only inside a current grant with a
 goal, a budget and an expiry.
 
-## The same session in the browser extension
+## The same bridge as a browser extension
 
-![The Cowork side panel in Chrome](../design/panel-tour/extension-sidepanel.png)
+![The Cowork side panel in Chrome with a model on the bridge](../design/panel-tour/extension-sidepanel.png)
 
-For pages that carry no Cowork panel of their own, the browser extension puts
-the same session in Chrome's side panel, outside the page DOM, and registers
-the same Cowork tools over WebMCP. It brings **no model seat of its own**: the
-seat stays with the page, the Desktop Companion, a page host or the demo
-helper, and offers are applied by clicking them in the page's own panel. See
+For pages that build no bridge of their own, the extension carries this one
+there: Chrome's side panel, outside the page DOM, registering the same Cowork
+tools over WebMCP. It brings **no model seat of its own** — the seat stays with
+the page, the Desktop Companion, a page host or the demo helper — and offers
+are applied by a click in the panel that is showing them.
+
+![The same side panel with nobody on the bridge](../design/panel-tour/extension-sidepanel-resting.png)
+
+It rests the same way, for the same reason. An agent's first Cowork tool call
+is the arrival; ninety seconds of silence is the departure. On a page that
+draws its own panel it does not compete at all: it folds to one line and leaves
+the clicks where the reader already sees them. Both frames come from
+`npm run smoke:companion-cockpit` with `COWORK_COMPANION_EVIDENCE_DIR` set, at
+390x844 in Chrome for Testing 152. See
 [apps/browser-companion/README.md](../apps/browser-companion/README.md).
 
 ## The same session in the Desktop Companion

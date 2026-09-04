@@ -1,4 +1,7 @@
-import { resolveWorkMode } from "../../../packages/core/src/index.js";
+import {
+  resolveBridgeState,
+  resolveWorkMode
+} from "../../../packages/core/src/index.js";
 import {
   BRIDGE_COPY,
   buildWorkModePresentation
@@ -125,33 +128,7 @@ export function nextAvailableStatus(actor, unavailable) {
   return null;
 }
 
-/**
- * Which of the four things this bridge currently is. A bridge has a place, so
- * only one thing can be true of that place at a time, and the order is not
- * arbitrary: a connected Companion holds the session, a page that draws its own
- * panel holds the clicks, and only what is left over is this bridge's own
- * business.
- *
- * `crossing` needs an actual agent. Human clicks in the panel never set it -
- * a bridge that filled up because you pressed a button would be lying about
- * who is there.
- */
-export function resolveBridgeState({
-  companionConnected = false,
-  pageOwnsBridge = false,
-  agentLastSeenAt = null,
-  agentIdleTimeoutMs = 90_000,
-  offerPending = false,
-  now = Date.now()
-} = {}) {
-  if (companionConnected === true) return "companion";
-  if (pageOwnsBridge === true) return "page-owns";
-  // A standing offer is an agent still waiting for an answer, so it holds the
-  // bridge open however long the person takes to decide.
-  if (offerPending === true) return "crossing";
-  if (!Number.isFinite(agentLastSeenAt)) return "resting";
-  return now - agentLastSeenAt < agentIdleTimeoutMs ? "crossing" : "resting";
-}
+export { resolveBridgeState };
 
 export function buildCockpitPresentation(input) {
   const baseRoute = ROUTES[input?.mode];
@@ -194,6 +171,8 @@ export function buildCockpitPresentation(input) {
       ? input.agentIdleTimeoutMs
       : 90_000,
     offerPending: input.offerPending === true,
+    // This bridge has no seat of its own; only an agent puts a model on it.
+    seatOccupied: false,
     now: Number.isFinite(input.now) ? input.now : Date.now()
   });
 

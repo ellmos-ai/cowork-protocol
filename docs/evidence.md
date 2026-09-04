@@ -772,6 +772,58 @@ Gate numbers for that change:
   Picture-in-Picture surface working. `button.textContent` still reads as the
   label alone, which is what `smoke:surface` and `smoke:companion-mcp` assert
 
+## The bridge at rest (2026-09-04)
+
+A bridge has a place; a vehicle carries a model across it. Both surfaces that
+are bridges now say which of four things is true of their place, and both were
+measured saying it.
+
+- **The extension's Side Panel, rest to rest.** `npm run smoke:companion-cockpit`
+  drives the shipped panel through `resting -> arriving -> crossing -> leaving ->
+  resting` at 390x844 in Chrome for Testing 152 and records each step. The
+  validator rejects a step that offers the attention lens or the actor controls
+  with no model on the bridge, one that hides the on/off switch, one that drops
+  the shared bridge mark, and a journey with the arrival missing. Report field:
+  `bridgeRestArriveDepartClaim: true`. The resting frame is
+  `cockpit-00-bridge-resting.png` when `COWORK_COMPANION_EVIDENCE_DIR` is set.
+- **Only an agent fills the bridge.** `npm run smoke:companion-webmcp` reads the
+  real content runtime on a page the extension registered its four tools into:
+  `bridgeEmptyBeforeAgent: true` with the relay enabled and no agent yet, and
+  `panelBridgeAfterAgent: "crossing"` after the agent's own
+  `cowork_read_focus` / `cowork_read_presence` / `cowork_offer_action` calls.
+  Enabling the relay and pressing panel controls are the human's hand and do
+  not count.
+- **The page's own bridge, same behaviour.** `npm run smoke:builder` switches
+  demo mode off and observes `data-bridge="leaving"` with *The model left the
+  bridge.*, then `resting` with the model seat still shown and the attention
+  lens, receipts and actor controls gone; switching demo mode back on gives
+  `arriving` with *A model is coming across the bridge.* and then `crossing`
+  with the lens back. Report field: `bridgeRestAndArrivalClaim: true`.
+- **A connected Companion is not a resting bridge.** The first cut of the fold
+  hid the offer list and its receipts while the Desktop Companion held the
+  session, which took the click with them: `smoke:surface` and
+  `smoke:companion-mcp` both failed. The rule now applies only to the bridge's
+  own three states, and both smokes pass.
+- **The accessibility baseline is unchanged at 34.**
+  `CURRENT_INTERACTIVE_CONTROL_COUNT` still measures 34 interactive, named,
+  reachable, focus-visible and Tab-unique controls in
+  `npm run smoke:accessibility` and `npm run smoke:webmcp`, because demo mode is
+  on at load: the seat is occupied and the page opens with a model already on
+  the bridge. That number therefore describes the panel *with* a model, which is
+  the state a visitor meets. The resting walk is a different, smaller one and is
+  covered where it is produced, by the demo switch in `smoke:builder`.
+- **Timeout.** Ninety seconds of agent silence is the departure, chosen to
+  outlast a slow model turn plus a tool round trip and to fall short of leaving
+  a panel open in front of an agent that stopped answering. A standing offer
+  overrides it for as long as the person takes to decide, because an offer
+  waiting for a click is an agent waiting for an answer.
+- **Gates at this commit.** `node --test` 496 of 496; pages artifact 36 files;
+  extension artifact 22 files; `check:secrets` and `check:architecture` pass.
+- **Panel tour re-recorded** from a locally served copy of this branch
+  (`COWORK_PANEL_TOUR_URL=http://127.0.0.1:4191/apps/formbuilder-showcase/`),
+  adding `panel-bridge-resting.png` and replacing the stale extension frame with
+  a crossing and a resting one from the cockpit smoke.
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;

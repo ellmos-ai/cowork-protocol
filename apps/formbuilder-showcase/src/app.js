@@ -4,7 +4,8 @@ import {
   createActionOffer,
   createFeedbackEvent,
   createPresenceEvent,
-  createActionReceipt
+  createActionReceipt,
+  resolveBridgeState
 } from "../../../packages/core/src/index.js";
 import {
   buildFormBuilderContextExpansion,
@@ -34,6 +35,8 @@ import {
   createProtocolHostDeclaration
 } from "../../../packages/integration-contract/src/index.js";
 import {
+  BRIDGE_COPY,
+  BRIDGE_ICON,
   REFERENCE_UI_PROVIDER_ID,
   createStepIcon,
   STATUS_STEPS,
@@ -120,6 +123,83 @@ $("#status-steps").replaceChildren(
     return item;
   })
 );
+
+// --- The bridge ------------------------------------------------------------
+// This panel is a bridge, and a bridge has a place. With nothing on it the
+// page shows the mark, the sentence and the model seat - the seat is where a
+// model arrives, so it stays; instruments that would refuse every press do
+// not. The extension's Side Panel is the same bridge and says the same words.
+$("#bridge-mark").replaceChildren(createStepIcon(BRIDGE_ICON, document));
+// When an agent last called one of this page's nine Cowork tools.
+let lastAgentActivityAt = null;
+// Arrival and departure are transitions, so only this surface sees them.
+let bridgeState = null;
+let bridgeStage = null;
+let bridgeStageUntil = 0;
+const BRIDGE_ARRIVAL_MS = 1400;
+const BRIDGE_DEPARTURE_MS = 4000;
+
+function noteAgentActivity() {
+  lastAgentActivityAt = Date.now();
+}
+
+/**
+ * Every native Cowork tool call is an agent reaching this bridge. Wrapping the
+ * handlers in one place beats stamping each of the nine: a tool added later
+ * cannot forget to report that someone crossed.
+ */
+function reportAgentActivity(handlers) {
+  return Object.fromEntries(
+    Object.entries(handlers).map(([name, handler]) => [
+      name,
+      typeof handler === "function"
+        ? (...args) => {
+            noteAgentActivity();
+            return handler(...args);
+          }
+        : handler
+    ])
+  );
+}
+
+function renderBridge() {
+  const next = resolveBridgeState({
+    companionConnected: session.surface?.kind === "desktop",
+    // This page draws its own bridge, so it is never the one stepping aside.
+    pageOwnsBridge: false,
+    seatOccupied: modelSeat.resolve().kind !== "none",
+    agentLastSeenAt: lastAgentActivityAt,
+    // render() refreshes the live offers just above this call.
+    offerPending: offers.length > 0,
+    now: Date.now()
+  });
+  if (bridgeState !== next) {
+    if (bridgeState === "resting" && next === "crossing") {
+      bridgeStage = "arriving";
+      bridgeStageUntil = Date.now() + BRIDGE_ARRIVAL_MS;
+    } else if (bridgeState === "crossing" && next === "resting") {
+      bridgeStage = "leaving";
+      bridgeStageUntil = Date.now() + BRIDGE_DEPARTURE_MS;
+    } else {
+      bridgeStage = null;
+      bridgeStageUntil = 0;
+    }
+    bridgeState = next;
+    if (bridgeStage) setTimeout(render, bridgeStageUntil - Date.now() + 40);
+  }
+  const stage = Date.now() < bridgeStageUntil ? bridgeStage : bridgeState;
+  coworkPanel.dataset.bridge = stage;
+  $("#bridge-message").textContent =
+    stage === "arriving"
+      ? BRIDGE_COPY.arriving
+      : stage === "leaving"
+        ? BRIDGE_COPY.left
+        : stage === "companion"
+          ? BRIDGE_COPY.companion
+          : stage === "crossing"
+            ? BRIDGE_COPY.crossing
+            : BRIDGE_COPY.resting;
+}
 
 // --- Folded sections -------------------------------------------------------
 // The panel answers six questions at once, and a reader arriving at it meets
@@ -1216,6 +1296,7 @@ function render() {
   coworkPanel.dataset.humanState = view.humanState;
   coworkPanel.dataset.modelState = view.modelState;
   coworkPanel.dataset.relayState = view.relayState;
+  renderBridge();
   $("#focus-label").textContent = view.focusLabel;
   $("#context-label").textContent = view.contextLabel;
   $("#capability-badge").textContent = view.capabilityLabel;
@@ -2191,7 +2272,7 @@ async function configureWebMcp() {
     }
     registrationController = await registerNativeCoworkTools({
       modelContext: document.modelContext,
-      ...coworkToolHandlers
+      ...reportAgentActivity(coworkToolHandlers)
     });
     capabilityLevel = "native";
     setStatus("Nine Native WebMCP tools registered: focus, context, causal changes, presence, offers, solo execution, feedback, conversation inbox, and bounded reply.");

@@ -1062,3 +1062,37 @@ export function fromLegacyPresence({ humanPresence, agentPresence, agentEngageme
     )
   });
 }
+
+/**
+ * Which of the four things this bridge currently is. A bridge has a place, so
+ * only one thing can be true of that place at a time, and the order is not
+ * arbitrary: a connected Companion holds the session, a page that draws its own
+ * panel holds the clicks, and only what is left over is this bridge's own
+ * business.
+ *
+ * `crossing` means a model is really there: a seat with something in it, an
+ * offer still waiting, or an agent that called a tool recently. Reading focus
+ * or widening context is the person's own hand and never counts - a bridge
+ * that filled up because you pressed a button would be lying about who is
+ * there.
+ */
+export function resolveBridgeState({
+  companionConnected = false,
+  pageOwnsBridge = false,
+  agentLastSeenAt = null,
+  agentIdleTimeoutMs = 90_000,
+  offerPending = false,
+  seatOccupied = false,
+  now = Date.now()
+} = {}) {
+  if (companionConnected === true) return "companion";
+  if (pageOwnsBridge === true) return "page-owns";
+  // A seat with a model in it is a model on the bridge, whoever put it there:
+  // a disclosed demo helper, a direct endpoint or a page host all count.
+  if (seatOccupied === true) return "crossing";
+  // A standing offer is an agent still waiting for an answer, so it holds the
+  // bridge open however long the person takes to decide.
+  if (offerPending === true) return "crossing";
+  if (!Number.isFinite(agentLastSeenAt)) return "resting";
+  return now - agentLastSeenAt < agentIdleTimeoutMs ? "crossing" : "resting";
+}

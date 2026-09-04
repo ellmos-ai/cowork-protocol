@@ -71,3 +71,27 @@ test("the panel's status strip and mode choices come from the shared vocabulary"
   assert.match(app, /workModeChoices\(/);
   assert.match(app, /statusForWorkModeChoice/);
 });
+
+test("with no model on it the page bridge shows the seat and nothing else", async () => {
+  const html = await readFile(htmlPath, "utf8");
+  const css = await readFile(cssPath, "utf8");
+  const app = await readFile(appPath, "utf8");
+
+  assert.match(html, /id="bridge-state"[\s\S]*role="status"/);
+  assert.match(html, /id="bridge-message"/);
+  assert.match(css, /\[data-bridge="resting"\] > :not\(\.panel-topline\)/);
+  // The seat survives the fold: it is where a model arrives.
+  assert.match(css, /:not\(\.panel-section\.model-seat\)/);
+  assert.match(css, /\[data-bridge="arriving"\][\s\S]*bridge-cross/);
+  // A connected Companion must not be folded by the bridge rule, or the
+  // offer list and its receipts lose the click they still own.
+  assert.doesNotMatch(css, /\[data-bridge\]:not\(\[data-bridge="crossing"\]\) >/);
+
+  assert.match(app, /coworkPanel\.dataset\.bridge/);
+  assert.match(app, /resolveBridgeState/);
+  assert.match(app, /BRIDGE_COPY/);
+  assert.match(app, /BRIDGE_ICON/);
+  // Every one of the nine tools reports the crossing, wrapped in one place.
+  assert.match(app, /reportAgentActivity\(coworkToolHandlers\)/);
+  assert.doesNotMatch(app, /No model is crossing the bridge/);
+});

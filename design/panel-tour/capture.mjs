@@ -279,7 +279,28 @@ try {
     });
   })()`);
 
-  // (a) Resting state: nothing has happened yet, the human holds the click right.
+  // (a0) The bridge with nobody on it. Demo mode is on when the page loads, so
+  // a model is already in the seat; switching it off is how a reader empties
+  // the bridge, and the panel folds to the mark, the sentence and the seat.
+  await click(call, "#demo-mode");
+  await waitFor(
+    call,
+    `document.querySelector(".cowork-panel").dataset.bridge === "resting"`,
+    "the bridge to come to rest"
+  );
+  const bridgeResting = {
+    filename: (await shootElement(call, ".cowork-panel", "panel-bridge-resting.png")).filename,
+    message: await evaluate(call, `document.querySelector("#bridge-message").textContent.trim()`)
+  };
+  await click(call, "#demo-mode");
+  await waitFor(
+    call,
+    `document.querySelector(".cowork-panel").dataset.bridge === "crossing" &&
+     getComputedStyle(document.querySelector(".focus-readout")).display !== "none"`,
+    "the demo helper to arrive and the panel to open"
+  );
+
+  // (a) Opening state: nothing has happened yet, the human holds the click right.
   const before = await measure();
   captured.push(await shootElement(call, ".cowork-panel", "panel-initial.png"));
   const boxes = await measure();
@@ -363,10 +384,16 @@ try {
   console.log(JSON.stringify({
     browser: version.Browser,
     source: SHOWCASE_URL,
+    bridgeRestingMessage: bridgeResting.message,
     restingMode,
     offerText,
     handoverMode,
-    files: [...captured.map((entry) => entry.filename), overlay.filename, companion].filter(Boolean),
+    files: [
+      bridgeResting.filename,
+      ...captured.map((entry) => entry.filename),
+      overlay.filename,
+      companion
+    ].filter(Boolean),
     overlaySize: { width: overlay.clip.width, height: overlay.clip.height }
   }, null, 2));
   socket.close();
