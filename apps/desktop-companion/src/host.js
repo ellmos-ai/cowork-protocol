@@ -786,6 +786,14 @@ export function createCompanionSessionHost({
       text: transcript,
       at: now()
     });
+    // A local model that still has to load takes tens of seconds. Both
+    // surfaces get to say "working" for that whole time instead of showing
+    // the human's turn with nothing beside it.
+    recordConversation(linkSession, {
+      human: transcript,
+      assistant: "",
+      status: "pending"
+    });
     await persistSessions();
     const promise = linkSession.gateway.submit({
       turnId,

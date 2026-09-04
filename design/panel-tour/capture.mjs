@@ -19,18 +19,10 @@ const OUT = path.dirname(fileURLToPath(import.meta.url));
 const SHOWCASE_URL =
   process.env.COWORK_PANEL_TOUR_URL ??
   "https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/";
-// No default. The old one was 127.0.0.1:47831, which is where a developer's
-// own Companion listens - a tour run then photographed a live session and
-// its real conversation into a public documentation image. Point this at a
-// host you started for the capture.
-const COMPANION_URL = process.env.COWORK_COMPANION_UI;
-if (!COMPANION_URL) {
-  throw new Error(
-    "Set COWORK_COMPANION_UI to a Companion host started for this capture. " +
-    "There is deliberately no default: the old one pointed at whatever was " +
-    "already running on this machine."
-  );
-}
+// No default on purpose: the default used to be the local Companion port, and
+// one run photographed the user's live session, conversation included, into a
+// public repository. Point this at a Companion you started for the shoot.
+const COMPANION_URL = process.env.COWORK_COMPANION_UI ?? null;
 const VIEWPORT = { width: 1440, height: 1100 };
 const SCALE = 2;
 
@@ -381,6 +373,9 @@ try {
   // The Desktop Companion, if a host is listening.
   let companion = null;
   try {
+    if (!COMPANION_URL) {
+      throw new Error("COWORK_COMPANION_UI is not set - start a Companion for the shoot and point this at it");
+    }
     const probe = await fetch(COMPANION_URL, { signal: AbortSignal.timeout(3000) });
     if (!probe.ok) throw new Error(`HTTP ${probe.status}`);
     await call("Emulation.setDeviceMetricsOverride", { width: 980, height: 900, deviceScaleFactor: 1, mobile: false });

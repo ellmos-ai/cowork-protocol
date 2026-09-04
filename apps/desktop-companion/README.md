@@ -106,6 +106,13 @@ $env:COWORK_MODEL_MAX_TOKENS='1500'
 the retry - the turn fails with `MODEL_THOUGHT_PAST_ITS_BUDGET` instead, and
 that code and sentence reach the cockpit and the linked page.
 
+A local model server is not always up, so a turn that cannot reach it says
+which of the two problems it is: `MODEL_ENDPOINT_UNREACHABLE` when nothing
+answered at all, `MODEL_GATEWAY_TIMED_OUT` when it answered too slowly. Loading
+a cold model measurably takes tens of seconds and is not a failure - the
+60-second budget covers it, and both surfaces say the model is working for that
+whole time.
+
 Computer Use is optional and lazy. No Open Compute process starts until the
 human presses its cockpit switch. By default the Companion launches the
 Git-hosted `open-compute[mcp,local,uia]` MCP server through `uvx` with

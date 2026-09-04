@@ -362,13 +362,17 @@ async function pullAllCompanionDeltas() {
 // page must show that conversation - including a turn that failed, which
 // otherwise vanishes and leaves the page looking like nothing was asked.
 function showCompanionConversation(lastConversation) {
-  if (!lastConversation || lastConversation.status === "pending") return;
+  if (!lastConversation) return;
   const speaker = lastConversation.status === "responded"
     ? "Model"
-    : `Model failed (${lastConversation.status})`;
-  $("#transcript").textContent =
-    `You: ${lastConversation.human}
-${speaker}: ${lastConversation.assistant}`;
+    : lastConversation.status === "pending"
+      ? "Model"
+      : `Model failed (${lastConversation.status})`;
+  const said = lastConversation.status === "pending"
+    ? "Working from the shared bounded context… a local model that has to load takes a moment."
+    : lastConversation.assistant;
+  $("#transcript").textContent = `You: ${lastConversation.human}
+${speaker}: ${said}`;
 }
 
 function reportCompanionSurfaceVisibility(visibility) {

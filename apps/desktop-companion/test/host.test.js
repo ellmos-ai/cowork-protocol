@@ -1038,6 +1038,12 @@ test("a model offer reaches the linked page and a failed turn says so on both su
     port: 0,
     createLinkSessionId: () => "offer-link",
     sendModelTurn: async () => {
+      // Recorded before the model is asked, so both surfaces can say "working"
+      // for the tens of seconds a local model needs to load.
+      assert.equal(
+        host.readSnapshot("offer-link").state.lastConversation.status,
+        "pending"
+      );
       if (nextReply instanceof Error) throw nextReply;
       return nextReply;
     }

@@ -245,7 +245,7 @@ test("an exhausted answer budget is named, never folded into a generic failure",
   assert.equal(sent[0].reasoning_effort, "high");
 });
 
-test("a fenced JSON reply is accepted and prose is refused with its own code", async () => {
+test("a fenced JSON reply is accepted, and prose becomes a message with no offers", async () => {
   const fenced = createOpenAiCompatibleTurnSender({
     endpoint: "https://models.example.test/v1/chat/completions",
     model: "preferred-model",
@@ -266,7 +266,21 @@ test("a fenced JSON reply is accepted and prose is refused with its own code", a
     fetchImpl: async () =>
       Response.json({ choices: [{ message: { content: "Sure, I can help with that." } }] })
   });
-  await assert.rejects(() => prose(turn), (error) => error.code === "MODEL_REPLY_NOT_JSON");
+  const proseReply = await prose(turn);
+  assert.equal(proseReply.message, "Sure, I can help with that.");
+  assert.deepEqual(proseReply.offers, []);
+
+  const wrapped = createOpenAiCompatibleTurnSender({
+    endpoint: "https://models.example.test/v1/chat/completions",
+    model: "preferred-model",
+    fetchImpl: async () =>
+      Response.json({
+        choices: [{
+          message: { content: "Here you go: {\"message\": \"Ada Byron fits the field.\"} Hope that helps." }
+        }]
+      })
+  });
+  assert.equal((await wrapped(turn)).message, "Ada Byron fits the field.");
 
   const offSchema = createOpenAiCompatibleTurnSender({
     endpoint: "https://models.example.test/v1/chat/completions",
@@ -275,4 +289,34 @@ test("a fenced JSON reply is accepted and prose is refused with its own code", a
       Response.json({ choices: [{ message: { content: JSON.stringify({ reply: "no message key" }) } }] })
   });
   await assert.rejects(() => offSchema(turn), (error) => error.code === "MODEL_REPLY_REJECTED");
+});
+
+test("a model server that is down and one that is slow are different answers", async () => {
+  const refused = createOpenAiCompatibleTurnSender({
+    endpoint: "https://models.example.test/v1/chat/completions",
+    model: "preferred-model",
+    fetchImpl: async () => {
+      throw new TypeError("fetch failed");
+    }
+  });
+  await assert.rejects(
+    () => refused(turn),
+    (error) =>
+      error.code === "MODEL_ENDPOINT_UNREACHABLE" &&
+      /COWORK_MODEL_ENDPOINT/.test(error.message)
+  );
+
+  const slow = createOpenAiCompatibleTurnSender({
+    endpoint: "https://models.example.test/v1/chat/completions",
+    model: "preferred-model",
+    timeoutMs: 100,
+    fetchImpl: (_url, options) =>
+      new Promise((_resolve, reject) => {
+        options.signal.addEventListener("abort", () => reject(options.signal.reason));
+      })
+  });
+  await assert.rejects(
+    () => slow(turn),
+    (error) => error.code === "MODEL_GATEWAY_TIMED_OUT" && /load/.test(error.message)
+  );
 });
