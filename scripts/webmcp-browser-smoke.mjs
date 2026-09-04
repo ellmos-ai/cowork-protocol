@@ -649,6 +649,141 @@ try {
       mutationError
     };
   })()`);
+  // --- K3: the model works alone WITHOUT anyone pointing at a field. A human
+  // who has stepped away cannot point, so stepping away has to widen the lens
+  // to the whole form and the model has to fill it by itself. Before this,
+  // both handover paths refused without a focused field and the human never
+  // got to see the model work alone at all. ---
+  await evaluateValue(call, `document.querySelector("#fold-handoff").open = true`);
+  // Start from an empty form: the model fills what is empty, so a field an
+  // earlier step already filled would otherwise silently shrink the pass.
+  await evaluateValue(call, `(() => {
+    for (const field of document.querySelectorAll("#demo-form .form-field[data-field-id]")) {
+      const control = field.querySelector("input, textarea, select");
+      control.value = "";
+      control.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  })()`);
+  // Turning attention off and back on is how a human clears the lens without
+  // pointing somewhere else - the smoke reaches "no pointer" the same way.
+  await evaluateValue(call, `(() => {
+    const select = document.querySelector("#attention-mode");
+    for (const value of ["off", "pointer"]) {
+      select.value = value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    return select.value;
+  })()`);
+  // Native WebMCP reports a refusing tool as an opaque DOMException, so the
+  // observable fact here is that the focus lens refuses - not which code it
+  // refused with. packages/core's unit tests own the code itself.
+  const focusBeforeSoloPass = await evaluateValue(call, `(async () => {
+    const tools = await document.modelContext.getTools();
+    const tool = tools.find((candidate) => candidate.name === "cowork_read_focus");
+    try {
+      const result = await document.modelContext.executeTool(tool, {});
+      const envelope = typeof result === "string" ? JSON.parse(result) : result;
+      return { refused: false, packet: envelope.structuredContent };
+    } catch (error) {
+      return { refused: true, name: error.name };
+    }
+  })()`);
+  await dispatchTrustedClick(
+    call,
+    'document.querySelector("#away-short")',
+    "Step away with nothing pointed at"
+  );
+  // The pass is one bounded turn per field, so it takes a few frames.
+  let soloPassObserved = null;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    soloPassObserved = await evaluateValue(call, `(() => ({
+      values: [...document.querySelectorAll("#demo-form .form-field[data-field-id]")]
+        .map((field) => [field.dataset.fieldId, field.querySelector("input, textarea, select")?.value ?? ""]),
+      focusLabel: document.querySelector("#focus-label")?.textContent ?? null,
+      areaLabel: document.querySelector("#area-label")?.textContent ?? null,
+      microcopy: document.querySelector("#lease-microcopy")?.textContent ?? null
+    }))()`);
+    if (soloPassObserved.values.every(([, value]) => value !== "")) break;
+  }
+  const presenceUnderWholeForm = await evaluateValue(
+    call,
+    toolExecutionExpression("cowork_read_presence", {})
+  );
+  const receiptsAfterSoloPass = await evaluateValue(call, `(() => ({
+    verifiedSolo: [...document.querySelectorAll("#receipt-list li")]
+      .filter((item) =>
+        item.textContent.startsWith("Verified:") &&
+        item.textContent.includes("during Agent Solo")
+      ).length,
+    total: document.querySelectorAll("#receipt-list li").length
+  }))()`);
+  await dispatchTrustedClick(
+    call,
+    'document.querySelector("#return-human")',
+    "Come back and read what the model did alone"
+  );
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const returnAfterSoloPass = await evaluateValue(call, `(() => ({
+    highlighted: document.querySelectorAll("#demo-form .form-field.is-new-since-handover").length,
+    status: document.querySelector("#system-status")?.textContent ?? null
+  }))()`);
+  observed.soloWithoutPointer = {
+    focusBeforeSoloPass,
+    ...soloPassObserved,
+    grant: presenceUnderWholeForm.packet?.grant ?? null,
+    effectiveMode: presenceUnderWholeForm.packet?.effectiveMode ?? null,
+    receiptsAfterSoloPass,
+    returnAfterSoloPass
+  };
+  // Without a pointer the focus lens has nothing to answer, and saying so is
+  // correct: the grant, carried on presence, is where a solo agent reads its
+  // targets. Both facts are asserted together so neither can quietly go away.
+  if (focusBeforeSoloPass.refused !== true) {
+    throw new Error(
+      `cowork_read_focus must still refuse without a pointer: ${JSON.stringify(focusBeforeSoloPass)}`
+    );
+  }
+  if (
+    presenceUnderWholeForm.packet?.effectiveMode !== "agent-solo" ||
+    presenceUnderWholeForm.packet?.grant?.targetCount !== 4
+  ) {
+    throw new Error(
+      `Stepping away without a pointer must grant over the whole form: ${JSON.stringify(presenceUnderWholeForm)}`
+    );
+  }
+  const emptyAfterSoloPass = soloPassObserved.values.filter(([, value]) => value === "");
+  if (emptyAfterSoloPass.length > 0) {
+    throw new Error(
+      `The model did not work alone across the form: ${JSON.stringify(soloPassObserved)}`
+    );
+  }
+  if (!soloPassObserved.focusLabel?.includes("Whole form (4 fields)")) {
+    throw new Error(
+      `The lens must say it widened: ${JSON.stringify(soloPassObserved.focusLabel)}`
+    );
+  }
+  if (receiptsAfterSoloPass.verifiedSolo !== 4) {
+    throw new Error(
+      `Each solo write needs its own verified receipt: ${JSON.stringify(receiptsAfterSoloPass)}`
+    );
+  }
+  if (returnAfterSoloPass.highlighted !== 4) {
+    throw new Error(
+      `A returning human must see what changed: ${JSON.stringify(returnAfterSoloPass)}`
+    );
+  }
+  // Back to an empty form, so the pre-existing checks below start where they
+  // always did instead of on a form this new block already filled.
+  await evaluateValue(call, `(() => {
+    for (const field of document.querySelectorAll("#demo-form .form-field[data-field-id]")) {
+      const control = field.querySelector("input, textarea, select");
+      control.value = "";
+      control.dispatchEvent(new Event("input", { bubbles: true }));
+      field.classList.remove("is-new-since-handover");
+    }
+  })()`);
+
   // --- Solo lease + cowork_execute_solo/cowork_read_presence: neither tool
   // was previously exercised in this smoke. Added specifically to prove the
   // GAP-01 delegation-grant change (authorizeSoloAction() now checks the
@@ -890,6 +1025,13 @@ try {
     agentSoloLeaseClaim: true,
     presenceReportedEffectiveMode: presenceExecution.packet?.effectiveMode,
     soloExecutionStatus: soloExecution.packet?.status,
+    soloWithoutPointer: {
+      focusStillRefuses: observed.soloWithoutPointer.focusBeforeSoloPass.refused,
+      grantTargetCount: observed.soloWithoutPointer.grant?.targetCount,
+      fieldsFilledAlone: observed.soloWithoutPointer.values.filter(([, value]) => value !== "").length,
+      verifiedSoloReceipts: observed.soloWithoutPointer.receiptsAfterSoloPass.verifiedSolo,
+      highlightedOnReturn: observed.soloWithoutPointer.returnAfterSoloPass.highlighted
+    },
     advisorCommentClaim: true,
     advisorCommentHiddenWhenModelStopsAdvising: advisorHiddenAfterModeChange,
     modelExecutionNeedsGrantClaim: true,
