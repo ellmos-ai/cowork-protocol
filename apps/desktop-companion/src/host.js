@@ -77,13 +77,23 @@ function hasCurrentSoloLease(state, at) {
 const COMPANION_LEASE_MAX_CALLS = 2;
 const COMPANION_LEASE_DURATION_MS = 120_000;
 
+// The cockpit has no pointer of its own, and a human at the cockpit is not
+// pointing at the page. Requiring a focused field there meant the seat click
+// answered NO_FOCUSED_TARGET and the model never got to work at all. Without
+// a focus the grant is about the whole form the page published - the same
+// widening the page itself does for its handover buttons.
 function mintCompanionLease(state, at) {
   const focus = state.focus;
   const targetId = typeof focus?.targetId === "string" && focus.targetId !== ""
     ? focus.targetId
     : null;
-  if (targetId === null) return null;
-  const capabilityIds = Array.isArray(focus.capabilityIds)
+  const canvasTargetIds = Array.isArray(state.canvasTargetIds)
+    ? state.canvasTargetIds.filter((id) => typeof id === "string" && id !== "")
+    : [];
+  const wholeCanvas = targetId === null;
+  const targetIds = wholeCanvas ? canvasTargetIds : [targetId];
+  if (targetIds.length === 0) return null;
+  const capabilityIds = Array.isArray(focus?.capabilityIds)
     ? focus.capabilityIds.filter((id) => id !== "form.explain_field")
     : [];
   return {
@@ -91,12 +101,24 @@ function mintCompanionLease(state, at) {
     // A trusted click in the local cockpit is a human origin, the same way the
     // page's own handover buttons are.
     origin: "human-click",
-    goal: `Work on ${focus.focus?.label ?? targetId}`,
-    allowedCapabilityIds: capabilityIds,
-    allowedTargetIds: [targetId],
-    maxCalls: COMPANION_LEASE_MAX_CALLS,
+    goal: wholeCanvas
+      ? "Fill in the visible form fields"
+      : `Work on ${focus.focus?.label ?? targetId}`,
+    // Without a focus packet there is no per-field capability list to read, so
+    // the grant carries the value capabilities the demo form's controls have.
+    // form.explain_field stays out of every grant: explaining is not acting.
+    allowedCapabilityIds:
+      capabilityIds.length > 0 ? capabilityIds : ["form.set_value", "form.clear_value"],
+    allowedTargetIds: targetIds,
+    maxCalls: wholeCanvas
+      ? targetIds.length + COMPANION_LEASE_MAX_CALLS
+      : COMPANION_LEASE_MAX_CALLS,
     maxContextLevel: 2,
-    pageVersion: Number.isInteger(focus.pageVersion) ? focus.pageVersion : 1,
+    pageVersion: Number.isInteger(focus?.pageVersion)
+      ? focus.pageVersion
+      : Number.isInteger(state.pageVersion)
+        ? state.pageVersion
+        : 1,
     expiresAt: new Date(Date.parse(at) + COMPANION_LEASE_DURATION_MS).toISOString()
   };
 }
@@ -683,32 +705,54 @@ export function createCompanionSessionHost({
   // The model's offers reach the page the same way a local agent's do: as
   // cowork_offer_action calls the page pulls and runs. Without this the model
   // could answer in the cockpit but never put anything on the page.
-  async function deliverOffers(linkSessionId, offers) {
+  /** An offer waits for a click. Nobody is there to click while the human is
+   *  away under a running grant, so an offer would simply expire unseen -
+   *  which is exactly what "I never see it work alone" looks like. Under that
+   *  one condition the same answer is delivered as a solo call instead; the
+   *  page still budgets, plans, applies and verifies it against the grant. */
+  function soloDeliveryTargets(state, at) {
+    if (state?.humanPresence === "present") return null;
+    if (!hasCurrentSoloLease(state, at)) return null;
+    const targetIds = state.lease?.allowedTargetIds ?? [];
+    return targetIds.length > 1 ? new Set(targetIds) : null;
+  }
+
+  async function deliverOffers(linkSessionId, offers, state) {
     const list = Array.isArray(offers) ? offers : [];
-    if (list.length === 0) return { offered: 0, rejected: 0, reason: null };
+    if (list.length === 0) return { offered: 0, rejected: 0, reason: null, executed: 0 };
+    const soloTargets = soloDeliveryTargets(state, now());
     let offered = 0;
+    let executed = 0;
     let rejected = 0;
     let reason = null;
     for (const offer of list) {
+      const asSolo = soloTargets !== null && soloTargets.has(offer.targetId);
       try {
         await callAgentTool({
-          name: "cowork_offer_action",
-          arguments: {
-            capabilityId: offer.capabilityId,
-            targetId: offer.targetId,
-            value: offer.value,
-            summary: offer.summary
-          },
+          name: asSolo ? "cowork_execute_solo" : "cowork_offer_action",
+          arguments: asSolo
+            ? {
+                capabilityId: offer.capabilityId,
+                targetId: offer.targetId,
+                value: offer.value
+              }
+            : {
+                capabilityId: offer.capabilityId,
+                targetId: offer.targetId,
+                value: offer.value,
+                summary: offer.summary
+              },
           linkSessionId
         });
-        offered += 1;
+        if (asSolo) executed += 1;
+        else offered += 1;
       } catch (error) {
         rejected += 1;
         // The first reason is the useful one; the rest are usually the same.
         reason ??= typeof error?.code === "string" ? error.code : "OFFER_DELIVERY_FAILED";
       }
     }
-    return { offered, rejected, reason };
+    return { offered, executed, rejected, reason };
   }
 
   async function submitModelTurn(linkSessionId, { turnId, input }) {
@@ -816,7 +860,14 @@ export function createCompanionSessionHost({
         await persistSessions();
         // The reply stays exactly what the model said; where its offers landed
         // is a separate fact and rides beside it.
-        return { reply, delivery: await deliverOffers(linkSessionId, reply?.offers) };
+        return {
+          reply,
+          delivery: await deliverOffers(
+            linkSessionId,
+            reply?.offers,
+            linkSession.authority.readSnapshot().state
+          )
+        };
       },
       async (error) => {
         // A model turn that failed has to look failed on both surfaces. It used
@@ -931,7 +982,7 @@ export function createCompanionSessionHost({
       if (lease === null) {
         throw new CompanionHostError(
           "NO_FOCUSED_TARGET",
-          "Point the page at a field first - a grant needs a target to be about",
+          "The linked page reported no fields to work on - a grant needs a target to be about",
           409
         );
       }
