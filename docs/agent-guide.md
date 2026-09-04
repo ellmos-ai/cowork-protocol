@@ -38,6 +38,29 @@ propose is attributable, reversible and visibly yours.
 Read focus before anything else. Every other tool is answered relative to it,
 and an offer aimed anywhere else is refused rather than redirected.
 
+## Where an agent learns the formats
+
+Nothing about this page is in your training data, so the page has to tell you.
+It does that in two places, and between them you can build a form you have
+never seen the source of.
+
+**The tool catalog** — each tool's description and JSON schema. That is where
+the capability names live, what `value` accepts, and the bounds on every
+string. Read it before guessing; it is served fresh by the page, so it is
+right even when this document is not.
+
+**`cowork_request_context` on the canvas** — a schema can say `paletteId` is a
+string, but not *which* string a "how often does this happen" question needs.
+Ask for context while the canvas holds the attention and the answer carries
+`fieldTypes`: every field type with its id, the name the human sees, whether it
+takes answer choices, and one clause saying what it is for. Alongside it come
+the form's title, its field count and as many existing labels as fit.
+
+That is one call, and after it you know the whole vocabulary. If the form is
+long, labels are dropped before field types are — a label you are missing is
+readable off the field targets, a field type you are missing costs you the
+format.
+
 ## Focus decides what you may offer
 
 The Studio has two kinds of target, and they carry different capabilities:
@@ -102,13 +125,24 @@ of answers is a different question from the one that was asked.
 `checkbox-single`, `checkbox-multi`, `separator`. An unknown type is refused
 rather than matched to the nearest one.
 
-## Three offers, and every one of them needs a hand
+## Two ways to build a whole form, and both are bounded
 
-At most three offers can be open at once; a fourth is refused with
-`CONTEXT_BUDGET_EXCEEDED`. The limit is not a rate limit but a review limit —
-a human handed a queue stops reading it and starts approving it, which is
-exactly the failure the protocol exists to prevent. Offer one change, let it be
-decided, then offer the next.
+**With the human watching: three offers at a time.** At most three offers can
+be open at once; a fourth is refused with `CONTEXT_BUDGET_EXCEEDED`. The limit
+is not a rate limit but a review limit — a human handed a queue stops reading
+it and starts approving it, which is exactly the failure the protocol exists to
+prevent. Offer one change, let it be decided, then offer the next.
+
+**With the human away: one grant, six drafts.** A twenty-question survey is not
+a job for sixty round trips, so a human can hand over a canvas-scoped grant
+instead. Fields then land on the canvas with no click at all — that is what the
+grant *is* — and the budget is the whole authority: six drafts, then the next
+call is refused however it is phrased. The human ends the grant when they come
+back and reads what arrived.
+
+So the honest answer to "can you build my questionnaire alone?" is: as far as
+the grant reaches, then you stop and it gets looked at. That is the design,
+not a limitation to work around.
 
 ## The four refusals you will actually meet
 
@@ -129,14 +163,27 @@ is usually to read state again, not to retry the same call.
 Everything above is what the tools enforce. This is what it sounds like from
 the other side — a person giving their agent a job:
 
-> Open the FormBuilder Studio showcase and use the Cowork tools. I want a short
-> family survey. Point me at the canvas and add: a heading, a Choose-one field
-> asking how many kids I have with the answers 1 to 8 or more, and a date field
-> for our preferred weekend. Offer them one at a time so I can look at each one
-> before it lands, and tell me what each offer will do before I click it.
+> Open the FormBuilder Studio showcase and use the Cowork tools. Build me a
+> survey on how often parents observe which kinds of conflict and violence
+> between siblings. Frequency questions should be Choose-one with a proper
+> scale, the kinds of conflict Choose-any, and leave room for one written
+> answer at the end. Offer them one at a time so I can look at each one before
+> it lands, and tell me what each offer will do before I click it. I will read
+> the whole thing afterwards.
 
 Nothing in that brief names a tool, and it does not have to. Read focus, notice
-the canvas, offer the heading, wait for the receipt, offer the next.
+the canvas, ask for context once to learn the field types, then offer the
+heading, wait for the receipt, offer the next.
+
+Note what the brief does *not* say: which field type a frequency scale needs,
+or what the scale's answers should be. That is yours to choose — the palette
+tells you `checkbox-single` takes options, and "never" through "very often" is
+a scale a person can answer. What is not yours is inventing the *subject*: if
+the human names the answers, use theirs.
+
+For a survey this long, expect the human to hand over a grant rather than click
+sixty times. Six drafts land, then you stop — which is why the first six should
+be the questions the form cannot do without.
 
 ## Measured
 

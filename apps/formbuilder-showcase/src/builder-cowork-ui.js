@@ -8,6 +8,7 @@
 import { classificationDisplayName, classificationOf, createField, FIELD_TYPE_PALETTE } from "./form-builder.mjs";
 import {
   createBuilderModelSuggester,
+  describeFieldPalette,
   normalizeFieldOptions,
   paletteTakesOptions,
   parseFieldValueJson
@@ -24,6 +25,12 @@ function fieldFrom({ paletteId, label, options, required }) {
   const field = createField(paletteId, options ? { label, options } : { label });
   return required === true ? { ...field, required: true } : field;
 }
+
+// buildContextExpansion truncates relatedContext at 1,200 characters, and a
+// truncated JSON string is not JSON any more. So the canvas context is filled
+// to just under that and stops on its own, leaving whole JSON behind.
+// ponytail: re-serializes per label; a form is tens of fields, not thousands.
+const CANVAS_CONTEXT_LIMIT = 1150;
 
 const SUGGESTABLE_FIELDS = [
   { paletteId: "text-short", label: "Email address" },
@@ -389,16 +396,29 @@ export function initBuilderCowork({
     const focusPacket = requireFocusPacket();
     if (focusPacket.targetId === CANVAS_FOCUS) {
       const elements = controller.getElements();
+      // The canvas is where fields are created, so this is the one place an
+      // agent can be told what it may create. Without the palette it has to
+      // guess a paletteId from a tool schema that only says "string", and a
+      // model asked for a survey answers with the type it happens to know.
+      // The palette comes first because the tail is what truncation eats: a
+      // label an agent is missing costs it one name it can read off the field
+      // targets anyway, a field type it is missing costs it the format.
+      const relatedContext = { title: controller.getTitle(), fieldCount: elements.length };
+      relatedContext.fieldTypes = describeFieldPalette();
+      relatedContext.labels = [];
+      for (const element of elements) {
+        relatedContext.labels.push(element.label);
+        if (JSON.stringify(relatedContext).length > CANVAS_CONTEXT_LIMIT) {
+          relatedContext.labels.pop();
+          break;
+        }
+      }
       return buildContextExpansion({
         focusPacket,
         currentLevel: 2,
         requestedLevel: 3,
         reason,
-        relatedContext: JSON.stringify({
-          title: controller.getTitle(),
-          fieldCount: elements.length,
-          labels: elements.map((element) => element.label)
-        })
+        relatedContext: JSON.stringify(relatedContext)
       });
     }
     const element = focusedElement();
@@ -412,6 +432,32 @@ export function initBuilderCowork({
       options: element.options ?? [],
       reason
     });
+  }
+
+  /** One new field from an agent's `value`, in either shape it may send: the
+   *  plain label with an optional palette prefix, or the JSON object that can
+   *  also carry answer choices. Every path that turns an agent value into a
+   *  field goes through here - an offer and a solo call under a grant have to
+   *  understand the same value, or the same sentence would build two different
+   *  fields depending on which one the human authorized. */
+  function fieldFromAgentValue(text, onNotice = () => {}) {
+    const spec = parseFieldValueJson(text);
+    if (!spec) {
+      const prefixed = /^([a-z-]+):\s*(.+)$/.exec(text);
+      const known = prefixed !== null && paletteIds.includes(prefixed[1]);
+      return createField(known ? prefixed[1] : "text-short", { label: known ? prefixed[2] : text });
+    }
+    const requested = typeof spec.paletteId === "string" ? spec.paletteId.trim() : "";
+    const paletteId = paletteIds.includes(requested) ? requested : "text-short";
+    const label = typeof spec.label === "string" ? spec.label.trim() : "";
+    if (label === "") {
+      throw new CoworkProtocolError("INVALID_ARGUMENTS", "The field JSON needs a label");
+    }
+    const { options, notice } = normalizeFieldOptions(spec.options, {
+      allowed: paletteTakesOptions(paletteId)
+    });
+    onNotice(notice);
+    return fieldFrom({ paletteId, label, options, required: spec.required === true });
   }
 
   /** An agent's cowork_offer_action aimed at the Studio. The tool carries one
@@ -437,24 +483,11 @@ export function initBuilderCowork({
     let noticeText = "";
     let proposedArguments;
     if (capabilityId === "form-add-field") {
-      if (spec) {
-        const requested = typeof spec.paletteId === "string" ? spec.paletteId.trim() : "";
-        const paletteId = paletteIds.includes(requested) ? requested : "text-short";
-        const label = typeof spec.label === "string" ? spec.label.trim() : "";
-        if (label === "") {
-          throw new CoworkProtocolError("INVALID_ARGUMENTS", "The field JSON needs a label");
-        }
-        const normalized = normalizeFieldOptions(spec.options, { allowed: paletteTakesOptions(paletteId) });
-        noticeText = normalized.notice;
-        proposedArguments = {
-          field: fieldFrom({ paletteId, label, options: normalized.options, required: spec.required === true })
-        };
-      } else {
-        const prefixed = /^([a-z-]+):\s*(.+)$/.exec(text);
-        const paletteId = prefixed && paletteIds.includes(prefixed[1]) ? prefixed[1] : "text-short";
-        const label = prefixed && paletteIds.includes(prefixed[1]) ? prefixed[2] : text;
-        proposedArguments = { field: createField(paletteId, { label }) };
-      }
+      proposedArguments = {
+        field: fieldFromAgentValue(text, (notice) => {
+          noticeText = notice;
+        })
+      };
     } else if (capabilityId === "form-update-field") {
       if (spec) {
         // id and type are what a receipt is checked against, so a patch may
