@@ -483,7 +483,8 @@ this repository.
 
 What is here is the submission, and it is not the finished thought. A long
 acceptance session the day before the deadline produced more work than a
-deadline can hold: rights held per agent rather than one model seat for
+deadline can hold: an agent that acts seeing the whole page and steering its own
+attention instead of reading a lens, rights held per agent rather than one model seat for
 everyone, a page that can ship a skill and not only a tool catalog, memory for
 the seat model, a choice of who answers a turn, and a general WebMCP injector
 for pages that carry none.

@@ -16,6 +16,32 @@ Role and Conversation at a usable size, and talking that holds the space bar
 and keeps the microphone open on both surfaces. A third, attribution, shipped
 as the first half of the item it belongs to and is described there.
 
+## An agent that acts needs the whole page, not a lens
+
+The attention lens is the right default for a model that advises: it reads what
+the person points at, one character-bounded packet at a time, and it proposes.
+It is the wrong shape for a model that has been handed the work. Two
+measurements on the morning of the deadline said so. Under a sparring grant on
+one field the seat kept asking the person to confirm, because a one-field grant
+leaves it nothing else to look at; and a local agent connected over MCP, asked
+to build a form in the Studio, found its focus sitting in the sample form below
+and had to ask the person to change the attention mode and click the canvas
+before it could work. The delivery half of the first case was fixed before the
+deadline (a sparring grant is now executed on the page, single field included);
+the narrowness is the part that remains.
+
+What exists underneath: the work-mode matrix already separates advising from
+executing, a grant already carries its scope and budget, and the Studio already
+answers the three focus tools without a pointer when a canvas-wide grant is
+running. What is missing is the view and the steering. Under a grant the agent
+should receive a page-wide, character-bounded picture of its whole scope, the
+canvas and the form together, and it should be able to set its own focus inside
+that scope, either through a `cowork_set_focus` tool or through a focus argument
+on the read, offer and execute tools. Rights keep coming from the grant and the
+lease; only the attention follows the agent instead of the pointer. For the
+advising model nothing changes: the lens stays, and the pointer of the person
+stays the thing it reads.
+
 ## Rights per agent, instead of one model seat
 
 Today the page asks one question before it lets a model propose:
