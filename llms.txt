@@ -21,6 +21,7 @@ Cowork Protocol is the submission to The WebMCP Challenge (2026). Two things car
 ## Evidence
 
 - [Evidence ledger](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/evidence.md): every claim with the measurement behind it, and what is explicitly not yet evidenced
+- [Outlook](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/outlook.md): what comes after the judging, stated as intent and not as built work
 
 ## Hosts
 

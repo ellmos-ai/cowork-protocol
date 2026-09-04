@@ -6,7 +6,7 @@ Cowork Protocol is a small collaboration contract for people and web agents. It 
 
 > Native when available. Bridged when necessary.
 
-**[Try the live showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/)** · **[Watch the demo video](https://youtu.be/9CJehV7Bugk)** · [Three in one: two bridges, one vehicle](docs/hosts.md) · [Architecture](docs/architecture.md) · [Work modes](docs/work-modes.md) · [Panel tour](docs/panel-tour.md) · [Agent guide](docs/agent-guide.md) · [How to use it](docs/panel-tour.md#walkthrough-one-session-start-to-finish) · [Evidence ledger](docs/evidence.md) · [Pre-existing and new work](PREEXISTING-AND-NEW.md)
+**[Try the live showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/)** · **[Watch the demo video](https://youtu.be/9CJehV7Bugk)** · [Three in one: two bridges, one vehicle](docs/hosts.md) · [Architecture](docs/architecture.md) · [Work modes](docs/work-modes.md) · [Panel tour](docs/panel-tour.md) · [Agent guide](docs/agent-guide.md) · [How to use it](docs/panel-tour.md#walkthrough-one-session-start-to-finish) · [Evidence ledger](docs/evidence.md) · [Outlook](docs/outlook.md) · [Pre-existing and new work](PREEXISTING-AND-NEW.md)
 
 **Install it with your AI assistant:** hand [docs/install-with-your-assistant.md](docs/install-with-your-assistant.md) to Claude Code, Codex CLI or a comparable agent and say "install this for me". [`llms.txt`](llms.txt) is the machine-readable index.
 
@@ -136,10 +136,20 @@ The agent reads a structured `cowork_read_focus` tool instead of guessing from t
   See [docs/work-modes.md](docs/work-modes.md).
 
   [![The work-mode matrix: who is present, on what and in which role, and who holds the click right in each combination](design/work-modes.png)](docs/work-modes.md)
-- **One conversation across surfaces.** Page panel, extension Side Panel and
-  desktop Companion share a single versioned session; an optional same-origin
-  model host attaches a preferred model while endpoint and key stay on the
-  server, never in the browser.
+- **One conversation across surfaces, in one voice.** Page panel, extension
+  Side Panel and desktop Companion share a single versioned session; an optional
+  same-origin model host attaches a preferred model while endpoint and key stay
+  on the server, never in the browser. One speaker serves every surface, says
+  each announcement once and stays silent on the page while the Companion window
+  holds the session, so two open windows do not answer over each other. Joining
+  the Companion is reversible: **Leave Companion** hands the session back to the
+  page, which becomes its own authority again from its own last revision.
+- **A model that fails says so.** When a reply cannot be used the panel prints
+  the reason with its code — `NO_MODEL_CONNECTED`, `MODEL_UNAVAILABLE`,
+  `INVALID_MODEL_SUGGESTION` — and an excerpt of what came back, instead of
+  quietly showing nothing. A model that answers in prose rather than with an
+  offer is not discarded either: the prose becomes the conversation's message,
+  which is also what gets spoken.
 - **Three connector paths, each labeled honestly.** Native Cowork first, then a
   bounded bridge over existing WebMCP tools, then a default-off relay for pages
   without WebMCP — every step reports its reduced guarantees instead of pretending
@@ -355,12 +365,16 @@ provider-backed repetition sent one 502-character turn to local Ollama
 `providerLocation` is `local` and `externalModelClaim` remains false.
 
 The current UI keeps every control reachable at true 200% browser zoom and
-at a 390×844 CSS viewport: all 38 interactive controls carry a named accessibility node and a visible Tab stop, and horizontal
-overflow is zero. The rendered-contrast smoke audits
-1398 visible text items across eleven states (the FormBuilder Studio field
-suggestion, now offered in the one Cowork panel, is one of them) with no
-unsupported or failing range and the same 4.5656:1 minimum. Real microphone practice, a remote provider,
-screen-reader practice and a connected ChatGPT-agent invocation remain open.
+at a 390×844 CSS viewport: all 34 interactive controls carry a named
+accessibility node and a visible Tab stop, and horizontal overflow is zero.
+That baseline moved from 41 to 34 as the panel's sections learned to fold; it
+counts the panel a visitor meets, with demo mode on and a model already on the
+bridge. The rendered-contrast smoke audits every visible text item across
+eleven states (the FormBuilder Studio field suggestion, now offered in the one
+Cowork panel, is one of them) with no unsupported or failing range and a
+4.5656:1 minimum, measured before the last panel fold and unchanged by it. Real
+microphone practice, a remote provider, screen-reader practice and a connected
+ChatGPT-agent invocation remain open.
 
 A separate Chrome for Testing 152 acceptance explicitly disabled WebMCP and
 loaded the built Browser Bridge extension. Before the trusted action
@@ -436,7 +450,7 @@ controls, observes token-free page visibility, sends one turn through its
 shared Model Gateway and leaves the page as a synchronized application/UI
 replica that pulls intervening deltas on return.
 
-`npm run smoke:accessibility` opens another isolated Chrome profile at an exact 390×844 CSS viewport. It requires exactly 38 non-ignored interactive browser accessibility nodes (including the FormBuilder Studio Build/Fill/Export controls, the ARIA `tab` role and Chrome's `DisclosureTriangle` role for the panel's collapsible sections alongside `button`/`checkbox`/`combobox`/`link`/`textbox`; the Studio's Delegate and Directive controls are gone, and with them the last `spinbutton` on the page) with non-empty names and unique DOM identities, then drives the same number of real Tab events and requires every stop to remain visible with `:focus-visible`. It also clicks the embedded model through observing, paused and collaborating and the human through brief-away, long-away and present. Horizontal control/text clipping and more than one pixel of document overflow fail the gate. This is browser accessibility-tree and keyboard/layout evidence, not screen-reader practice.
+`npm run smoke:accessibility` opens another isolated Chrome profile at an exact 390×844 CSS viewport. It requires exactly 34 non-ignored interactive browser accessibility nodes (including the FormBuilder Studio Build/Fill/Export controls, the ARIA `tab` role and Chrome's `DisclosureTriangle` role for the panel's collapsible sections alongside `button`/`checkbox`/`combobox`/`link`/`textbox`; the Studio's Delegate and Directive controls are gone, and with them the last `spinbutton` on the page, while the folded Handoff section keeps its six controls out of the default view) with non-empty names and unique DOM identities, then drives the same number of real Tab events and requires every stop to remain visible with `:focus-visible`. It also clicks the embedded model through observing, paused and collaborating and the human through brief-away, long-away and present. Horizontal control/text clipping and more than one pixel of document overflow fail the gate. This is browser accessibility-tree and keyboard/layout evidence, not screen-reader practice.
 
 `npm run smoke:builder` opens the FormBuilder Studio Build/Fill/Export section in an isolated Chrome profile and proves it end to end with no agent involved: add a field from the palette, fill it in on the Fill tab, submit a valid `formularerstellen-response-v1` response, and confirm all three export controls are present. It then proves one addressable field (not just the canvas) can be pointed at and targeted (GAP-00) — the page's one Cowork panel, not a second surface inside the Studio, is where that target is read back — and that the Cowork integration is click-gated like everything else: a "Model suggests a field" offer stays inert in the panel's offer list until a real trusted click, after which exactly one verified receipt appears there. It then drives the full delegation flow through the panel's own handover buttons: stepping away under a canvas-scoped grant adds six fields with no per-field click (GAP-01/GAP-04), "I'm back" reports what changed and highlights exactly those fields and waits for a verdict (GAP-03/GAP-05), a real feedback click resolves it, and a recognized spoken directive ("make it required") applies with no offer chip and no second click (GAP-02) before entering awaiting-feedback again. It also checks that `document.modelContext.getTools().length` (when WebMCP is enabled) is still 9.
 
@@ -448,6 +462,20 @@ Only the browser-based portion of the pre-existing FormBuilder belongs to the
 imported showcase scope; its old desktop, Python and packaging code remains
 excluded. The new Cowork Desktop Companion is a separate protocol client in
 this repository.
+
+## Outlook
+
+What is here is the submission, and it is not the finished thought. A long
+acceptance session the day before the deadline produced more work than a
+deadline can hold: rights held per agent rather than one model seat for
+everyone, a page that can ship a skill and not only a tool catalog, memory for
+the seat model, a choice of who answers a turn, and a general WebMCP injector
+for pages that carry none.
+
+Those are intentions, not claims. None of them is built, and the measured state
+of this repository is the [evidence ledger](docs/evidence.md) rather than this
+paragraph. [docs/outlook.md](docs/outlook.md) says what each one is, what
+already exists underneath it, and why it was left undone.
 
 ## License
 
