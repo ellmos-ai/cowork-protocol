@@ -14,6 +14,7 @@ Cowork Protocol is the submission to The WebMCP Challenge (2026). Two things car
 
 - [Panel tour and walkthrough](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/panel-tour.md): the annotated Cowork panel, every control explained, one session start to finish
 - [Three in one: two bridges with a place, one vehicle](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/hosts.md)
+- [Build a form with your agent](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/agent-guide.md): the nine tools in build order, what focus lets you offer, and the JSON value a field with answer choices needs
 - [Work modes](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/work-modes.md): presence and role per actor decide the mode and who holds the click right
 - [Integrating an existing app](https://github.com/ellmos-ai/cowork-protocol/blob/main/apps/formbuilder-showcase/INTEGRATION.md)
 
