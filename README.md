@@ -365,6 +365,15 @@ feedback remained click-gated. Its explicit boundaries stay
 `agentClientClaim: false` and `hostTokenClaim: false`: this is browser WebMCP
 mediation, not a connected ChatGPT-agent journey.
 
+That same smoke was then repeated against the **installed branded Google
+Chrome** (152.0.7977.77, started with `WebMCP,WebMCPTesting`) rather than a
+Chrome for Testing build, by pointing `COWORK_CHROME_PATH` at it. It passed
+whole: nine tools discovered and every claim in the report true. The wording of
+the challenge rule is "Google Chrome with WebMCP enabled", and that is now
+literally what was measured. Chrome for Testing is still required for the three
+extension smokes, because branded Chrome has ignored `--load-extension` since
+Chrome 137.
+
 A separate Chrome 152 run proves the same-origin model-host plumbing with one
 468-character deterministic turn and no browser credential. An earlier
 provider-backed repetition sent one 502-character turn to local Ollama
