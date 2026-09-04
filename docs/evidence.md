@@ -820,10 +820,15 @@ measured saying it.
   waiting for a click is an agent waiting for an answer.
 - **Gates at this commit.** `node --test` 496 of 496; pages artifact 36 files;
   extension artifact 22 files; `check:secrets` and `check:architecture` pass.
-- **Panel tour re-recorded** from a locally served copy of this branch
-  (`COWORK_PANEL_TOUR_URL=http://127.0.0.1:4191/apps/formbuilder-showcase/`),
-  adding `panel-bridge-resting.png` and replacing the stale extension frame with
-  a crossing and a resting one from the cockpit smoke.
+- **Panel tour re-recorded** from a locally served copy of this branch, adding
+  `panel-bridge-resting.png` and replacing the stale extension frame with a
+  crossing and a resting one from the cockpit smoke. `companion-ui.png` comes
+  from a Companion started for the shoot: `createCompanionSessionHost` on an
+  ephemeral port with an empty session store, one locally served page linked to
+  it and one fixture reply. An earlier run had photographed a live Companion,
+  conversation included, because the capture script defaulted
+  `COWORK_COMPANION_UI` to the port a developer's own Companion listens on.
+  That default is gone; an unset variable now skips the frame with a warning.
 
 ## Explicitly not yet evidenced
 
