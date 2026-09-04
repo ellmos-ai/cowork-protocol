@@ -95,6 +95,13 @@ const BUILDER_GRANT_MAX_CALLS = 6;
 const FOCUSED_FIELD_GOAL = "Complete only the focused field";
 const WHOLE_FORM_GOAL = "Fill in the visible form fields";
 const WHOLE_CANVAS_GOAL = "Draft the rest of this form";
+// Which strings the panel may exchange for another scope's default. Anything
+// the human typed is theirs and is never rewritten.
+const LEASE_GOAL_DEFAULTS = new Set([
+  FOCUSED_FIELD_GOAL,
+  WHOLE_FORM_GOAL,
+  WHOLE_CANVAS_GOAL
+]);
 const integrationDeclaration = createProtocolHostDeclaration({
   hostId: "formbuilder-showcase",
   transports: ["webmcp"],
@@ -1790,6 +1797,23 @@ function canvasLeaseScope() {
   };
 }
 
+/**
+ * The job a handover is about. An empty description no longer refuses it, and
+ * a default left over from another scope is not silently reused either: a
+ * grant labelled "Complete only the focused field" that covers the whole form
+ * would say one thing and do another. Anything the human actually wrote is
+ * kept untouched - only the panel's own defaults are exchanged. The chosen
+ * text is written back into the visible input, so the human sees, and can
+ * still change, the goal they just granted.
+ */
+function resolveLeaseGoal(defaultGoal) {
+  const goalInput = $("#lease-goal");
+  const current = goalInput.value.trim();
+  if (current !== "" && !LEASE_GOAL_DEFAULTS.has(current)) return current;
+  goalInput.value = defaultGoal;
+  return defaultGoal;
+}
+
 function focusedLeaseScope() {
   return {
     wholeCanvas: false,
@@ -1812,14 +1836,7 @@ function mintDemoLease({ wholeCanvas = false } = {}) {
     setStatus("This form has no fields to hand over.");
     return null;
   }
-  // An empty job description no longer refuses the handover: the panel writes
-  // the default for this scope back into the visible input, so the human sees
-  // - and can still change - the goal they just granted.
-  const goalInput = $("#lease-goal");
-  if (goalInput.value.trim() === "") {
-    goalInput.value = scope.wholeCanvas ? WHOLE_FORM_GOAL : FOCUSED_FIELD_GOAL;
-  }
-  const goal = goalInput.value.trim();
+  const goal = resolveLeaseGoal(scope.wholeCanvas ? WHOLE_FORM_GOAL : FOCUSED_FIELD_GOAL);
   const now = Date.now();
   return {
     leaseId: `lease-${now}`,
@@ -1883,11 +1900,7 @@ async function builderHandover({ humanPresence, batch }) {
     setStatus("SESSION_PAUSED: bring the model back in before handing the work over.");
     return;
   }
-  const goal = $("#lease-goal").value.trim();
-  if (!goal) {
-    setStatus("A handed-over job needs a concrete task.");
-    return;
-  }
+  const goal = resolveLeaseGoal(WHOLE_CANVAS_GOAL);
   try {
     let grant = builderCowork.readActiveGrant();
     if (grant === null) {

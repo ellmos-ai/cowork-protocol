@@ -746,7 +746,10 @@ try {
   }
   if (
     presenceUnderWholeForm.packet?.effectiveMode !== "agent-solo" ||
-    presenceUnderWholeForm.packet?.grant?.targetCount !== 4
+    presenceUnderWholeForm.packet?.grant?.targetCount !== 4 ||
+    // A grant still labelled "Complete only the focused field" while covering
+    // the whole form would say one thing and do another.
+    presenceUnderWholeForm.packet?.grant?.goal !== "Fill in the visible form fields"
   ) {
     throw new Error(
       `Stepping away without a pointer must grant over the whole form: ${JSON.stringify(presenceUnderWholeForm)}`
@@ -1028,6 +1031,7 @@ try {
     soloWithoutPointer: {
       focusStillRefuses: observed.soloWithoutPointer.focusBeforeSoloPass.refused,
       grantTargetCount: observed.soloWithoutPointer.grant?.targetCount,
+      grantGoal: observed.soloWithoutPointer.grant?.goal,
       fieldsFilledAlone: observed.soloWithoutPointer.values.filter(([, value]) => value !== "").length,
       verifiedSoloReceipts: observed.soloWithoutPointer.receiptsAfterSoloPass.verifiedSolo,
       highlightedOnReturn: observed.soloWithoutPointer.returnAfterSoloPass.highlighted
