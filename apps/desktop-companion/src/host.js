@@ -13,7 +13,7 @@ import {
   resolvePresenceMode,
   resolveWorkMode
 } from "../../../packages/core/src/index.js";
-import { createCoworkModelGateway } from "../../../packages/model-gateway/src/index.js";
+import { createCoworkModelGateway, ownsModelSeat } from "../../../packages/model-gateway/src/index.js";
 import { coworkToolDefinitions } from "../../../packages/native-webmcp/src/index.js";
 import { restoreCoworkSessionAuthority } from "../../../packages/session-authority/src/index.js";
 
@@ -74,6 +74,7 @@ function hasCurrentSoloLease(state, at) {
 // The same grant the page's "Hand over, I'll watch" button mints, in the same
 // shape and with the same defaults, so a page adopting this state can execute
 // under it - see apps/formbuilder-showcase LEASE_MAX_CALLS / LEASE_DURATION_MS.
+const MODEL_SEAT_OWNER = "cowork-companion";
 const COMPANION_LEASE_MAX_CALLS = 2;
 const COMPANION_LEASE_DURATION_MS = 120_000;
 // A canvas whose capability is structural is one target that stands for many
@@ -396,7 +397,7 @@ export function createCompanionSessionHost({
       ? null
       : createCoworkModelGateway({
           sessionId: snapshot.sessionId,
-          seatOwner: "cowork-companion",
+          seatOwner: MODEL_SEAT_OWNER,
           readSnapshot: () => authority.readSnapshot(),
           readModelContext: (options) => contextManager.readModelContext(options),
           sendTurn: sendModelTurn,
@@ -463,14 +464,44 @@ export function createCompanionSessionHost({
     }
     for (const { linkSessionId, origin, hello, snapshot, context = null } of stored.sessions) {
       const authority = restoreCoworkSessionAuthority({ snapshot });
+      // The seat lease expires after 30 minutes, and a session sitting in the
+      // store outlives that every time. Renewing is not an option - the
+      // protocol only extends a still-active lease - so this Companion takes
+      // the lapsed seat again. claimModelSeat refuses while anyone still holds
+      // it (MODEL_SEAT_OCCUPIED), so a provider that took over keeps it and
+      // the cockpit says the seat is not ours instead of pretending.
+      reclaimLapsedModelSeat(authority, linkSessionId);
       sessions.set(linkSessionId, createSessionRuntime({
         linkSessionId,
         origin,
         hello,
-        snapshot,
+        snapshot: authority.readSnapshot(),
         context,
         authority
       }));
+    }
+  }
+
+  function reclaimLapsedModelSeat(authority, linkSessionId) {
+    const at = now();
+    const snapshot = authority.readSnapshot();
+    if (ownsModelSeat({ state: snapshot.state, seatOwner: MODEL_SEAT_OWNER, at })) return false;
+    try {
+      authority.claimModelSeat({
+        leaseId: `model-seat:${linkSessionId}:${Date.parse(at)}`,
+        owner: MODEL_SEAT_OWNER,
+        providerId: modelProviderId,
+        contextAuthority: "cowork-session",
+        expiresAt: new Date(Date.parse(at) + modelSeatDurationMs).toISOString(),
+        expectedRevision: snapshot.revision,
+        sourceSurfaceId: snapshot.state.surface.primarySurfaceId,
+        at
+      });
+      return true;
+    } catch {
+      // Someone else holds a live seat, or the state cannot carry one. Either
+      // way this Companion does not have it, and readUiState says so.
+      return false;
     }
   }
 
@@ -690,6 +721,12 @@ export function createCompanionSessionHost({
           applicationSurfaceVisibility:
             snapshot.state.applicationSurface?.visibility ?? "unknown",
           modelAvailable: value.gateway !== null,
+          // A configured gateway is not the same as a usable one: without the
+          // seat every turn comes back MODEL_SEAT_NOT_OWNED, and the cockpit
+          // has to say that before the human types.
+          modelSeatOwned:
+            value.gateway !== null &&
+            ownsModelSeat({ state: snapshot.state, seatOwner: MODEL_SEAT_OWNER, at: now() }),
           modelIdentity: value.gateway === null ? null : modelProviderId,
           modelStatus: value.gateway?.readStatus() ?? null,
           lastConversation: snapshot.state.lastConversation ?? null,
@@ -835,7 +872,7 @@ export function createCompanionSessionHost({
     const currentMilliseconds = Date.parse(now());
     const seatExpiryMilliseconds = Date.parse(currentSeat?.expiresAt);
     if (
-      currentSeat?.owner === "cowork-companion" &&
+      currentSeat?.owner === MODEL_SEAT_OWNER &&
       Number.isFinite(currentMilliseconds) &&
       Number.isFinite(seatExpiryMilliseconds) &&
       currentMilliseconds < seatExpiryMilliseconds &&
@@ -1329,7 +1366,7 @@ export function createCompanionSessionHost({
         });
         authority.claimModelSeat({
           leaseId: `model-seat:${linkSessionId}`,
-          owner: "cowork-companion",
+          owner: MODEL_SEAT_OWNER,
           providerId: modelProviderId,
           contextAuthority: "cowork-session",
           expiresAt: new Date(

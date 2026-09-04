@@ -141,3 +141,17 @@ test("the Companion's talk button says why it could not listen", async () => {
   // And it must not stay on "Listening…" once the browser gives up by itself.
   assert.match(app, /recognition\.onend/);
 });
+
+test("a model whose seat this Companion does not hold reads as away, and cannot be typed to", async () => {
+  const app = await readFile(appPath, "utf8");
+
+  // Before this the cockpit showed "Model is advising" for a restored session
+  // whose seat lease had lapsed, and the human only learned the truth when the
+  // turn came back MODEL_SEAT_NOT_OWNED.
+  assert.match(app, /modelSeatOwned/);
+  assert.match(app, /const seatless =/);
+  assert.match(app, /no seat for this session/);
+  assert.match(app, /link the page/);
+  // Input, send and talk all hang off the same gate.
+  assert.match(app, /modelInputEnabled = Boolean\(\s*currentSession\?\.modelAvailable &&\s*currentSession\?\.modelSeatOwned/);
+});

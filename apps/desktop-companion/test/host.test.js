@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -1477,6 +1477,108 @@ test("a session nobody speaks to never outranks the live one in the cockpit", as
       "the cockpit reads sessions[0]; a session with no page contact must never be it"
     );
     assert.equal(sessions[1].lastPageContactAt, null);
+  } finally {
+    await host.close();
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("a restored session takes its own lapsed model seat back, and says so when it cannot", async () => {
+  const origin = "https://forms.example";
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "cowork-seat-store-"));
+  const sessionStorePath = path.join(tempRoot, "sessions.json");
+  await restartedHostWithRestoredSession({
+    origin,
+    sessionId: "formbuilder-showcase",
+    surfaceId: "formbuilder:embedded",
+    sessionStorePath
+  });
+
+  // The seat lease runs 30 minutes; a session waiting in the store outlives
+  // that every time, which is exactly what the user hit.
+  const stored = JSON.parse(await readFile(sessionStorePath, "utf8"));
+  const lapsed = new Date(Date.now() - 60_000).toISOString();
+  stored.sessions[0].snapshot.state.modelSeat = {
+    ...stored.sessions[0].snapshot.state.modelSeat,
+    expiresAt: lapsed
+  };
+  await writeFile(sessionStorePath, JSON.stringify(stored), "utf8");
+
+  const host = createCompanionSessionHost({
+    allowedOrigins: [origin],
+    port: 0,
+    sessionStorePath,
+    sendModelTurn: async () => ({ message: "Restored reply" })
+  });
+  try {
+    const address = await host.listen();
+    const sessions = await readUiSessions(address);
+    assert.equal(sessions.length, 1);
+    assert.equal(sessions[0].lastPageContactAt, null, "no page has spoken to this session");
+    assert.equal(
+      sessions[0].modelSeatOwned,
+      true,
+      "the Companion takes its own lapsed seat back rather than showing a model that cannot answer"
+    );
+    // And the turn the cockpit offers actually goes through.
+    const answered = await host.submitModelTurn(sessions[0].linkSessionId, {
+      turnId: "restored-turn",
+      input: { transcript: "Hallo" }
+    });
+    assert.equal(answered.reply.message, "Restored reply");
+  } finally {
+    await host.close();
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("a seat another owner still holds is left alone, and the cockpit is told it is not ours", async () => {
+  const origin = "https://forms.example";
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "cowork-seat-held-store-"));
+  const sessionStorePath = path.join(tempRoot, "sessions.json");
+  await restartedHostWithRestoredSession({
+    origin,
+    sessionId: "formbuilder-showcase",
+    surfaceId: "formbuilder:embedded",
+    sessionStorePath
+  });
+
+  const stored = JSON.parse(await readFile(sessionStorePath, "utf8"));
+  stored.sessions[0].snapshot.state.modelSeat = {
+    leaseId: "provider-seat",
+    owner: "provider",
+    providerId: "some-provider",
+    contextAuthority: "provider-chat",
+    expiresAt: new Date(Date.now() + 10 * 60_000).toISOString()
+  };
+  await writeFile(sessionStorePath, JSON.stringify(stored), "utf8");
+
+  const host = createCompanionSessionHost({
+    allowedOrigins: [origin],
+    port: 0,
+    sessionStorePath,
+    sendModelTurn: async () => ({ message: "must not be reached" })
+  });
+  try {
+    const address = await host.listen();
+    const sessions = await readUiSessions(address);
+    assert.equal(
+      sessions[0].modelSeatOwned,
+      false,
+      "a live seat belonging to someone else is not taken over"
+    );
+    assert.equal(
+      host.readSnapshot(sessions[0].linkSessionId).state.modelSeat.owner,
+      "provider",
+      "and it is left exactly as it was"
+    );
+    await assert.rejects(
+      () => host.submitModelTurn(sessions[0].linkSessionId, {
+        turnId: "blocked-turn",
+        input: { transcript: "Hallo" }
+      }),
+      (error) => error?.code === "MODEL_SEAT_NOT_OWNED"
+    );
   } finally {
     await host.close();
     await rm(tempRoot, { recursive: true, force: true });
