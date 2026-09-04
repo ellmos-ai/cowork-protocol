@@ -19,7 +19,18 @@ const OUT = path.dirname(fileURLToPath(import.meta.url));
 const SHOWCASE_URL =
   process.env.COWORK_PANEL_TOUR_URL ??
   "https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/";
-const COMPANION_URL = process.env.COWORK_COMPANION_UI ?? "http://127.0.0.1:47831/cowork/v1/ui";
+// No default. The old one was 127.0.0.1:47831, which is where a developer's
+// own Companion listens - a tour run then photographed a live session and
+// its real conversation into a public documentation image. Point this at a
+// host you started for the capture.
+const COMPANION_URL = process.env.COWORK_COMPANION_UI;
+if (!COMPANION_URL) {
+  throw new Error(
+    "Set COWORK_COMPANION_UI to a Companion host started for this capture. " +
+    "There is deliberately no default: the old one pointed at whatever was " +
+    "already running on this machine."
+  );
+}
 const VIEWPORT = { width: 1440, height: 1100 };
 const SCALE = 2;
 
