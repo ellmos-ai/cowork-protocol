@@ -10,6 +10,12 @@ night that followed it, where using the thing said more about what it still
 needs than planning it ever did. They are in the order they matter, which is
 not the order they are easy in.
 
+Two items from that session are no longer here because they were finished
+before the deadline rather than after it: the detached Chat window carrying
+Role and Conversation at a usable size, and talking that holds the space bar
+and keeps the microphone open on both surfaces. A third, attribution, shipped
+as the first half of the item it belongs to and is described there.
+
 ## Rights per agent, instead of one model seat
 
 Today the page asks one question before it lets a model propose:
@@ -25,16 +31,17 @@ now there is no somebody to grant them to. The `executionMode` switch has the
 same shape of problem. It reads as a per-agent permission and is in fact a
 session-wide setting for the seat's own execution path.
 
-The finished shape is a seat or a grant per client name: presence, role, budget
-and expiry held per actor, with the cockpit listing everyone who is present.
-The cheap first step is attribution rather than authorization — every offer and
-every receipt carrying who produced it, whether that is the seat model, a named
-MCP client or a WebMCP agent in the browser. Attribution is worth doing on its
-own, because a person cannot sensibly grant rights to actors the interface has
-never shown them.
+The cheap first step, attribution, is done: every offer and every receipt now
+names who produced it, whether that is the seat model, a named MCP client or a
+tool call made in the page. Attribution was worth doing first on its own,
+because a person cannot sensibly grant rights to actors the interface has never
+shown them. It grants nothing — `canPropose` is still the one seat's flag.
 
-Until then the documentation says plainly that a session has one model seat.
-The simplification is real and it is written down rather than glossed over.
+What is left is the authorization half: a seat or a grant per client name, with
+presence, role, budget and expiry held per actor and the cockpit listing
+everyone who is present. Until that exists the documentation says plainly that
+a session has one model seat. The simplification is real and it is written down
+rather than glossed over.
 
 ## A page that ships a skill, not only a tool catalog
 
@@ -83,27 +90,6 @@ choice.
 The page and the Companion should let a person send turns to the seat, to a
 named connected agent, or to nobody, and show which one is currently answering.
 The click right does not move: whoever answers, a person still authorizes.
-
-## Role and conversation as a window of their own
-
-The panel can already detach into a Document Picture-in-Picture window, and it
-detaches whole. In practice the two sections a person works in are Role, where
-the click right lives, and Conversation, where the talking happens — and the
-conversation area is small.
-
-Detaching exactly those two, with a transcript and an input sized for real use,
-would fit how the panel is actually used. The rest of the deck stays on the
-page, where it belongs.
-
-## Voice that behaves the same on every surface
-
-Push-to-talk works in the page panel, but recognition ends after a short pause
-and the button falls back to off sooner than a person finishes a sentence. Two
-things follow from that: a continuous mode, which the speech controller already
-has an option for, and holding the space bar to talk with a visible recording
-state, so the gesture matches what the hand is doing. The Companion window
-should behave exactly as the page does. One session already speaks with one
-voice; it should also listen the same way everywhere.
 
 ## A WebMCP injector for pages that have none
 

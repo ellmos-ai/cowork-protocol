@@ -127,9 +127,14 @@ The agent reads a structured `cowork_read_focus` tool instead of guessing from t
 - **Bounded attention instead of page dumps.** Character-capped focus packets, a
   digest for long selections, and one reasoned, one-shot context request capped
   at 1,200 adapter characters. Silence and unchanged state emit nothing.
-- **Offers that cannot authorize themselves.** An agent proposes an exact visible
-  value; only a real human click applies it, and every change comes back as a
-  causal, latest-only receipt with click-authenticated feedback.
+- **Offers that cannot authorize themselves, and each one is signed.** An agent
+  proposes an exact visible value; only a real human click applies it, and every
+  change comes back as a causal, latest-only receipt with click-authenticated
+  feedback. Every offer and receipt names its author — the seat model, a named
+  MCP client, or a WebMCP agent calling in the page — read from the call as it
+  arrives, so none of the nine tool schemas had to grow a field. Naming an
+  author is not granting rights: the right to propose is still the one model
+  seat's, and the right to execute is still a person's click.
 - **Three questions instead of a settings panel.** Each partner answers who is
   here, on what, and in which role - executing or advising. The work mode and the
   click right follow; nothing chooses action rights separately. A model executes
@@ -367,11 +372,11 @@ provider-backed repetition sent one 502-character turn to local Ollama
 `providerLocation` is `local` and `externalModelClaim` remains false.
 
 The current UI keeps every control reachable at true 200% browser zoom and
-at a 390×844 CSS viewport: all 34 interactive controls carry a named
+at a 390×844 CSS viewport: all 36 interactive controls carry a named
 accessibility node and a visible Tab stop, and horizontal overflow is zero.
-That baseline moved from 41 to 34 as the panel's sections learned to fold; it
-counts the panel a visitor meets, with demo mode on and a model already on the
-bridge. The rendered-contrast smoke audits every visible text item across
+That baseline fell from 41 to 34 as the panel's sections learned to fold and
+rose to 36 as talking and the chat window gained their controls; it counts the
+panel a visitor meets, with demo mode on and a model already on the bridge. The rendered-contrast smoke audits every visible text item across
 eleven states (the FormBuilder Studio field suggestion, now offered in the one
 Cowork panel, is one of them) with no unsupported or failing range and a
 4.5656:1 minimum, measured before the last panel fold and unchanged by it. Real
@@ -452,7 +457,7 @@ controls, observes token-free page visibility, sends one turn through its
 shared Model Gateway and leaves the page as a synchronized application/UI
 replica that pulls intervening deltas on return.
 
-`npm run smoke:accessibility` opens another isolated Chrome profile at an exact 390×844 CSS viewport. It requires exactly 34 non-ignored interactive browser accessibility nodes (including the FormBuilder Studio Build/Fill/Export controls, the ARIA `tab` role and Chrome's `DisclosureTriangle` role for the panel's collapsible sections alongside `button`/`checkbox`/`combobox`/`link`/`textbox`; the Studio's Delegate and Directive controls are gone, and with them the last `spinbutton` on the page, while the folded Handoff section keeps its six controls out of the default view) with non-empty names and unique DOM identities, then drives the same number of real Tab events and requires every stop to remain visible with `:focus-visible`. It also clicks the embedded model through observing, paused and collaborating and the human through brief-away, long-away and present. Horizontal control/text clipping and more than one pixel of document overflow fail the gate. This is browser accessibility-tree and keyboard/layout evidence, not screen-reader practice.
+`npm run smoke:accessibility` opens another isolated Chrome profile at an exact 390×844 CSS viewport. It requires exactly 36 non-ignored interactive browser accessibility nodes (including the FormBuilder Studio Build/Fill/Export controls, the ARIA `tab` role and Chrome's `DisclosureTriangle` role for the panel's collapsible sections alongside `button`/`checkbox`/`combobox`/`link`/`textbox`; the Studio's Delegate and Directive controls are gone, and with them the last `spinbutton` on the page, while the folded Handoff section keeps its six controls out of the default view) with non-empty names and unique DOM identities, then drives the same number of real Tab events and requires every stop to remain visible with `:focus-visible`. It also clicks the embedded model through observing, paused and collaborating and the human through brief-away, long-away and present. Horizontal control/text clipping and more than one pixel of document overflow fail the gate. This is browser accessibility-tree and keyboard/layout evidence, not screen-reader practice.
 
 `npm run smoke:builder` opens the FormBuilder Studio Build/Fill/Export section in an isolated Chrome profile and proves it end to end with no agent involved: add a field from the palette, fill it in on the Fill tab, submit a valid `formularerstellen-response-v1` response, and confirm all three export controls are present. It then proves one addressable field (not just the canvas) can be pointed at and targeted (GAP-00) — the page's one Cowork panel, not a second surface inside the Studio, is where that target is read back — and that the Cowork integration is click-gated like everything else: a "Model suggests a field" offer stays inert in the panel's offer list until a real trusted click, after which exactly one verified receipt appears there. It then drives the full delegation flow through the panel's own handover buttons: stepping away under a canvas-scoped grant adds six fields with no per-field click (GAP-01/GAP-04), "I'm back" reports what changed and highlights exactly those fields and waits for a verdict (GAP-03/GAP-05), a real feedback click resolves it, and a recognized directive ("make it required") applies with no offer chip and no second click (GAP-02) — the smoke types it into the panel's conversation input, so what is proven is the `human-utterance` authorization origin, not speech recognition or a microphone before entering awaiting-feedback again. It also checks that `document.modelContext.getTools().length` (when WebMCP is enabled) is still 9.
 
