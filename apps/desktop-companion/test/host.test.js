@@ -896,6 +896,109 @@ test("a model answer under an away whole-form grant is delivered as solo work, n
   }
 });
 
+test("a model answer under a sparring grant is delivered as solo work while the human watches, even for a single field", async () => {
+  const origin = "https://forms.example";
+  const host = createCompanionSessionHost({
+    allowedOrigins: [origin],
+    port: 0,
+    createLinkSessionId: () => "sparring-link",
+    sendModelTurn: async () => ({
+      message: "Filling the email field.",
+      speak: "",
+      offers: [
+        {
+          capabilityId: "form.set_value",
+          targetId: "form-field:email",
+          value: "ada@example.test",
+          summary: "Set Email to ada@example.test"
+        },
+        {
+          capabilityId: "form.set_value",
+          targetId: "form-field:not-in-grant",
+          value: "nope",
+          summary: "Outside the grant"
+        }
+      ],
+      omittedOffers: 0
+    })
+  });
+  const address = await host.listen();
+  try {
+    const authority = createCoworkSessionAuthority({
+      sessionId: "sparring-session",
+      initialState: {
+        humanPresence: "present",
+        agentPresence: "active",
+        agentEngagement: "collaborating",
+        effectiveMode: "cooperative",
+        lease: {
+          leaseId: "email-only",
+          origin: "human-click",
+          goal: "Work on Email address",
+          allowedCapabilityIds: ["form.set_value"],
+          allowedTargetIds: ["form-field:email"],
+          maxCalls: 2,
+          pageVersion: 1,
+          expiresAt: new Date(Date.now() + 120_000).toISOString()
+        }
+      },
+      primarySurface: { surfaceId: "formbuilder:embedded", kind: "embedded" }
+    });
+    const link = createHttpCompanionLink({
+      endpoint: `http://${address.hostname}:${address.port}/cowork/v1`,
+      fetchImpl: (url, init) => fetch(url, {
+        ...init,
+        headers: { ...init.headers, origin }
+      })
+    });
+    const snapshot = authority.readSnapshot();
+    await link.join({
+      hello: createCompanionHello({
+        sessionId: snapshot.sessionId,
+        surfaceId: "formbuilder:embedded",
+        revision: snapshot.revision,
+        origin
+      }),
+      snapshot
+    });
+    const ranOnPage = [];
+    const relay = setInterval(async () => {
+      for (const request of await link.pullAgentRequests({ linkSessionId: "sparring-link" })) {
+        ranOnPage.push(request);
+        await link.reportAgentResult({
+          linkSessionId: "sparring-link",
+          requestId: request.requestId,
+          result: { status: "verified" }
+        });
+      }
+    }, 20);
+    try {
+      const answered = await host.submitModelTurn("sparring-link", {
+        turnId: "sparring-turn",
+        input: { transcript: "Fill the email field with a dummy address." }
+      });
+      assert.deepEqual(answered.delivery, {
+        offered: 1,
+        executed: 1,
+        rejected: 0,
+        reason: null
+      });
+      assert.deepEqual(
+        ranOnPage.map((request) => [request.name, request.arguments.targetId]),
+        [
+          ["cowork_execute_solo", "form-field:email"],
+          ["cowork_offer_action", "form-field:not-in-grant"]
+        ],
+        "the granted field is executed although the human is present; the rest still waits for a click"
+      );
+    } finally {
+      clearInterval(relay);
+    }
+  } finally {
+    await host.close();
+  }
+});
+
 test("the persistent Companion renews its own model seat before a turn", async () => {
   const origin = "https://forms.example";
   let currentTime = "2026-08-31T12:00:00.000Z";

@@ -780,10 +780,27 @@ export function createCompanionSessionHost({
    *  one condition the same answer is delivered as a solo call instead; the
    *  page still budgets, plans, applies and verifies it against the grant. */
   function soloDeliveryTargets(state, at) {
-    if (state?.humanPresence === "present") return null;
     if (!hasCurrentSoloLease(state, at)) return null;
     const targetIds = state.lease?.allowedTargetIds ?? [];
-    return targetIds.length > 1 ? new Set(targetIds) : null;
+    if (targetIds.length === 0) return null;
+    if (state?.humanPresence !== "present") {
+      return targetIds.length > 1 ? new Set(targetIds) : null;
+    }
+    // Sparring with the model executing: the human is here, but the mode
+    // gives the model the click right and takes its proposal right away
+    // (canExecute and canPropose exclude each other). An offer would come
+    // back SESSION_PAUSED from the page, so the same answer has to travel as
+    // the solo call the grant already covers. Measured 2026-09-04 09:16:
+    // grant "Work on Email address", one field, "1 suggestion could not
+    // reach the page (SESSION_PAUSED)" while the cockpit showed the click
+    // right - and the single-field grant is the common one here.
+    const workMode = resolveCompanionWorkMode({
+      state,
+      agentEngagement: readAgentEngagement(state),
+      at,
+      area: state.surface?.primarySurfaceId ?? null
+    });
+    return workMode.model.canExecute ? new Set(targetIds) : null;
   }
 
   async function deliverOffers(linkSessionId, offers, state) {
