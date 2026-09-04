@@ -386,3 +386,68 @@ export function createSpeaker({
     }
   };
 }
+
+// --- Push to talk ----------------------------------------------------------
+// Holding a key and speaking without stopping are the same gesture on every
+// surface, so the rules live here once: the page panel, the detached panel and
+// the Companion window all listen the same way.
+
+/**
+ * The new final text in one recognition result event. While listening
+ * continuously the event carries every result of the session, and only the
+ * ones from `resultIndex` on are new; an interim result is not yet something
+ * the human finished saying, so it never becomes text to send.
+ */
+export function readFinalTranscript(event) {
+  const results = event?.results ?? [];
+  const start = Number.isInteger(event?.resultIndex) ? event.resultIndex : 0;
+  let text = "";
+  for (let index = start; index < results.length; index += 1) {
+    const result = results[index];
+    if (result?.isFinal === false) continue;
+    text += result?.[0]?.transcript ?? "";
+  }
+  return text.trim();
+}
+
+/** Where a space bar is a space and nothing else. */
+function typesText(target) {
+  if (target?.isContentEditable === true) return true;
+  return /^(input|textarea|select|button|a)$/i.test(target?.tagName ?? "");
+}
+
+/**
+ * Hold-to-talk: pressing the key starts listening, releasing it stops. The
+ * repeats a held key sends are not further presses, and a window that loses
+ * focus mid-hold never sees the release - without `cancel` the microphone
+ * would stay open with nobody holding anything.
+ */
+export function createHoldToTalk({ start, stop, key = " ", isTypingTarget = typesText }) {
+  let held = false;
+  const wrongKey = (event) =>
+    event?.key !== key || event.ctrlKey || event.altKey || event.metaKey;
+
+  return {
+    keydown(event) {
+      if (held || wrongKey(event) || isTypingTarget(event.target)) return false;
+      held = true;
+      event.preventDefault?.();
+      start();
+      return true;
+    },
+    keyup(event) {
+      if (!held || wrongKey(event)) return false;
+      held = false;
+      event.preventDefault?.();
+      stop();
+      return true;
+    },
+    cancel() {
+      if (!held) return false;
+      held = false;
+      stop();
+      return true;
+    },
+    isHeld: () => held
+  };
+}

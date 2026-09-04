@@ -227,6 +227,42 @@ h3 { margin-bottom: 0; font-size: .95rem; }
   box-shadow: none;
 }
 
+/* Chat window: the same detached panel, laid out for the two sections a
+   conversation runs through - Role, where the click that authorizes lives, and
+   Conversation. The transcript takes whatever height is left instead of the
+   two lines it gets beside a form, and it scrolls rather than growing the
+   window. Nothing is moved or hidden from the session, only from this view. */
+.cowork-chat-focus { padding: 0; overflow: hidden; }
+.cowork-chat-focus .cowork-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  border-radius: 0;
+}
+.cowork-chat-focus .cowork-panel > .protocol-rhythm,
+.cowork-chat-focus .cowork-panel > .extension-note,
+.cowork-chat-focus .cowork-panel > section:not([aria-labelledby="work-mode-heading"]):not([aria-labelledby="audio-heading"]) {
+  display: none;
+}
+.cowork-chat-focus .cowork-panel > [aria-labelledby="work-mode-heading"] {
+  flex: 0 1 auto;
+  max-height: 42vh;
+  overflow: auto;
+}
+.cowork-chat-focus .cowork-panel > [aria-labelledby="audio-heading"] {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.cowork-chat-focus #transcript {
+  flex: 1 1 auto;
+  min-height: 7rem;
+  overflow-y: auto;
+  font-size: .84rem;
+}
+.cowork-chat-focus #conversation-input { min-height: 2.8rem; font-size: .95rem; }
+
 #demo-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .form-field {
   position: relative;
@@ -272,6 +308,12 @@ textarea { resize: vertical; }
 .demo-button { width: 100%; margin-top: .7rem; color: #ffffff; background: var(--blue); border-color: transparent; font-weight: 800; }
 .audio-button { color: var(--accent-ink); background: var(--accent); border-color: transparent; font-weight: 800; }
 .audio-button.is-listening { color: var(--coral-ink); background: var(--coral); }
+/* Listening is a state, not a moment: the mark keeps breathing for as long as
+   the microphone is open, so a held key never looks like a finished press. */
+.audio-button.is-listening .ui-icon { animation: talk-listening 1.1s ease-in-out infinite; }
+@keyframes talk-listening { 50% { opacity: .35; transform: scale(1.16); } }
+@media (prefers-reduced-motion: reduce) { .audio-button.is-listening .ui-icon { animation: none; } }
+.talk-options { display: flex; flex-wrap: wrap; align-items: center; gap: 0 1.1rem; }
 .text-button { min-height: auto; padding: 0; border: 0; color: var(--blue); background: transparent; }
 .text-button:disabled { cursor: default; color: var(--teal); opacity: 1; }
 .quiet-button:hover, .text-button:hover { color: var(--blue); background: rgba(39,94,170,.09); }

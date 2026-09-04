@@ -506,3 +506,10 @@ textarea { width: 100%; resize: vertical; padding: 11px; border: 1px solid #9283
 }
 .ui-icon-slash { stroke: #c92f1f; stroke-width: 2.1; }
 button:not(.actor-control) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+
+/* Listening is a state, not a moment: the mark keeps breathing for as long as
+   the microphone is open, so a held space bar never looks like a finished
+   press. Same rule, same rhythm as the page panel. */
+#talk.is-listening .ui-icon { animation: talk-listening 1.1s ease-in-out infinite; }
+@keyframes talk-listening { 50% { opacity: .35; transform: scale(1.16); } }
+@media (prefers-reduced-motion: reduce) { #talk.is-listening .ui-icon { animation: none; } }

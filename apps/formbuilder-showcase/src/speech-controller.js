@@ -64,6 +64,12 @@ export function createRecognitionSession({
     },
     isActive() {
       return active;
+    },
+    /** Keep listening across the natural pauses that otherwise end a session
+     *  after a second of silence. Read at the next start, so switching it
+     *  mid-session never leaves the recognition half-configured. */
+    setContinuous(value) {
+      recognition.continuous = Boolean(value);
     }
   };
 }

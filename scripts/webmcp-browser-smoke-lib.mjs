@@ -32,9 +32,16 @@ function requireCondition(condition, message) {
 // visitor meets. The resting panel is a different, smaller walk, covered where
 // it is produced - by the demo switch in npm run smoke:builder.
 //
+// 35 once talking got its missing choice: "Keep listening" beside "Speak
+// replies". It sits in the default view - the Conversation section is not
+// folded. And 36 once "Chat window" joined the surface buttons in the panel
+// topline. Measured, not derived: npm run smoke:accessibility reported 36
+// interactive, 36 reachable and 36 focus-visible controls, over a 36-long
+// unique tab sequence.
+//
 // Exported so scripts/test/webmcp-browser-smoke.test.js does not hold its own
 // copy of this number.
-export const CURRENT_INTERACTIVE_CONTROL_COUNT = 34;
+export const CURRENT_INTERACTIVE_CONTROL_COUNT = 36;
 
 function isNonNegativeInteger(value) {
   return Number.isInteger(value) && value >= 0;

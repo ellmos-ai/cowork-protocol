@@ -143,6 +143,14 @@ work mode, and two buttons that move the panel without moving the session.
 - **Detach** opens the panel in a Document Picture-in-Picture window and turns
   into **Dock in page**. A browser without Document PiP is told so
   (`DETACHED_SURFACE_UNAVAILABLE`) instead of failing silently.
+- **Chat window** opens the same detached window laid out for conversing: Role
+  and Conversation fill it, the transcript takes the height the form sections
+  were using and scrolls, and the input grows with it. It is one window and one
+  panel, not a copy — the same session, the same model seat, the same handlers,
+  and your fold states survive the trip. Pressing it again, or closing the
+  window, docks everything back into the page. If the panel is already
+  detached, the button switches that window's layout instead of opening a
+  second one.
 - **Desktop Companion** joins the session at `http://127.0.0.1:47831/cowork/v1`.
   While it is connected the label reads *Connected*, and the panel's own
   conversation controls and both surface buttons are disabled — the companion
@@ -256,7 +264,20 @@ will answer — the local demo helper, your connected model, or the companion.
   directly, with no offer chip in between — the words are the click — and then
   waits for your verdict.
 - **Push to talk** dictates into the same box; **Stop voice** cancels
-  recognition and playback.
+  recognition and playback. Press it again while it is listening to stop.
+- **Hold the space bar** to talk for as long as you hold it — press starts,
+  release stops, and what you said lands in the box for you to send. It stays
+  out of the way while you are typing: in a text field, or on a focused button
+  or link, the space bar is still a space. A window that loses focus mid-hold
+  closes the microphone instead of leaving it open.
+- **Keep listening** keeps the microphone open across the natural pauses that
+  otherwise end recognition after about a second. Both this and the held space
+  bar collect what you say into the box and leave the sending to you: a turn
+  per finished phrase would answer half sentences, which is the same
+  silence-makes-no-turn contract seen from the other side.
+- While the microphone is open the mark on the button pulses and the button
+  reports `aria-pressed="true"`; the transcript line says which of the two
+  modes you are in. The pulse stops under `prefers-reduced-motion`.
 - **Speak replies** reads answers aloud.
 - The transcript stays quiet on its own: *"Silence creates no model turn."*
 
@@ -326,6 +347,13 @@ one browser, with a filtered Computer Use fallback next to structured WebMCP
 execution. While it is connected it **holds the session's model seat**, which is
 why it is a vehicle and not a bridge: it carries a model across whichever bridge
 it is linked to, and the page keeps the click.
+
+Talking works there exactly as it does in the panel: **Talk** for one dictation,
+**Keep listening** to hold the microphone open across natural pauses, and the
+space bar held down to talk for as long as you hold it. Both of the collecting
+modes put what you said in the box and leave the sending to you, the button
+pulses and reports `aria-pressed` while the microphone is open, and every way
+listening can fail still says which one it was and what to do about it.
 
 The frame comes from a Companion started for the shoot: an in-process host on an
 ephemeral port with an empty session store, one locally served showcase page

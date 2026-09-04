@@ -38,8 +38,10 @@ import {
   BRIDGE_COPY,
   BRIDGE_ICON,
   REFERENCE_UI_PROVIDER_ID,
+  createHoldToTalk,
   createSpeaker,
   createStepIcon,
+  readFinalTranscript,
   STATUS_STEPS,
   statusForWorkModeChoice,
   workModeChoices
@@ -329,6 +331,10 @@ let coworkToolHandlers = {};
 let offerCounter = 0;
 let changeCounter = 0;
 let recognitionSession = null;
+let holdToTalk = null;
+// The detached window can carry the whole panel or just the two sections a
+// conversation needs. Same window, same session - only the layout differs.
+let chatWindowOpen = false;
 let leaseCallsUsed = 0;
 // Declared up here because authorityState() reads both while the module is
 // still initializing - the Studio bridge and the workspace switcher are
@@ -875,6 +881,7 @@ function leaveCompanion() {
 function dockCoworkSurface({ closeDetachedWindow = false } = {}) {
   const windowToClose = detachedSurfaceWindow;
   detachedSurfaceWindow = null;
+  chatWindowOpen = false;
   if (coworkPanel.ownerDocument !== document && panelHomeMarker.parentNode) {
     panelHomeMarker.parentNode.insertBefore(coworkPanel, panelHomeMarker.nextSibling);
   }
@@ -892,7 +899,7 @@ function dockCoworkSurface({ closeDetachedWindow = false } = {}) {
   render();
 }
 
-async function detachCoworkSurface() {
+async function detachCoworkSurface({ chatFocus = false } = {}) {
   if (detachedSurfaceWindow && !detachedSurfaceWindow.closed) {
     dockCoworkSurface({ closeDetachedWindow: true });
     setStatus("Cowork surface docked back into FormBuilder with the same session.");
@@ -911,10 +918,15 @@ async function detachCoworkSurface() {
       height: 780
     });
     detachedSurfaceWindow = detached;
-    detached.document.title = "Cowork Protocol — Shared session";
+    chatWindowOpen = chatFocus;
+    detached.document.title = chatFocus
+      ? "Cowork Protocol — Chat"
+      : "Cowork Protocol — Shared session";
     detached.document.documentElement.lang = document.documentElement.lang;
     detached.document.body.className = "cowork-detached-body";
+    applyDetachedLayout();
     copySurfaceStyles(detached.document);
+    attachHoldToTalk(detached.document);
     document.querySelector(".workspace")?.classList.add("cowork-surface-detached");
     detached.document.body.append(coworkPanel);
     claimSurface({
@@ -927,13 +939,43 @@ async function detachCoworkSurface() {
       () => dockCoworkSurface({ closeDetachedWindow: false }),
       { once: true }
     );
-    setStatus("Cowork surface detached. It is still the same session and model seat.");
+    setStatus(
+      chatFocus
+        ? "Role and Conversation are their own window now. Same session, same model seat."
+        : "Cowork surface detached. It is still the same session and model seat."
+    );
     render();
   } catch (error) {
     detachedSurfaceWindow = null;
+    chatWindowOpen = false;
     document.querySelector(".workspace")?.classList.remove("cowork-surface-detached");
     setStatus(`DETACHED_SURFACE_ERROR: ${error.message}`);
   }
+}
+
+/** Role and Conversation are the two sections a person converses through, so
+ *  the chat layout gives them the whole window and lets the transcript take
+ *  the height instead of two fixed lines. Nothing is moved or copied: it is
+ *  the same panel, the same session and the same handlers, laid out
+ *  differently. */
+function applyDetachedLayout() {
+  detachedSurfaceWindow?.document?.body?.classList.toggle("cowork-chat-focus", chatWindowOpen);
+}
+
+async function openChatWindow() {
+  if (!detachedSurfaceWindow || detachedSurfaceWindow.closed) {
+    await detachCoworkSurface({ chatFocus: true });
+    return;
+  }
+  if (chatWindowOpen) {
+    dockCoworkSurface({ closeDetachedWindow: true });
+    setStatus("Chat window closed. The panel is back in the page with the same session.");
+    return;
+  }
+  chatWindowOpen = true;
+  applyDetachedLayout();
+  setStatus("Role and Conversation now fill the detached window.");
+  render();
 }
 
 function scheduleLeaseExpiry(nowMilliseconds) {
@@ -1390,6 +1432,9 @@ function render() {
     "aria-pressed",
     String(session.surface?.kind === "document-pip")
   );
+  setButtonLabel("#chat-window", chatWindowOpen ? "Close chat" : "Chat window");
+  $("#chat-window").disabled = companionConnected;
+  $("#chat-window").setAttribute("aria-pressed", String(chatWindowOpen));
   $("#surface-label").textContent = companionConnected
     ? "Desktop Companion"
     : session.surface?.kind === "document-pip"
@@ -1403,6 +1448,7 @@ function render() {
   $("#conversation-input").disabled = companionConnected;
   $("#send-conversation").disabled = companionConnected || conversationBusy;
   $("#talk").disabled = companionConnected;
+  $("#keep-listening").disabled = companionConnected;
   $("#toggle-agent").textContent =
     session.model.availability === "here" ? "Pause model" : "Resume model";
   renderWorkModeChoices(session.workMode);
@@ -2496,27 +2542,47 @@ function configureSpeech() {
   const talkButton = $("#talk");
   // The button keeps its icon: only this label node ever changes.
   const talkLabel = talkButton.querySelector(".button-label");
+  const keepListening = $("#keep-listening");
+  const input = $("#conversation-input");
   if (!Recognition) {
     talkButton.disabled = true;
+    keepListening.disabled = true;
     $("#transcript").textContent = "Speech recognition is unavailable here. Text controls remain usable.";
     return;
   }
 
+  // Two ways of listening, one rule: a single press is one turn, while a held
+  // key or a kept-open microphone collects into the field and leaves the
+  // sending to the human. A turn per finished phrase would answer half
+  // sentences, which is the same silence-makes-no-turn contract seen from the
+  // other side.
+  let collecting = false;
+
   recognitionSession = createRecognitionSession({
     Recognition,
     onActiveChange: (active) => {
-      talkButton.disabled = active;
-      talkButton.setAttribute("aria-busy", String(active));
+      // Not disabled while listening: a pressed button is what stops it, and
+      // a disabled control tells a screen reader nothing happened.
+      talkButton.setAttribute("aria-pressed", String(active));
     },
     onStart: () => {
       talkButton.classList.add("is-listening");
       talkLabel.textContent = "Listening…";
-      $("#transcript").textContent = "Listening. Pause naturally; silence will not create a turn.";
+      $("#transcript").textContent = collecting
+        ? "Listening. What you say lands in the field; you decide when to send it."
+        : "Listening. Pause naturally; silence will not create a turn.";
     },
     onResult: (event) => {
-      const transcript = event.results?.[0]?.[0]?.transcript?.trim() ?? "";
-      $("#conversation-input").value = transcript;
-      void sendConversationTurn(transcript);
+      const heard = readFinalTranscript(event);
+      if (heard === "") return;
+      if (!collecting) {
+        input.value = heard;
+        void sendConversationTurn(heard);
+        return;
+      }
+      input.value = [input.value.trim(), heard].filter(Boolean).join(" ");
+      $("#transcript").textContent = `Heard: ${input.value}
+Send when you are ready.`;
     },
     onError: (event) => {
       $("#transcript").textContent =
@@ -2527,9 +2593,42 @@ function configureSpeech() {
     onEnd: () => {
       talkButton.classList.remove("is-listening");
       talkLabel.textContent = "Push to talk";
+      collecting = false;
     }
   });
-  talkButton.addEventListener("click", () => recognitionSession.start());
+
+  // Collecting always listens continuously: without it the browser ends the
+  // session at the first natural pause, which is what made push-to-talk fall
+  // back to off while the human was still holding the key.
+  function startListening(collect) {
+    collecting = collect;
+    recognitionSession.setContinuous(collect);
+    recognitionSession.start();
+  }
+
+  talkButton.addEventListener("click", () => {
+    if (recognitionSession.isActive()) {
+      recognitionSession.stop();
+      return;
+    }
+    startListening(keepListening.checked);
+  });
+
+  holdToTalk = createHoldToTalk({
+    start: () => startListening(true),
+    stop: () => recognitionSession.stop()
+  });
+  attachHoldToTalk(document);
+}
+
+/** The panel moves between documents, and key events do not follow it. Every
+ *  document that can hold the panel gets the same space bar. */
+function attachHoldToTalk(targetDocument) {
+  if (holdToTalk === null) return;
+  targetDocument.addEventListener("keydown", (event) => holdToTalk.keydown(event));
+  targetDocument.addEventListener("keyup", (event) => holdToTalk.keyup(event));
+  // A window that loses focus mid-hold never sees the release.
+  targetDocument.defaultView?.addEventListener("blur", () => holdToTalk.cancel());
 }
 
 async function configureWebMcp() {
@@ -2835,6 +2934,9 @@ window.addEventListener("message", (event) => {
     "Browser extension attached (Native route): it reads focus here and proposes into this panel; your clicks stay here. The side panel mirrors this panel, it does not replace it.";
   setStatus("Browser extension attached through the native page bridge.");
   render();
+});
+$("#chat-window").addEventListener("click", () => {
+  void openChatWindow();
 });
 $("#detach-cowork").addEventListener("click", () => {
   void detachCoworkSurface();
