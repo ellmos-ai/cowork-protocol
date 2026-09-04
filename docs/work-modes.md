@@ -170,6 +170,34 @@ Clicking a figure is how you change your partner's status, because the person
 clicking is always the human: clicking the model figure parks or wakes the
 model, clicking your own figure says whether you are executing or advising.
 
+### Away means the whole canvas, because nobody who left can point
+
+A grant is about something, and until now that something was the field the
+human was pointing at. That is right while they are sitting there - pointing is
+how you say "this one". It is wrong the moment they leave: someone who is away
+cannot point, so demanding a pointer meant the away path refused exactly when
+it was needed, and the model was never seen working alone at all.
+
+So the scope follows presence, while the *right to act* still follows only the
+grant:
+
+| Gesture | Scope of the grant |
+| --- | --- |
+| Hand over while you watch, pointing at a field | that field - sparring at one place |
+| Hand over while you watch, pointing at nothing | the whole canvas |
+| Step away, whatever you were pointing at | **always** the whole canvas |
+
+On the fixed demo form the whole canvas is one target per visible field, with
+one call per field plus the two-attempt reserve. On the Studio canvas it is the
+canvas target the drafting capability already uses. An empty "Job to hand over"
+no longer refuses either: the panel writes the obvious job for that scope into
+the visible input, where you can still change it.
+
+The lens says so while it is in force: `Working across: Whole form (4 fields)`.
+`cowork_read_focus` keeps refusing without a pointer - that is correct, there is
+no pointer - so a solo agent reads its targets from the grant, which
+`cowork_read_presence` now carries.
+
 ### The seat click is the authorization; the mode picker is a wish
 
 Both can ask for the same state, and they answer differently on purpose.
@@ -190,8 +218,8 @@ grant either way; the two paths differ in who authored the gesture.
   path, model solo inside the lease. Either way the next press returns the job.
 - **Desktop Companion** - the Companion is the Session Authority, so it mints
   the grant itself instead of sending you back to the page. With no page linked
-  it says `PAGE_NOT_LINKED`; with no field pointed at, `NO_FOCUSED_TARGET`. A
-  grant is about something, and it will not invent what.
+  it says `PAGE_NOT_LINKED`. A grant is about something, and it will not invent
+  what: a page that reports no targets at all is still refused.
 - **Browser extension** - mints no grant, so its seat skips `executing` and says
   why. Same rule, applied where no authority record can exist.
 

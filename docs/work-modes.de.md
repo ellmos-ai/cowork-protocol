@@ -51,6 +51,36 @@ heißt „gegangen" bzw. „kein Modellsitz verbunden".
 `explain` und `suggest` waren nie zwei Dinge und sind jetzt ein Zustand:
 beobachten heißt beraten, also kommentieren und vorschlagen.
 
+## Away heißt ganzer Canvas, denn wer weg ist, kann nicht zeigen
+
+Ein Grant handelt von etwas, und dieses Etwas war bisher das Feld, auf das der
+Mensch zeigt. Solange er dasitzt, ist das richtig — Zeigen ist die Art, „dieses
+hier" zu sagen. Es ist falsch in dem Moment, in dem er geht: Wer weg ist, kann
+nicht zeigen. Einen Zeiger zu verlangen hieß darum, dass der Away-Pfad genau
+dann verweigerte, wenn er gebraucht wurde, und der Mensch das Modell nie allein
+arbeiten sah.
+
+Der Geltungsbereich folgt also der Anwesenheit, das *Recht zu handeln* weiter
+allein dem Grant:
+
+| Geste | Geltungsbereich des Grants |
+| --- | --- |
+| Übergeben und zusehen, auf ein Feld zeigend | dieses Feld — Sparring an einer Stelle |
+| Übergeben und zusehen, auf nichts zeigend | der ganze Canvas |
+| Abmelden, egal worauf gezeigt wurde | **immer** der ganze Canvas |
+
+Auf dem festen Demo-Formular ist der ganze Canvas ein Ziel je sichtbarem Feld,
+mit einem Aufruf je Feld plus der Zwei-Versuche-Reserve. Auf dem Studio-Canvas
+ist es das Canvas-Ziel, das die Entwurfs-Fähigkeit ohnehin benutzt. Ein leeres
+„Job to hand over" verweigert ebenfalls nicht mehr: Das Panel schreibt den
+naheliegenden Auftrag für diesen Geltungsbereich in das sichtbare Feld, wo er
+weiter änderbar bleibt.
+
+Die Linse sagt es, solange sie gilt: `Working across: Whole form (4 fields)`.
+`cowork_read_focus` verweigert ohne Zeiger weiterhin — das ist richtig, es gibt
+keinen Zeiger —, also liest ein Solo-Agent seine Ziele aus dem Grant, den
+`cowork_read_presence` jetzt mitführt.
+
 ## Der Sitz-Klick ist die Autorisierung, die Modusauswahl ein Wunsch
 
 Beide fragen nach demselben Zustand und antworten bewusst verschieden.
@@ -73,8 +103,8 @@ Geste gemacht hat.
   holt den Job zurück.
 - **Desktop Companion** — der Companion ist Session Authority und prägt den
   Grant selbst, statt zurück auf die Seite zu verweisen. Ohne verknüpfte Seite
-  sagt er `PAGE_NOT_LINKED`, ohne fokussiertes Feld `NO_FOCUSED_TARGET`. Ein
-  Grant handelt von etwas, und er erfindet nicht, wovon.
+  sagt er `PAGE_NOT_LINKED`. Ein Grant handelt von etwas, und er erfindet nicht,
+  wovon: Eine Seite, die gar keine Ziele meldet, wird weiterhin abgelehnt.
 - **Browser-Erweiterung** — prägt keinen Grant, überspringt darum `executing`
   und sagt warum. Dieselbe Regel dort, wo kein Autoritätsnachweis entstehen
   kann.
