@@ -24,6 +24,38 @@ const NORMALIZE_ARGUMENTS = {
   })
 };
 
+// Every offer says who proposed it, and only the caller knows who that is.
+// The request carries the actor; the page's tool handlers read it while the
+// call runs, so nothing had to be added to the nine tool schemas.
+let activeActor = null;
+
+/** The actor a tool handler is currently running for. Outside a relay call
+ *  the tool was invoked in the page itself, which is what WebMCP is. */
+export function currentActor() {
+  return activeActor ?? "webmcp-agent";
+}
+
+/** Runs `propose` as `actor` - for the callers that are not a relayed tool
+ *  call, like the panel's own demo button. Synchronous by design: the actor is
+ *  a page-wide context, and an async body would hand it to whatever ran next. */
+export function withActor(actor, propose) {
+  const previous = activeActor;
+  activeActor = actor;
+  try {
+    return propose();
+  } finally {
+    activeActor = previous;
+  }
+}
+
+function actorForRequest(request) {
+  if (typeof request.actor === "string" && request.actor !== "") return request.actor;
+  const client = typeof request.clientName === "string" ? request.clientName.trim() : "";
+  // A nameless client is still an MCP client - it reached the page through
+  // the Companion, so saying "webmcp-agent" here would be a lie.
+  return client === "" ? "mcp:unknown" : `mcp:${client}`;
+}
+
 export async function runCompanionAgentRequest({ request, handlers }) {
   const handler = handlers[HANDLER_BY_TOOL[request.name]];
   if (typeof handler !== "function") {
@@ -35,6 +67,7 @@ export async function runCompanionAgentRequest({ request, handlers }) {
     };
   }
   const toolArguments = request.arguments ?? {};
+  activeActor = actorForRequest(request);
   try {
     return {
       result: await handler(
@@ -50,6 +83,8 @@ export async function runCompanionAgentRequest({ request, handlers }) {
         message: error?.message ?? "The Cowork tool failed on this page"
       }
     };
+  } finally {
+    activeActor = null;
   }
 }
 

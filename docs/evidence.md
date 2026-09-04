@@ -894,6 +894,15 @@ Natural.
 
 - **A survey drafted under a grant can hold a scale again.** With the goal "how often parents observe which kinds of conflict and violence between siblings", the same model drafted `checkbox-single` questions with `["Never","Rarely","Sometimes","Often","Always"]`. Before the fix the drafting hint said "prefer text-short" - written when a field could only be a label - so the first draft came back as a free-text field and its Never/Rarely/Sometimes list was dropped for a type that has none. Four drafts in 123 s; two further turns were refused by the existing duplicate-label guard, which is the guard working.
 - **The canvas context now carries the palette** (`fieldTypes`: id, display name, whether it takes options, one clause of purpose - 516 characters), so an agent that has never seen the form learns from one `cowork_request_context` call what it may build. It is written before the labels and the labels stop at 1,150 characters, because `buildContextExpansion` truncates at 1,200 and a truncated JSON string no longer parses. Measured with a 40-field form: still valid JSON, all 8 field types present, `fieldCount` truthful at 40.
+### Who proposed it (offer attribution)
+
+- measured on this branch: `node --test` 491 passing (488 before, plus the three
+  that pin the actor derivation - `seat:` from the request, `mcp:<client>` from
+  the client name, `webmcp-agent` outside a relayed call, `demo` for the demo
+  button's own call), with
+  `smoke:webmcp`, `smoke:companion-mcp`, `smoke:surface`, `build:pages`,
+  `build:companion`, `check:secrets` and `check:architecture` all exit 0; the
+  nine tool schemas are unchanged, so attribution cost the protocol nothing
 
 ## Explicitly not yet evidenced
 

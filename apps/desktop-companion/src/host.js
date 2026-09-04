@@ -581,7 +581,10 @@ export function createCompanionSessionHost({
     name,
     arguments: toolArguments = {},
     linkSessionId = null,
-    clientName = null
+    clientName = null,
+    // Set when the model seat is the caller: its offers are not an MCP
+    // client's, and the page has to be able to tell them apart.
+    seatIdentity = null
   }) {
     if (!AGENT_TOOL_NAMES.has(name)) {
       throw new CompanionHostError(
@@ -633,6 +636,9 @@ export function createCompanionSessionHost({
         requestId,
         name,
         arguments: cloneJson(toolArguments),
+        // Who is calling, so the page can write it on the offer it shows.
+        actor: seatIdentity === null ? null : `seat:${seatIdentity}`,
+        clientName: agentRelay.clientName,
         at: now()
       });
     });
@@ -805,7 +811,8 @@ export function createCompanionSessionHost({
                 value: offer.value,
                 summary: offer.summary
               },
-          linkSessionId
+          linkSessionId,
+          seatIdentity: modelProviderId
         });
         if (asSolo) executed += 1;
         else offered += 1;

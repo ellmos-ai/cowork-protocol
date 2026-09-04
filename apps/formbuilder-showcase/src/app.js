@@ -77,7 +77,7 @@ import { createRecognitionSession } from "./speech-controller.js";
 import { replyToShowcaseTurn } from "./local-conversation.js";
 import { createModelSeat } from "./model-seat.js";
 import { adviseCommentForHumanChange } from "./advisor-comment.js";
-import { startCompanionAgentRelay } from "./companion-agent-relay.js";
+import { currentActor, startCompanionAgentRelay, withActor } from "./companion-agent-relay.js";
 
 const SESSION_ID = "formbuilder-showcase";
 const EMBEDDED_SURFACE_ID = "formbuilder:embedded";
@@ -314,6 +314,9 @@ let focusPacket = null;
 let focusedField = null;
 let offers = [];
 let receipts = [];
+// Who proposed it outlives the offer: the chip is gone by the time its
+// receipt is rendered, and an unsigned receipt says nothing about authorship.
+const offerActors = new Map();
 let feedbackEvents = [];
 let changeEvents = [];
 let advisorComment = null; // GAP-06: latest advisor comment on a human change, or null; render() gates its display.
@@ -1104,7 +1107,9 @@ function renderOffers(view) {
     const strong = document.createElement("strong");
     strong.textContent = chip.label;
     const detail = document.createElement("span");
-    detail.textContent = `${chip.capabilityId} · ${chip.targetId} · Value: ${chip.proposedValue}`;
+    detail.textContent =
+      `${chip.capabilityId} · ${chip.targetId} · Value: ${chip.proposedValue}` +
+      (offer?.actor ? ` · by ${offer.actor}` : "");
     copy.append(strong, detail);
     button.dataset.offerValue = chip.proposedValue;
     button.append(copy);
@@ -1122,7 +1127,9 @@ function renderOffers(view) {
     const strong = document.createElement("strong");
     strong.textContent = offer.summary;
     const detail = document.createElement("span");
-    detail.textContent = `Studio canvas \u00b7 ${builderCowork.describeOffer(offer)}`;
+    detail.textContent =
+      `Studio canvas \u00b7 ${builderCowork.describeOffer(offer)}` +
+      (offer.actor ? ` \u00b7 by ${offer.actor}` : "");
     copy.append(strong, detail);
     button.append(copy);
     button.addEventListener("click", (event) => executeBuilderOffer(event, offer.offerId));
@@ -1215,7 +1222,8 @@ function renderReceipts() {
     item.className = view.status === "failed" ? "receipt-failed" : "";
     const status = document.createElement("strong");
     status.textContent = `${view.statusLabel}: `;
-    item.append(status, view.verificationSummary);
+    const actor = offerActors.get(view.offerId);
+    item.append(status, `${view.verificationSummary}${actor ? ` · by ${actor}` : ""}`);
 
     if (view.feedback) {
       const recorded = document.createElement("p");
@@ -1698,17 +1706,23 @@ function createVisibleOffer({ capabilityId, targetId, value, summary }) {
     proposedArguments: { value },
     summary
   });
-  const offer = createActionOffer({
-    offerId: newOfferId(),
-    capabilityId: visibleOffer.capabilityId,
-    targetId: visibleOffer.targetId,
-    pageVersion,
-    proposedArguments: { value: visibleOffer.proposedValue },
-    summary,
-    effect: "mutate",
-    undoAvailable: true,
-    expiresAt: new Date(now.getTime() + 60_000).toISOString()
-  });
+  const offer = {
+    ...createActionOffer({
+      offerId: newOfferId(),
+      capabilityId: visibleOffer.capabilityId,
+      targetId: visibleOffer.targetId,
+      pageVersion,
+      proposedArguments: { value: visibleOffer.proposedValue },
+      summary,
+      effect: "mutate",
+      undoAvailable: true,
+      expiresAt: new Date(now.getTime() + 60_000).toISOString()
+    }),
+    // The offer says who proposed it. It does not say who may: that stays the
+    // one model seat's canPropose flag, whoever the caller was.
+    actor: currentActor()
+  };
+  offerActors.set(offer.offerId, offer.actor);
   offers = [...offers, offer];
   if (!conversationBusy) flashModelWorking(focusedField);
   commitSession("offer-presented", session, {
@@ -1754,6 +1768,8 @@ function createVisibleStudioOffer(input) {
   }
   if (!builderCowork) throw new CoworkProtocolError("STALE_FOCUS", "No FormBuilder field is focused");
   const offer = builderCowork.offerFromAgent(input);
+  offer.actor = currentActor();
+  offerActors.set(offer.offerId, offer.actor);
   setStatus("Agent proposal added to the Studio. Only a real click on the offer can authorize it.");
   render();
   return offer;
@@ -1762,9 +1778,18 @@ function createVisibleStudioOffer(input) {
 function addDemoOffer() {
   if (builderFocus !== null) {
     if (!builderProposalsAllowed()) return;
+    // The demo button is a script helper, not an agent, and it says so on what
+    // it proposes. suggestField() answers with a summary, so the offer it made
+    // is the one the Studio did not have before.
+    const known = new Set(builderCowork.pendingOffers().map((offer) => offer.offerId));
     builderCowork
       .suggestField()
       .then((summary) => {
+        for (const offer of builderCowork.pendingOffers()) {
+          if (known.has(offer.offerId)) continue;
+          offer.actor = "demo";
+          offerActors.set(offer.offerId, offer.actor);
+        }
         setStatus(`${summary}. Only a real click on the offer can authorize it.`);
         render();
       })
@@ -1778,12 +1803,14 @@ function addDemoOffer() {
   const control = currentControl();
   const value = valueForDemo(control);
   try {
-    createVisibleOffer({
-      capabilityId: "form.set_value",
-      targetId: focusPacket.targetId,
-      value,
-      summary: `Set ${focusPacket.focus.label} to ${value}`
-    });
+    withActor("demo", () =>
+      createVisibleOffer({
+        capabilityId: "form.set_value",
+        targetId: focusPacket.targetId,
+        value,
+        summary: `Set ${focusPacket.focus.label} to ${value}`
+      })
+    );
   } catch (error) {
     setStatus(`${error.code ?? "ERROR"}: ${error.message}`);
   }

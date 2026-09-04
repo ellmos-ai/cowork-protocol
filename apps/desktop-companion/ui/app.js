@@ -218,8 +218,10 @@ function render(state) {
 
   const turns = currentSession?.context?.recentTurns ?? [];
   $("#context-budget").textContent = `${turns.length} recent turn${turns.length === 1 ? "" : "s"}`;
+  // A reply says who wrote it: the seat is a named model, not "the assistant".
+  const seat = currentSession?.modelIdentity ? `Model · seat:${currentSession.modelIdentity}` : "Model";
   const entries = turns.map((turn) => ({
-    role: turn.role === "assistant" ? "Model" : "Human",
+    role: turn.role === "assistant" ? seat : "Human",
     className: turn.role,
     text: turn.text
   }));
