@@ -81,6 +81,22 @@ Die Linse sagt es, solange sie gilt: `Working across: Whole form (4 fields)`.
 keinen Zeiger —, also liest ein Solo-Agent seine Ziele aus dem Grant, den
 `cowork_read_presence` jetzt mitführt.
 
+## Ein Grant auf dem Studio-Canvas kann handeln, nicht nur vorschlagen
+
+Beide Canvases prägen Grants, und bisher konnte nur einer davon einen Grant
+ohne Menschenhand ausgeben. Im Studio fügt ein Agent unter einem canvas-weiten
+Grant per `cowork_execute_solo` ein Feld hinzu — ohne Angebot und ohne Klick.
+Das Studio prägt dafür keinen eigenen Grant, sondern übernimmt den des
+Menschen: Ziel, Geltungsbereich, Aufrufbudget und Ablaufzeit bleiben exakt das
+Gewährte, und dieselbe `authorizeSoloAction` prüft jeden Aufruf.
+
+Warum das praktisch zählt: Die Angebotsliste hält drei offene Angebote und
+lehnt ein viertes mit `CONTEXT_BUDGET_EXCEEDED` ab. Ein Formular mit
+fünfunddreißig Fragen über Angebote zu bauen heißt darum fünfunddreißig Klicks,
+einen nach dem anderen. Unter einem Grant sind es fünfunddreißig Solo-Aufrufe
+innerhalb eines Budgets, das der Mensch gesetzt hat — und das Budget ist die
+Grenze, die zählt, nicht die Liste.
+
 ## Der Sitz-Klick ist die Autorisierung, die Modusauswahl ein Wunsch
 
 Beide fragen nach demselben Zustand und antworten bewusst verschieden.
