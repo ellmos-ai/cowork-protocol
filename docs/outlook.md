@@ -42,6 +42,33 @@ lease; only the attention follows the agent instead of the pointer. For the
 advising model nothing changes: the lens stays, and the pointer of the person
 stays the thing it reads.
 
+## What the first solo attempt after the deadline showed
+
+Measured by a local agent connected over MCP while the person tried to hand it
+a 35-field form, in the order of their weight:
+
+1. **One seat per actor, not one model seat per session.** An MCP client
+   inherits the rights of the model seat today; the host knows it by name but
+   does not authorize it. Twice in one night the person granted work meaning
+   the terminal agent and granted it to the local model instead, and the same
+   happened with the Computer Use switch.
+2. **A delegation budget the person chooses.** Six calls in two minutes means
+   six handovers for a 35-field form. The verdict of the person: for everyday
+   work the whole operation is still too cumbersome.
+3. **An empty focus has to be reachable.** The Studio grant assumes nothing is
+   selected, but the interface always keeps a selection. As long as that
+   holds, the canvas grant is practically out of reach, and the cooperative
+   path answers STALE_FOCUS instead.
+4. **A grant has to land in the right area.** The handover made in the Studio
+   minted a sample-form grant (form.set_value on four sample fields) rather
+   than a canvas grant with form-add-field; the goal text arrived, the target
+   set did not.
+
+For the balance: `cowork_execute_solo` with that narrow grant ran cleanly, an
+action receipt with status verified, "Email address updated during Agent
+Solo", page version 1 to 2, without a click. The mechanism holds; the
+allocation is what sticks.
+
 ## Rights per agent, instead of one model seat
 
 Today the page asks one question before it lets a model propose:

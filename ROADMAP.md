@@ -58,6 +58,10 @@ that followed it before the deadline.
   actually build with a model, where the protocol is what makes it pleasant.
   The comparison that set this bar was a browser video studio driven over
   WebMCP with human release stages.
+- **An empty focus that can be reached, and a grant that lands in the right
+  area.** The handoff block names its target (Studio canvas or sample form)
+  and its recipient (model seat or a connected agent) instead of deriving
+  both from the pointer. Outlook: *What the first solo attempt showed*.
 - **A delegation budget the person chooses** in the handoff block instead of
   the fixed six drafts in two minutes. Outlook: *A delegation budget*.
 - **Design leftovers from the acceptance session:** the model seat directly
