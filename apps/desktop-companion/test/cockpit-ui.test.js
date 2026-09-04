@@ -118,3 +118,26 @@ test("the execution switch names itself and never offers a dead click", async ()
   assert.match(app, /executionError/);
   assert.match(css, /\.execution-control\[data-unavailable="true"\]/);
 });
+
+test("the Companion's talk button says why it could not listen", async () => {
+  const app = await readFile(appPath, "utf8");
+
+  // One message per cause the browser actually reports, each naming what to do
+  // about it: before this every failure read "No speech turn created."
+  assert.doesNotMatch(app, /textContent = "No speech turn created/);
+  for (const [code, hint] of [
+    ["not-allowed", /address bar/],
+    ["audio-capture", /No microphone was found/],
+    ["network", /speech service is not reachable/],
+    ["no-speech", /Nothing was heard/]
+  ]) {
+    assert.match(app, new RegExp(`"?${code}"?:`));
+    assert.match(app, hint);
+  }
+  // The dictation language follows the window instead of defaulting to one.
+  assert.match(app, /recognition\.lang = navigator\.language/);
+  // A second start on a running recognition throws; the cockpit must not die on it.
+  assert.match(app, /try \{\s*recognition\.start\(\);\s*\} catch/);
+  // And it must not stay on "Listening…" once the browser gives up by itself.
+  assert.match(app, /recognition\.onend/);
+});
