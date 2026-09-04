@@ -6,7 +6,9 @@ import {
   adoptSessionState,
   buildLeaseExpiryEffect,
   createShowcaseSession,
+  MODEL_STATUS_CYCLE,
   nextActorStatus,
+  nextModelStatus,
   nextLeaseExpiryDelay,
   transitionShowcaseSession
 } from "../src/session.js";
@@ -202,6 +204,34 @@ test("a figure click walks one partner through its four status states", () => {
     role: "advising"
   });
   assert.deepEqual(nextActorStatus({ availability: "away", role: "advising" }), {
+    availability: "here",
+    role: "executing"
+  });
+});
+
+test("the model's figure never cycles into away: away means it has no seat at all", () => {
+  assert.deepEqual(
+    MODEL_STATUS_CYCLE.map((status) => `${status.availability}:${status.role}`),
+    ["here:executing", "here:advising", "standby:advising"]
+  );
+  // Pressing a working model parks it, and pressing it again brings it back.
+  // Reaching executing from standby is the handover gesture, not another step
+  // through a state that reads as "the connection is gone".
+  assert.deepEqual(nextModelStatus({ availability: "here", role: "executing" }), {
+    availability: "here",
+    role: "advising"
+  });
+  assert.deepEqual(nextModelStatus({ availability: "here", role: "advising" }), {
+    availability: "standby",
+    role: "advising"
+  });
+  assert.deepEqual(nextModelStatus({ availability: "standby", role: "advising" }), {
+    availability: "here",
+    role: "executing"
+  });
+  // A model reported away because its seat is empty still starts from the
+  // front, which is where the four-state cycle sent it too.
+  assert.deepEqual(nextModelStatus({ availability: "away", role: "advising" }), {
     availability: "here",
     role: "executing"
   });

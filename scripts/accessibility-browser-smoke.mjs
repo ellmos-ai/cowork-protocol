@@ -358,12 +358,13 @@ try {
     );
   }
   const actorControlStates = [];
-  // Present, working on what, executing or advising - four states per figure.
-  // The step into executing is the handover: a trusted click by the human on
-  // the model's seat mints the grant, and the next click takes the job back.
-  // Without a grant that step is still refused - see the webmcp smoke's
-  // modelExecutionNeedsGrantClaim, where no grant can be minted.
-  for (const expectedModelState of ["standby", "away", "here-executing", "here-advising"]) {
+  // Present, working on what, executing or advising. The human's figure walks
+  // all four states; the model's walks three, because away for a model means
+  // no seat connected at all (K7). The step into executing is the handover: a
+  // trusted click by the human on the model's seat mints the grant, and the
+  // next click takes the job back. Without a grant that step is still refused
+  // - see the webmcp smoke's modelExecutionNeedsGrantClaim.
+  for (const expectedModelState of ["standby", "here-executing", "here-advising", "standby"]) {
     await dispatchTrustedClick(call, "#model-seat");
     const state = await evaluateValue(
       call,

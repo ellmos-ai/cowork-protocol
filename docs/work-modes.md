@@ -157,7 +157,8 @@ same function.
 
 | Trigger | Effect |
 | --- | --- |
-| Click a figure | cycles that partner's status: `here-executing` → `here-advising` → `standby` → `away` → … |
+| Click the human's figure | cycles all four: `here-executing` → `here-advising` → `standby` → `away` → … |
+| Click the model's figure | cycles three, never `away`: `here-executing` → `here-advising` → `standby` → … For a model, away means no seat connected at all - the model seat block's business, not a step to walk through. The panel says "Model paused - click again to resume" |
 | Click the model's seat toward `executing` | **is the handover**: the surface mints the grant, and the next click on that seat takes the job back |
 | Pick a mode | `statusForWorkModeChoice()` sets both partners' status and carries the areas over |
 | A prompt, typed or spoken | mints a grant for that job, so the model executes and the human watches |

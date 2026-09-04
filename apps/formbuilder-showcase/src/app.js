@@ -52,6 +52,7 @@ import {
   buildLeaseExpiryEffect,
   createShowcaseSession,
   nextActorStatus,
+  nextModelStatus,
   nextLeaseExpiryDelay,
   transitionShowcaseSession
 } from "./session.js";
@@ -2280,21 +2281,30 @@ function toggleAgent() {
   render();
 }
 
-// One figure, one actor, four states: here-acting, here-observing, standby,
-// away. The cycle starts from the *resolved* status, so a model whose
-// authority the conflict rule already took moves on from what is displayed.
+// One figure, one actor. The human cycles all four states; the model cycles
+// three, because "away" for a model means no seat at all (see
+// MODEL_STATUS_CYCLE). The cycle starts from the *resolved* status, so a model
+// whose authority the conflict rule already took moves on from what is
+// displayed.
 function cycleActorStatus(side) {
-  const requested = { ...nextActorStatus(session.workMode[side]), area: session[side].area };
+  const nextStatus = side === "model" ? nextModelStatus : nextActorStatus;
+  const requested = { ...nextStatus(session.workMode[side]), area: session[side].area };
   commitSession(
     `${side}-status-changed`,
     transitionShowcaseSession(session, { type: "SET_STATUS", [side]: requested }),
     { payload: { side, ...requested } }
   );
   const resolved = session.workMode[side];
+  const matched =
+    resolved.availability === requested.availability && resolved.role === requested.role;
   setStatus(
-    resolved.availability === requested.availability && resolved.role === requested.role
-      ? `${workModeLabel(workModeChoiceId(session.workMode))}.`
-      : "Both cannot act at once here. The hand on the mouse keeps the click right."
+    !matched
+      ? "Both cannot act at once here. The hand on the mouse keeps the click right."
+      : side === "model" && resolved.availability === "standby"
+        // Naming the way back matters more here than the mode label: a parked
+        // model looks the same as a disconnected one.
+        ? "Model paused - click again to resume."
+        : `${workModeLabel(workModeChoiceId(session.workMode))}.`
   );
   render();
 }
@@ -2311,7 +2321,7 @@ function cycleModelCockpit() {
     returnHuman();
     return;
   }
-  const requested = nextActorStatus(session.workMode.model);
+  const requested = nextModelStatus(session.workMode.model);
   if (requested.availability === "here" && requested.role === "executing") {
     // This step is reached from standby or away, so the model has to come in
     // before anything can be handed to it - both handover paths refuse a model
