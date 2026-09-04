@@ -1056,6 +1056,36 @@ try {
     throw new Error("Solo work must not leave an offer waiting for a click");
   }
 
+  // --- K7: the model's own figure cycles three states, never "away". For a
+  // model, away means no seat connected at all, so pressing the seat into it
+  // read as "the connection is gone" and the human had to reach for the other
+  // figure to get back. The Companion cockpit has only ever offered paused and
+  // active; this is the page saying the same thing. ---
+  await evaluateValue(call, `document.querySelector("#workspace-tab-sample").click()`);
+  const seatCycle = [];
+  for (let press = 0; press < 4; press += 1) {
+    await dispatchTrustedClick(call, 'document.querySelector("#model-seat")', "Model seat");
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    seatCycle.push(await evaluateValue(call, `(() => ({
+      modelState: document.querySelector(".cowork-panel")?.dataset.modelState ?? null,
+      status: document.querySelector("#system-status")?.textContent ?? null
+    }))()`));
+  }
+  observed.modelSeatCycle = seatCycle;
+  const awayPress = seatCycle.findIndex((step) => step.modelState === "away");
+  if (awayPress !== -1) {
+    throw new Error(
+      `The model seat must never cycle into away: ${JSON.stringify(seatCycle)}`
+    );
+  }
+  const paused = seatCycle.find((step) => step.modelState === "standby");
+  if (!paused) {
+    throw new Error(`The model seat must still reach standby: ${JSON.stringify(seatCycle)}`);
+  }
+  if (!paused.status?.includes("click again to resume")) {
+    throw new Error(`A parked model must say how to bring it back: ${JSON.stringify(paused)}`);
+  }
+
   const summary = validateNativeWebMcpObservation(observed);
   const conversationSummary = validateConversationObservation(conversationObserved);
   const bridgeSummary = validateBrowserHostBridgeObservation(bridgeObserved);
@@ -1085,6 +1115,8 @@ try {
     studioFollowedThroughToolsClaim: true,
     studioSoloAddedFieldWithoutClick: observed.studioSolo.labels.includes("Preferred start date"),
 
+    modelSeatNeverAwayClaim: observed.modelSeatCycle.every((step) => step.modelState !== "away"),
+    modelSeatStates: observed.modelSeatCycle.map((step) => step.modelState),
     handOverWhileWatchingClaim: true,
     doublingOnDisjointAreasClaim: true
   }, null, 2));

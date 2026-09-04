@@ -21,18 +21,41 @@ export const ACTOR_STATUS_CYCLE = Object.freeze([
 ]);
 
 /**
+ * The model's own cycle: the same states without "away". For a model, away
+ * means no seat connected at all - which the model seat block owns (disconnect,
+ * demo off, a Companion taking over), not something a human should have to walk
+ * through to get a working model back. Pressing the seat into it read as
+ * "the connection is gone" and left the human reaching for the other figure.
+ * The Companion cockpit has only ever offered paused and active; this is the
+ * page saying the same thing.
+ */
+export const MODEL_STATUS_CYCLE = Object.freeze(
+  ACTOR_STATUS_CYCLE.filter((status) => status.availability !== "away")
+);
+
+function nextInCycle(cycle, actor) {
+  const index = cycle.findIndex(
+    (candidate) =>
+      candidate.availability === actor?.availability &&
+      (actor.availability !== "here" || candidate.role === actor.role)
+  );
+  // A status outside the cycle - a model reported away because its seat is
+  // empty - starts the cycle from the front, which is where it went before.
+  return cycle[(index + 1) % cycle.length];
+}
+
+/**
  * Next status in the cycle. Pass the *resolved* partner (session.workMode.human
  * / .model), not the stored one: once a model without a grant has fallen back
  * to advising, the figure must move on from what the panel shows, not from an
  * intent the panel is not displaying.
  */
 export function nextActorStatus(actor) {
-  const index = ACTOR_STATUS_CYCLE.findIndex(
-    (candidate) =>
-      candidate.availability === actor?.availability &&
-      (actor.availability !== "here" || candidate.role === actor.role)
-  );
-  return ACTOR_STATUS_CYCLE[(index + 1) % ACTOR_STATUS_CYCLE.length];
+  return nextInCycle(ACTOR_STATUS_CYCLE, actor);
+}
+
+export function nextModelStatus(actor) {
+  return nextInCycle(MODEL_STATUS_CYCLE, actor);
 }
 
 function leaseIsValid(lease, now) {

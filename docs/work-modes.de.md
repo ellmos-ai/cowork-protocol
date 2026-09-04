@@ -155,6 +155,13 @@ Abhilfe verschieden ist: ein pausiertes Modell weckt man mit einem Klick, für
 einen fehlenden Sitz braucht es den Desktop Companion, einen Model-Host, einen
 OpenAI-kompatiblen Endpunkt oder einen WebMCP-fähigen Browser-Agenten.
 
+**Deshalb zykelt die Modellfigur nur durch drei Zustände** — `here-executing`,
+`here-advising`, `standby` —, nie durch `away`. Die Menschenfigur zykelt weiter
+durch alle vier. Den Sitz in `away` zu drücken hieß, die Verbindung selbst zu
+kappen, und der Mensch kam nur über die andere Figur zurück; das Companion-
+Cockpit bot von Anfang an nur pausiert und aktiv. Beim Pausieren sagt das Panel
+„Model paused - click again to resume".
+
 ## Was unverändert bleibt
 
 Das Drahtformat ist weiterhin 0.1: Presence-Events, Offers, Autorisierungen,
