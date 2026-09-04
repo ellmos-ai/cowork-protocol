@@ -365,10 +365,16 @@
             <button class="quiet-button" id="stop-speech" type="button"><svg class="ui-icon ui-icon-muted" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.4a2.6 2.6 0 0 1 2.6 2.6v5.5a2.6 2.6 0 0 1-5.2 0V6a2.6 2.6 0 0 1 2.6-2.6Z"/><path d="M5.7 11.1a6.3 6.3 0 0 0 12.6 0"/><path d="M12 17.4v3.1"/><path d="M9.1 20.5h5.8"/><path class="ui-icon-slash" d="M4.4 4.4 19.6 19.6"/></svg><span class="button-label">Stop voice</span></button>
           </div>
         </form>
-        <label class="check-row compact-check speak-replies">
-          <input id="speak-output" type="checkbox" checked>
-          <span>Speak replies</span>
-        </label>
+        <div class="talk-options">
+          <label class="check-row compact-check speak-replies">
+            <input id="speak-output" type="checkbox" checked>
+            <span>Speak replies</span>
+          </label>
+          <label class="check-row compact-check speak-replies">
+            <input id="keep-listening" type="checkbox">
+            <span>Keep listening</span>
+          </label>
+        </div>
         <p id="transcript" class="transcript" aria-live="polite">Waiting quietly. Silence creates no model turn.</p>
       </section>
 

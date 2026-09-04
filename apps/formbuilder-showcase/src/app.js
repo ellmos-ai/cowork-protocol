@@ -38,8 +38,10 @@ import {
   BRIDGE_COPY,
   BRIDGE_ICON,
   REFERENCE_UI_PROVIDER_ID,
+  createHoldToTalk,
   createSpeaker,
   createStepIcon,
+  readFinalTranscript,
   STATUS_STEPS,
   statusForWorkModeChoice,
   workModeChoices
@@ -325,6 +327,7 @@ let coworkToolHandlers = {};
 let offerCounter = 0;
 let changeCounter = 0;
 let recognitionSession = null;
+let holdToTalk = null;
 let leaseCallsUsed = 0;
 // Declared up here because authorityState() reads both while the module is
 // still initializing - the Studio bridge and the workspace switcher are
@@ -911,6 +914,7 @@ async function detachCoworkSurface() {
     detached.document.documentElement.lang = document.documentElement.lang;
     detached.document.body.className = "cowork-detached-body";
     copySurfaceStyles(detached.document);
+    attachHoldToTalk(detached.document);
     document.querySelector(".workspace")?.classList.add("cowork-surface-detached");
     detached.document.body.append(coworkPanel);
     claimSurface({
@@ -1394,6 +1398,7 @@ function render() {
   $("#conversation-input").disabled = companionConnected;
   $("#send-conversation").disabled = companionConnected || conversationBusy;
   $("#talk").disabled = companionConnected;
+  $("#keep-listening").disabled = companionConnected;
   $("#toggle-agent").textContent =
     session.model.availability === "here" ? "Pause model" : "Resume model";
   renderWorkModeChoices(session.workMode);
@@ -2459,27 +2464,47 @@ function configureSpeech() {
   const talkButton = $("#talk");
   // The button keeps its icon: only this label node ever changes.
   const talkLabel = talkButton.querySelector(".button-label");
+  const keepListening = $("#keep-listening");
+  const input = $("#conversation-input");
   if (!Recognition) {
     talkButton.disabled = true;
+    keepListening.disabled = true;
     $("#transcript").textContent = "Speech recognition is unavailable here. Text controls remain usable.";
     return;
   }
 
+  // Two ways of listening, one rule: a single press is one turn, while a held
+  // key or a kept-open microphone collects into the field and leaves the
+  // sending to the human. A turn per finished phrase would answer half
+  // sentences, which is the same silence-makes-no-turn contract seen from the
+  // other side.
+  let collecting = false;
+
   recognitionSession = createRecognitionSession({
     Recognition,
     onActiveChange: (active) => {
-      talkButton.disabled = active;
-      talkButton.setAttribute("aria-busy", String(active));
+      // Not disabled while listening: a pressed button is what stops it, and
+      // a disabled control tells a screen reader nothing happened.
+      talkButton.setAttribute("aria-pressed", String(active));
     },
     onStart: () => {
       talkButton.classList.add("is-listening");
       talkLabel.textContent = "Listening…";
-      $("#transcript").textContent = "Listening. Pause naturally; silence will not create a turn.";
+      $("#transcript").textContent = collecting
+        ? "Listening. What you say lands in the field; you decide when to send it."
+        : "Listening. Pause naturally; silence will not create a turn.";
     },
     onResult: (event) => {
-      const transcript = event.results?.[0]?.[0]?.transcript?.trim() ?? "";
-      $("#conversation-input").value = transcript;
-      void sendConversationTurn(transcript);
+      const heard = readFinalTranscript(event);
+      if (heard === "") return;
+      if (!collecting) {
+        input.value = heard;
+        void sendConversationTurn(heard);
+        return;
+      }
+      input.value = [input.value.trim(), heard].filter(Boolean).join(" ");
+      $("#transcript").textContent = `Heard: ${input.value}
+Send when you are ready.`;
     },
     onError: (event) => {
       $("#transcript").textContent =
@@ -2490,9 +2515,42 @@ function configureSpeech() {
     onEnd: () => {
       talkButton.classList.remove("is-listening");
       talkLabel.textContent = "Push to talk";
+      collecting = false;
     }
   });
-  talkButton.addEventListener("click", () => recognitionSession.start());
+
+  // Collecting always listens continuously: without it the browser ends the
+  // session at the first natural pause, which is what made push-to-talk fall
+  // back to off while the human was still holding the key.
+  function startListening(collect) {
+    collecting = collect;
+    recognitionSession.setContinuous(collect);
+    recognitionSession.start();
+  }
+
+  talkButton.addEventListener("click", () => {
+    if (recognitionSession.isActive()) {
+      recognitionSession.stop();
+      return;
+    }
+    startListening(keepListening.checked);
+  });
+
+  holdToTalk = createHoldToTalk({
+    start: () => startListening(true),
+    stop: () => recognitionSession.stop()
+  });
+  attachHoldToTalk(document);
+}
+
+/** The panel moves between documents, and key events do not follow it. Every
+ *  document that can hold the panel gets the same space bar. */
+function attachHoldToTalk(targetDocument) {
+  if (holdToTalk === null) return;
+  targetDocument.addEventListener("keydown", (event) => holdToTalk.keydown(event));
+  targetDocument.addEventListener("keyup", (event) => holdToTalk.keyup(event));
+  // A window that loses focus mid-hold never sees the release.
+  targetDocument.defaultView?.addEventListener("blur", () => holdToTalk.cancel());
 }
 
 async function configureWebMcp() {

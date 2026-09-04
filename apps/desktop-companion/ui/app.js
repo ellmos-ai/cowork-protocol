@@ -1,7 +1,9 @@
 import {
   buildWorkModePresentation,
+  createHoldToTalk,
   createSpeaker,
   createStepIcon,
+  readFinalTranscript,
   STATUS_STEPS
 } from "./reference-ui.js";
 
@@ -255,6 +257,7 @@ function render(state) {
   $("#conversation-input").disabled = !modelInputEnabled;
   $("#send").disabled = !modelInputEnabled || busy;
   $("#talk").disabled = !modelInputEnabled;
+  $("#keep-listening").disabled = !modelInputEnabled;
 }
 
 async function refresh() {
@@ -417,19 +420,43 @@ const SPEECH_ERROR_MESSAGES = {
   "start-failed": "Listening could not start - it may already be running. Wait a moment and press Talk again."
 };
 
-$("#talk").addEventListener("click", () => {
+// One press is one dictation; a held space bar or a kept-open microphone
+// collects into the field and leaves the sending to the human, exactly as the
+// page panel does.
+let recognition = null;
+let collecting = false;
+
+function stopListening() {
+  try {
+    recognition?.stop();
+  } catch {
+    // Already stopped: nothing to report.
+  }
+}
+
+function startListening(collect) {
   const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
   if (!Recognition) {
     $("#status").textContent = "Speech recognition is unavailable in this browser.";
     return;
   }
-  const recognition = new Recognition();
+  if (recognition) return;
+  collecting = collect;
+  recognition = new Recognition();
   recognition.lang = navigator.language || "en-US";
   recognition.interimResults = false;
+  // Without this the browser ends the session at the first natural pause,
+  // which is what made the microphone fall back to off mid-sentence.
+  recognition.continuous = collect;
   let heard = false;
   recognition.onresult = (event) => {
     heard = true;
-    $("#conversation-input").value = event.results[0][0].transcript;
+    const phrase = readFinalTranscript(event);
+    if (phrase === "") return;
+    const input = $("#conversation-input");
+    input.value = collecting
+      ? [input.value.trim(), phrase].filter(Boolean).join(" ")
+      : phrase;
     $("#status").textContent = "Transcript ready. Send when you choose.";
   };
   recognition.onerror = (event) => {
@@ -442,17 +469,42 @@ $("#talk").addEventListener("click", () => {
   // ends the session on its own. The button itself needs no re-enabling:
   // render() owns its disabled state and runs every second.
   recognition.onend = () => {
+    recognition = null;
+    collecting = false;
+    $("#talk").classList.remove("is-listening");
+    $("#talk").setAttribute("aria-pressed", "false");
     if (!heard) $("#status").textContent = "Listening stopped. Press Talk to try again.";
   };
   try {
     recognition.start();
   } catch {
     // A second start on a running recognition throws InvalidStateError.
+    recognition = null;
     $("#status").textContent = SPEECH_ERROR_MESSAGES["start-failed"];
     return;
   }
-  $("#status").textContent = "Listening… pause naturally.";
+  $("#talk").classList.add("is-listening");
+  $("#talk").setAttribute("aria-pressed", "true");
+  $("#status").textContent = collect
+    ? "Listening. What you say lands in the field; you decide when to send it."
+    : "Listening… pause naturally.";
+}
+
+$("#talk").addEventListener("click", () => {
+  if (recognition) {
+    stopListening();
+    return;
+  }
+  startListening($("#keep-listening").checked);
 });
+
+const holdToTalk = createHoldToTalk({
+  start: () => startListening(true),
+  stop: stopListening
+});
+document.addEventListener("keydown", (event) => holdToTalk.keydown(event));
+document.addEventListener("keyup", (event) => holdToTalk.keyup(event));
+window.addEventListener("blur", () => holdToTalk.cancel());
 
 $("#stop-speech").addEventListener("click", () => window.speechSynthesis?.cancel());
 

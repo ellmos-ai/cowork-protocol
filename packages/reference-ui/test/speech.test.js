@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createSpeaker, selectSpeechVoice } from "../src/index.js";
+import {
+  createHoldToTalk,
+  createSpeaker,
+  readFinalTranscript,
+  selectSpeechVoice
+} from "../src/index.js";
 
 const voice = (name, lang = "en-US") => ({ name, lang });
 
@@ -230,4 +235,77 @@ test("a preferred male voice wins even when it is not a Natural one", () => {
     selectSpeechVoice(installed).name,
     "Microsoft David Desktop - English (United States)"
   );
+});
+
+// --- Push to talk ----------------------------------------------------------
+
+const keyEvent = (key, target = { tagName: "BODY" }) => ({
+  key,
+  target,
+  preventDefault() {
+    this.defaultPrevented = true;
+  }
+});
+
+function recorder() {
+  const calls = [];
+  const control = createHoldToTalk({
+    start: () => calls.push("start"),
+    stop: () => calls.push("stop")
+  });
+  return { calls, control };
+}
+
+test("holding the space bar starts listening once and releasing it stops", () => {
+  const { calls, control } = recorder();
+  assert.equal(control.keydown(keyEvent(" ")), true);
+  assert.equal(control.isHeld(), true);
+  assert.equal(control.keydown(keyEvent(" ")), false, "a held key repeats, it does not press again");
+  assert.equal(control.keyup(keyEvent(" ")), true);
+  assert.equal(control.isHeld(), false);
+  assert.deepEqual(calls, ["start", "stop"]);
+});
+
+test("a release nobody pressed, another key and a shortcut all do nothing", () => {
+  const { calls, control } = recorder();
+  assert.equal(control.keyup(keyEvent(" ")), false);
+  assert.equal(control.keydown(keyEvent("a")), false);
+  assert.equal(control.keydown({ ...keyEvent(" "), ctrlKey: true }), false);
+  assert.deepEqual(calls, []);
+});
+
+test("in a text field the space bar stays a space", () => {
+  const { calls, control } = recorder();
+  for (const tagName of ["INPUT", "TEXTAREA", "BUTTON"]) {
+    assert.equal(control.keydown(keyEvent(" ", { tagName })), false);
+  }
+  assert.equal(control.keydown(keyEvent(" ", { tagName: "DIV", isContentEditable: true })), false);
+  assert.deepEqual(calls, []);
+});
+
+test("a window that loses focus mid-hold stops listening instead of staying open", () => {
+  const { calls, control } = recorder();
+  control.keydown(keyEvent(" "));
+  assert.equal(control.cancel(), true);
+  assert.equal(control.cancel(), false, "nothing left to cancel");
+  assert.deepEqual(calls, ["start", "stop"]);
+});
+
+test("listening continuously reads only the new final phrases, never an interim one", () => {
+  const results = [
+    { 0: { transcript: "make the label clearer" }, isFinal: true },
+    { 0: { transcript: " and add a hint" }, isFinal: true },
+    { 0: { transcript: " maybe" }, isFinal: false }
+  ];
+  assert.equal(
+    readFinalTranscript({ results, resultIndex: 0 }),
+    "make the label clearer and add a hint"
+  );
+  assert.equal(readFinalTranscript({ results, resultIndex: 1 }), "and add a hint");
+  assert.equal(readFinalTranscript({ results, resultIndex: 2 }), "", "silence creates no text");
+});
+
+test("a one-shot result without isFinal still reads, so a single press keeps working", () => {
+  assert.equal(readFinalTranscript({ results: [{ 0: { transcript: " hello " } }] }), "hello");
+  assert.equal(readFinalTranscript({}), "");
 });
