@@ -208,6 +208,67 @@ export function initBuilderCowork({
     return summary;
   }
 
+  /** The one reading of an agent's `value` for form-add-field: a label, with
+   *  an optional palette prefix ("date: Preferred date"). Shared by the offer
+   *  path and the solo path so a click-gated field and a solo one can never be
+   *  built from the same string in two different ways. */
+  function fieldFromAgentValue(text) {
+    const prefixed = /^([a-z-]+):\s*(.+)$/.exec(text);
+    const known = prefixed !== null && paletteIds.includes(prefixed[1]);
+    return createField(known ? prefixed[1] : "text-short", { label: known ? prefixed[2] : text });
+  }
+
+  /** Continues a grant the human minted elsewhere - the panel's handover
+   *  buttons, or the Companion cockpit's seat click, which is the session
+   *  authority and mints for the page. The Studio holds its own grant record,
+   *  so without this a canvas-scoped session lease authorized nothing here and
+   *  every solo call answered LEASE_EXPIRED. Nothing is widened: goal, scope,
+   *  budget and expiry are copied from the lease the human already granted. */
+  function adoptGrant(lease) {
+    if (bridge.readActiveGrant() !== null) return bridge.readActiveGrant();
+    const durationMs = Date.parse(lease.expiresAt) - Date.now();
+    if (!Number.isFinite(durationMs) || durationMs <= 0) {
+      throw new CoworkProtocolError("LEASE_EXPIRED", "That grant has already expired");
+    }
+    const grant = bridge.startDelegation({
+      origin: lease.origin,
+      goal: lease.goal,
+      maxCalls: lease.maxCalls,
+      durationMs,
+      pageVersion: controller.getPageVersion(),
+      allowedCapabilityIds: lease.allowedCapabilityIds,
+      allowedTargetIds: lease.allowedTargetIds,
+      now: new Date().toISOString()
+    });
+    callsUsed = 0;
+    return grant;
+  }
+
+  /** One field added under the active canvas grant, with no offer and no
+   *  click: the Studio's side of K3. The label comes from the agent's own tool
+   *  argument rather than from the seat, which is what lets a local agent
+   *  build a long form field by field instead of parking 35 offers nobody can
+   *  reach - the panel shows three at a time. Budget, scope and expiry are the
+   *  grant's, checked by the same authorizeSoloAction every solo call passes. */
+  function soloAddField({ value, humanPresence = "present" }) {
+    const text = typeof value === "string" ? value.trim() : "";
+    if (text === "") {
+      throw new CoworkProtocolError("INVALID_ARGUMENTS", "form-add-field needs a label");
+    }
+    const result = bridge.soloExecute({
+      field: fieldFromAgentValue(text),
+      elements: controller.getElements(),
+      humanPresence,
+      currentPageVersion: controller.getPageVersion(),
+      now: new Date().toISOString()
+    });
+    if (result.receipt.status === "verified") {
+      controller.applyElements(result.elements);
+      callsUsed += 1;
+    }
+    return result.receipt;
+  }
+
   // --- GAP-01/GAP-04: a presence-independent, canvas-scoped delegation that
   // can draft several new fields, one call at a time or as a batch. ---
   function startGrant({ goal, maxCalls, durationMs }) {
@@ -418,10 +479,7 @@ export function initBuilderCowork({
     if (text === "") throw new CoworkProtocolError("INVALID_ARGUMENTS", "The offer needs a value");
     let proposedArguments;
     if (capabilityId === "form-add-field") {
-      const prefixed = /^([a-z-]+):\s*(.+)$/.exec(text);
-      const paletteId = prefixed && paletteIds.includes(prefixed[1]) ? prefixed[1] : "text-short";
-      const label = prefixed && paletteIds.includes(prefixed[1]) ? prefixed[2] : text;
-      proposedArguments = { field: createField(paletteId, { label }) };
+      proposedArguments = { field: fieldFromAgentValue(text) };
     } else if (capabilityId === "form-update-field") {
       proposedArguments = { fieldId: focusedFieldId, patch: { label: text } };
     } else if (capabilityId === "form-move-field") {
@@ -470,6 +528,8 @@ export function initBuilderCowork({
     clearReturnHighlights: () => highlightReturnedFields(null),
     suggestField,
     startGrant,
+    adoptGrant,
+    soloAddField,
     readActiveGrant: () => bridge.readActiveGrant(),
     readCallsUsed: () => callsUsed,
     draftOne,

@@ -90,7 +90,10 @@ function applyBuilderPlan(plan, elements) {
  * own page-version counter, exactly like the existing FormBuilder field
  * wiring in app.js owns the DOM control it mutates.
  */
-export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase-builder" } = {}) {
+// One page, one session: the Studio is a second canvas of the showcase
+// session, not a session of its own. A separate id meant the Companion and
+// MCP agents saw a focus whose sessionId matched nothing in their store.
+export function createBuilderCoworkBridge({ sessionId = "formbuilder-showcase" } = {}) {
   let offers = [];
   let receipts = [];
   let offerCounter = 0;

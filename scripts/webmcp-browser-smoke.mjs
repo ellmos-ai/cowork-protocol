@@ -1013,6 +1013,49 @@ try {
   }
   observed.studioThroughTools = { focus: studioFocus.packet, contextLevel: studioContext.packet.level, studioBeforeClick, studioAfterClick };
 
+  // --- K3 on the Studio canvas: under a canvas-scoped grant an agent adds a
+  // field with no offer and no click. Without this an agent building a long
+  // form has to park one offer per field and wait for a click on each, and the
+  // panel shows three at a time - unusable past a handful of fields. ---
+  await evaluateValue(call, `document.querySelector("#fold-handoff").open = true`);
+  await evaluateValue(call, `document.querySelector("#lease-goal").value = "Draft the rest of this form"`);
+  const studioFieldsBeforeGrant = await evaluateValue(
+    call,
+    `document.querySelectorAll(".builder-field-row").length`
+  );
+  await dispatchTrustedClick(
+    call,
+    'document.querySelector("#hand-over")',
+    "Hand the Studio canvas over while watching"
+  );
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const studioSolo = await evaluateValue(
+    call,
+    toolExecutionExpression("cowork_execute_solo", {
+      capabilityId: "form-add-field",
+      targetId: "form-builder:canvas",
+      value: "date: Preferred start date"
+    })
+  );
+  const studioSoloObserved = await evaluateValue(call, `(() => ({
+    rows: document.querySelectorAll(".builder-field-row").length,
+    labels: [...document.querySelectorAll(".builder-field-row label input")].map((input) => input.value),
+    visibleOfferCount: document.querySelectorAll(".offer-chip").length
+  }))()`);
+  await dispatchTrustedClick(call, 'document.querySelector("#return-human")', "End the Studio grant");
+  observed.studioSolo = { execution: studioSolo, ...studioSoloObserved, studioFieldsBeforeGrant };
+  if (studioSolo.packet?.status !== "verified") {
+    throw new Error(`cowork_execute_solo did not verify a Studio field: ${JSON.stringify(studioSolo)}`);
+  }
+  if (!studioSoloObserved.labels.includes("Preferred start date")) {
+    throw new Error(
+      `The agent's field did not land on the canvas: ${JSON.stringify(studioSoloObserved)}`
+    );
+  }
+  if (studioSoloObserved.visibleOfferCount !== 0) {
+    throw new Error("Solo work must not leave an offer waiting for a click");
+  }
+
   const summary = validateNativeWebMcpObservation(observed);
   const conversationSummary = validateConversationObservation(conversationObserved);
   const bridgeSummary = validateBrowserHostBridgeObservation(bridgeObserved);
@@ -1040,6 +1083,8 @@ try {
     advisorCommentHiddenWhenModelStopsAdvising: advisorHiddenAfterModeChange,
     modelExecutionNeedsGrantClaim: true,
     studioFollowedThroughToolsClaim: true,
+    studioSoloAddedFieldWithoutClick: observed.studioSolo.labels.includes("Preferred start date"),
+
     handOverWhileWatchingClaim: true,
     doublingOnDisjointAreasClaim: true
   }, null, 2));
