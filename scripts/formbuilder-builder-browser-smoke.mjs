@@ -381,6 +381,21 @@ try {
   // the section first, exactly as a reader reaches for it.
   await evaluateValue(call, `document.querySelector("#fold-handoff").open = true`);
   await evaluateValue(call, `document.querySelector("#lease-goal").value = "Draft good follow-up questions"`);
+  // K3: and with nothing pointed at. Someone who has stepped away cannot
+  // point, so the handover has to be decided by the canvas they are on -
+  // turning attention off and back on is how a human clears the lens.
+  await evaluateValue(call, `(() => {
+    const select = document.querySelector("#attention-mode");
+    for (const value of ["off", "pointer"]) {
+      select.value = value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  })()`);
+  requireCondition(
+    (await evaluateValue(call, `document.querySelector("#focus-label").textContent`))
+      .includes("Pointing at:") === false,
+    "The Studio lens must be cleared before proving a pointer-free handover"
+  );
   await dispatchTrustedClick(call, "#away-short");
   await waitForExpression(
     call,

@@ -323,9 +323,17 @@ the clicks where the reader already sees them. Both frames come from
 
 The Desktop Companion is an app window with no extension involved: not tied to
 one browser, with a filtered Computer Use fallback next to structured WebMCP
-execution. While it is connected it **holds the session's model seat** — the
-screenshot shows a restored `formbuilder-showcase` session at revision 49 with
-a local `qwen3.8:27b-mlx` in the seat. See
+execution. While it is connected it **holds the session's model seat**, which is
+why it is a vehicle and not a bridge: it carries a model across whichever bridge
+it is linked to, and the page keeps the click.
+
+The frame comes from a Companion started for the shoot: an in-process host on an
+ephemeral port with an empty session store, one locally served showcase page
+linked to it, and one fixture reply standing in for the model. It is not a
+picture of anyone's running Companion. The capture script has no default for
+`COWORK_COMPANION_UI` for that reason — the old default was the port a
+developer's own Companion listens on, and one run photographed a live session
+and its real conversation into this repository. See
 [apps/desktop-companion/README.md](../apps/desktop-companion/README.md).
 
 ## Still open
