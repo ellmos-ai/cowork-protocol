@@ -30,7 +30,7 @@ npm dependencies, so no `npm install` is needed.
 3. Turn on **Developer mode** (top right).
 4. Choose **Load unpacked** and select the `dist-browser-companion` directory —
    the directory itself, not a file inside it.
-5. The card **Cowork Protocol Bridge 0.3.1** appears with no errors.
+5. The card **Cowork Protocol Bridge 0.3.2** appears with no errors.
    Pin it: click the puzzle-piece toolbar icon, then the pin next to the entry.
 6. Optional: check the shortcut under `chrome://extensions/shortcuts`. It ships
    as `Ctrl+Shift+Y` (`Command+Shift+Y` on macOS) and does the same as clicking
@@ -65,7 +65,7 @@ Extension:  apps/browser-companion (Manifest V3, Chrome/Edge, unpacked)
    click "Load unpacked", select that directory. Do this yourself only if you
    have browser control; otherwise give me the clicks and wait for me.
 5. Expected result: a card named "Cowork Protocol Bridge" version
-   0.3.1 with no error badge. Ask me to confirm before continuing.
+   0.3.2 with no error badge. Ask me to confirm before continuing.
 6. Verify with me: open any ordinary web page with a text field, click the
    extension's toolbar icon (or press Ctrl+Shift+Y). The icon should show an
    "ON" badge and a side panel titled "Browser Bridge" should open.

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Cowork Protocol Bridge",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "The Cowork Protocol bridge for pages that carry no Cowork panel: a bounded view of the page for a WebMCP agent, with the click staying yours.",
   "background": {
     "service_worker": "service-worker.js",
