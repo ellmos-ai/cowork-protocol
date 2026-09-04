@@ -4,6 +4,7 @@ import test from "node:test";
 import { coworkToolDefinitions } from "../../../packages/native-webmcp/src/index.js";
 import {
   coworkAgentToolNames,
+  currentActor,
   runCompanionAgentRequest,
   startCompanionAgentRelay
 } from "../src/companion-agent-relay.js";
@@ -165,4 +166,32 @@ test("a link failure is surfaced, and the relay keeps polling", async () => {
 
   assert.ok(pulls >= 2);
   assert.equal(errors[0], "COMPANION_UNAVAILABLE");
+});
+
+test("the caller is named while its call runs, and only while it runs", async () => {
+  // Every offer carries its author. The author is known only here, at the
+  // moment the call arrives - the nine tool schemas never learned a new field.
+  const seenActors = [];
+  const handlers = { offerAction: () => (seenActors.push(currentActor()), { offerId: "o" }) };
+  const call = (request) => runCompanionAgentRequest({ request, handlers });
+
+  await call({ name: "cowork_offer_action", actor: "seat:qwen3.8:27b-mlx" });
+  await call({ name: "cowork_offer_action", clientName: "cc" });
+  await call({ name: "cowork_offer_action" });
+
+  assert.deepEqual(seenActors, ["seat:qwen3.8:27b-mlx", "mcp:cc", "mcp:unknown"]);
+  // Outside a relayed call the page itself is the caller - that is WebMCP.
+  assert.equal(currentActor(), "webmcp-agent");
+});
+
+test("a failed call still hands the actor context back", async () => {
+  await runCompanionAgentRequest({
+    request: { name: "cowork_offer_action", clientName: "cc" },
+    handlers: {
+      offerAction: () => {
+        throw new Error("the page refused");
+      }
+    }
+  });
+  assert.equal(currentActor(), "webmcp-agent");
 });

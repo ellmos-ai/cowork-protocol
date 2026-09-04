@@ -773,6 +773,15 @@ Gate numbers for that change:
   Picture-in-Picture surface working. `button.textContent` still reads as the
   label alone, which is what `smoke:surface` and `smoke:companion-mcp` assert
 
+### Who proposed it (offer attribution)
+
+- measured on this branch: `node --test` 490 passing (488 before, plus the two
+  that pin the actor derivation - `seat:` from the request, `mcp:<client>` from
+  the client name, `webmcp-agent` outside a relayed call), with
+  `smoke:webmcp`, `smoke:companion-mcp`, `smoke:surface`, `build:pages`,
+  `build:companion`, `check:secrets` and `check:architecture` all exit 0; the
+  nine tool schemas are unchanged, so attribution cost the protocol nothing
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;
