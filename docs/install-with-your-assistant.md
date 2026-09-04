@@ -35,7 +35,7 @@ Requirements: Node.js 22 or newer; Chrome or Edge 150+ for the browser parts.
    model name). With Demo off and nothing connected the page proposes nothing.
 6. Optional browser extension (Cowork surface on any page):
      npm run build:companion
-   Expected: "Browser companion artifact: 21 files". Then open
+   Expected: "Browser companion artifact: 22 files". Then open
    chrome://extensions (or edge://extensions), enable Developer mode, choose
    "Load unpacked" and select the dist-browser-companion directory. Details:
    apps/browser-companion/INSTALL.md
@@ -52,8 +52,8 @@ step's expected output differs, show me the output and ask before continuing.
 
 ## What the model will find
 
-- `README.md` — what the protocol is, the three hosts, all npm scripts.
-- `docs/hosts.md` — one protocol, one human surface, three hosts.
+- `README.md` — what the protocol is, the four levels, all npm scripts.
+- `docs/hosts.md` — two bridges with a place, one vehicle.
 - `docs/work-modes.md` — the presence/role matrix that decides who may click.
 - `docs/evidence.md` — every claim with the measurement behind it.
 - `apps/formbuilder-showcase/INTEGRATION.md` — how an existing app attaches the protocol.

@@ -40,6 +40,37 @@ const EXPECTED_KEYBOARD_ORDER = Object.freeze([
   "toggle"
 ]);
 
+// A bridge has a place, and the panel has to say which of four things is true
+// of that place. Rest, arrival, crossing, departure, rest: the instruments
+// exist only in the middle one, and the switch exists throughout.
+const EXPECTED_BRIDGE_JOURNEY = Object.freeze([
+  Object.freeze({
+    bridge: "resting",
+    message: "No model is crossing the bridge.",
+    open: false
+  }),
+  Object.freeze({
+    bridge: "arriving",
+    message: "A model is coming across the bridge.",
+    open: false
+  }),
+  Object.freeze({
+    bridge: "crossing",
+    message: "A model is on the bridge.",
+    open: true
+  }),
+  Object.freeze({
+    bridge: "leaving",
+    message: "The model left the bridge.",
+    open: false
+  }),
+  Object.freeze({
+    bridge: "resting",
+    message: "No model is crossing the bridge.",
+    open: false
+  })
+]);
+
 function fail(message) {
   throw new Error(`Cockpit browser evidence rejected: ${message}`);
 }
@@ -86,6 +117,36 @@ export function validateCockpitBrowserObservation(observation) {
     }
   });
 
+  const journey = Array.isArray(observation.bridgeJourney) ? observation.bridgeJourney : [];
+  if (journey.length !== EXPECTED_BRIDGE_JOURNEY.length) {
+    fail("the bridge journey from rest through arrival back to rest is incomplete");
+  }
+  journey.forEach((step, index) => {
+    const expected = EXPECTED_BRIDGE_JOURNEY[index];
+    if (step?.bridge !== expected.bridge) {
+      fail(`bridge step ${index + 1} is ${step?.bridge}, not ${expected.bridge}`);
+    }
+    if (step.message?.trim() !== expected.message) {
+      fail(`bridge step ${index + 1} does not say "${expected.message}"`);
+    }
+    if (step.markPaths !== 4) {
+      fail(`bridge step ${index + 1} does not draw the shared bridge mark`);
+    }
+    if (step.powerKeyVisible !== true) {
+      fail(`bridge step ${index + 1} hides the switch that got the panel here`);
+    }
+    if (step.focusInstrumentVisible !== expected.open || step.actorsVisible !== expected.open) {
+      fail(
+        expected.open
+          ? `bridge step ${index + 1} withholds the instruments while a model is on the bridge`
+          : `bridge step ${index + 1} offers instruments with no model on the bridge`
+      );
+    }
+  });
+  if (!journey[0]?.where?.includes("https://events.example")) {
+    fail("the resting bridge does not say which page it is looking at");
+  }
+
   if (observation.focusLabel !== "Selected: Registration title") {
     fail("the focus instrument did not execute through the real Side Panel script");
   }
@@ -120,6 +181,7 @@ export function validateCockpitBrowserObservation(observation) {
   return {
     ...observation,
     cockpitVisualClaim: true,
+    bridgeRestArriveDepartClaim: true,
     narrowViewportClaim: true,
     responsiveRangeClaim: true,
     keyboardNavigationClaim: true,

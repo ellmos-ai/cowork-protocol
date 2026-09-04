@@ -1,4 +1,4 @@
-# Cowork Protocol Browser Companion
+# Cowork Protocol Bridge
 
 This optional Manifest V3 extension is a user-selected Cowork surface and
 precision bridge. It is disabled by default. When enabled, it consumes native
@@ -47,7 +47,38 @@ an actual trusted click on the extension surface reaches the existing Cowork
 authorization contract, and the result is reported only after the observed
 value matches.
 
-## Dialogue Relay cockpit
+## Rest, arrival, departure
+
+A bridge has a place, and the panel says which of four things is true of that
+place. At rest it shows the bridge mark, **No model is crossing the bridge.**,
+the on/off switch and one line naming the page and the route — nothing else.
+Instruments that cannot do anything without a model would promise a control
+this surface does not have, which is what the earlier panel did: it looked like
+the page's own panel and answered every press with a refusal.
+
+An agent's first Cowork tool call is the arrival. A mark travels the deck once
+(1.4 s, removed entirely under `prefers-reduced-motion`) and the instruments
+open. Ninety seconds of silence is the departure: long enough to sit through a
+slow model turn plus a tool round trip, short enough that a panel does not keep
+standing open in front of an agent that stopped answering. A standing offer
+holds the bridge open past that, because an offer waiting for a click is an
+agent waiting for an answer.
+
+Only an agent moves this. Reading focus and widening context are the person's
+own hand on the panel and never fill an empty bridge.
+
+Two cases outrank the bridge, in this order. When the session lives in the
+Desktop Companion, the panel folds to that one line. When the page draws its
+own Cowork panel, it folds to **This page carries its own bridge; the panel on
+the page takes your clicks.** A page that speaks the protocol but draws no
+panel of its own is not that case: there the bridge is the surface, and rest,
+arrival and departure apply as anywhere else.
+
+The route line names what the *page* offers, never what this bridge is. The old
+label `Native Cowork` read as if the extension were the native thing; it now
+says `Page has its own tools (native WebMCP)`.
+
+## The panel while a model is on it
 
 The Side Panel is a bright collaboration instrument rather than a generic chat
 sidebar. The human silhouette and friendly computer are the primary state

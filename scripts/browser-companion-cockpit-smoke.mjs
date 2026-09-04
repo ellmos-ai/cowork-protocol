@@ -155,6 +155,27 @@ async function observeState(call) {
   })()`);
 }
 
+async function observeBridge(call) {
+  return evaluateValue(call, `(() => {
+    const root = document.querySelector(".cowork-cockpit");
+    const visible = (selector) => {
+      const element = document.querySelector(selector);
+      if (!element || element.hidden) return false;
+      const style = getComputedStyle(element);
+      return style.display !== "none" && style.visibility !== "hidden";
+    };
+    return {
+      bridge: root.dataset.bridge,
+      message: document.querySelector("#bridge-message").textContent,
+      where: document.querySelector("#bridge-where").textContent,
+      markPaths: document.querySelectorAll("#bridge-mark svg path").length,
+      focusInstrumentVisible: visible("#focus-instrument"),
+      actorsVisible: visible(".collaboration-deck"),
+      powerKeyVisible: visible("#toggle")
+    };
+  })()`);
+}
+
 async function keyboardOrder(call) {
   await evaluateValue(call, "document.querySelector('#human-control').focus(); window.scrollTo(0, 0)");
   const order = ["human-control"];
@@ -189,7 +210,18 @@ const fixtureSource = `(() => {
     focusLabel: "Point to a page control",
     focusDetail: "No page content requested yet",
     statusText: "Cowork is active through the bounded bridge.",
-    pendingOffer: { offerId: "offer-cockpit-proof", summary: "Apply suggested title: Team meetup registration" }
+    // The bridge starts empty: no agent has crossed and nothing is proposed.
+    // An offer is what an arriving agent leaves behind, so it appears with it.
+    pendingOffer: null,
+    origin: "https://events.example",
+    pageOwnsBridge: false,
+    companionConnected: false,
+    agentLastSeenAt: null,
+    agentIdleTimeoutMs: 90_000
+  };
+  const OFFER = {
+    offerId: "offer-cockpit-proof",
+    summary: "Apply suggested title: Team meetup registration"
   };
   const cycle = [
     { availability: "here", role: "executing" },
@@ -239,6 +271,22 @@ const fixtureSource = `(() => {
     return envelope();
   };
   const runtime = { sendMessage };
+  // Stands in for an agent reaching the bridge over the page channel, and for
+  // that agent going quiet. The panel is never told which happened; it reads
+  // the same two fields the shipped runtime publishes.
+  Object.defineProperty(globalThis, "__cockpitBridge", {
+    configurable: true,
+    value: {
+      arrive() {
+        state.agentLastSeenAt = Date.now();
+        state.pendingOffer = OFFER;
+      },
+      leave() {
+        state.agentLastSeenAt = Date.now() - state.agentIdleTimeoutMs - 1;
+        state.pendingOffer = null;
+      }
+    }
+  });
   const chromeObject = globalThis.chrome ?? {};
   Object.defineProperty(chromeObject, "runtime", { configurable: true, value: runtime });
   Object.defineProperty(globalThis, "chrome", { configurable: true, value: chromeObject });
@@ -308,6 +356,19 @@ try {
   await waitForValue(call, "document.readyState", (value) => value === "complete");
   await waitForValue(call, "document.querySelector('.cowork-cockpit')?.dataset.relayState", (value) => value === "live");
 
+  const bridgeStage = "document.querySelector('.cowork-cockpit')?.dataset.bridge";
+  const bridgeJourney = [];
+  // An empty bridge offers the switch and nothing else: instruments that
+  // cannot do anything without a model are not shown at all.
+  bridgeJourney.push(await observeBridge(call));
+  const restingFrame = await captureFrame(call, "cockpit-00-bridge-resting.png");
+
+  await evaluateValue(call, "globalThis.__cockpitBridge.arrive()");
+  await waitForValue(call, bridgeStage, (value) => value === "arriving");
+  bridgeJourney.push(await observeBridge(call));
+  await waitForValue(call, bridgeStage, (value) => value === "crossing", 120);
+  bridgeJourney.push(await observeBridge(call));
+
   await trustedClick(call, "#focus-action");
   await trustedClick(call, "#context-gauge");
   await waitForValue(call, "document.querySelector('#context-gauge')?.dataset.level", (value) => value === "1");
@@ -375,6 +436,8 @@ try {
   const observation = {
     browser: version.Browser,
     cockpitUrl,
+    restingFrame,
+    bridgeJourney,
     screenshots,
     states,
     focusLabel: await evaluateValue(call, "document.querySelector('#focus-label').textContent"),
@@ -382,6 +445,14 @@ try {
     keyboardOrder: await keyboardOrder(call),
     responsiveSamples
   };
+  // Departure last: the tab order above has to be measured while the
+  // instruments are still there.
+  await evaluateValue(call, "globalThis.__cockpitBridge.leave()");
+  await waitForValue(call, bridgeStage, (value) => value === "leaving");
+  bridgeJourney.push(await observeBridge(call));
+  await waitForValue(call, bridgeStage, (value) => value === "resting", 120);
+  bridgeJourney.push(await observeBridge(call));
+
   const report = validateCockpitBrowserObservation(observation);
   if (evidenceDirectory) {
     await writeFile(

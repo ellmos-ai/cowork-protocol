@@ -31,7 +31,8 @@ test("the browser companion builds a self-contained MV3 extension", async () => 
     assert.equal("host_permissions" in manifest, false);
     assert.equal("content_scripts" in manifest, false);
     assert.equal(manifest.background.type, "module");
-    assert.equal(manifest.action.default_title, "Open Cowork Protocol");
+    assert.equal(manifest.name, "Cowork Protocol Bridge");
+    assert.equal(manifest.action.default_title, "Open the Cowork Protocol Bridge");
     assert.deepEqual(manifest.permissions, ["activeTab", "scripting", "sidePanel"]);
     assert.equal(manifest.side_panel.default_path, "sidepanel.html");
     assert.equal(

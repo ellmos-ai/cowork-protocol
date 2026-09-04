@@ -1,8 +1,8 @@
-# Browser Companion Cockpit — Design Direction
+# Browser Bridge Cockpit — Design Direction
 
 ## Primary direction
 
-The Browser Companion is a bright **Dialogue Relay Instrument**: an evidence
+The Browser Bridge is a bright **Dialogue Relay Instrument**: an evidence
 console whose primary object is the live relationship between human, model and
 the focused page target. It must read as a collaboration cockpit, not a chat
 sidebar or a grid of interchangeable AI cards.

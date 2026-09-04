@@ -2,7 +2,7 @@
 
 > A collaboration contract on top of WebMCP: bounded attention, offers that stay inert until a real human click, verified receipts, explicit presence and roles, scoped leases and grants, latest-only readback. Provider-neutral, dependency-light JavaScript (Node 22+), MIT.
 
-Cowork Protocol is the submission to The WebMCP Challenge (2026). The FormBuilder Studio page is the reference integration; a browser extension and a Desktop Companion host the same human surface elsewhere. See docs/hosts.md before assuming any of the three is "the product".
+Cowork Protocol is the submission to The WebMCP Challenge (2026). Two things carry it: a bridge, which has a place between one page and one model and is where the human clicks, and a vehicle, which carries a model across that bridge. The FormBuilder Studio page builds the bridge into itself; the browser extension carries the same bridge onto pages that built none; the Desktop Companion is the vehicle, not a third bridge. See docs/hosts.md before assuming any one of them is "the product".
 
 ## Start here
 
@@ -13,7 +13,7 @@ Cowork Protocol is the submission to The WebMCP Challenge (2026). The FormBuilde
 ## Concepts
 
 - [Panel tour and walkthrough](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/panel-tour.md): the annotated Cowork panel, every control explained, one session start to finish
-- [Three in one: one protocol, one human surface, three hosts](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/hosts.md)
+- [Three in one: two bridges with a place, one vehicle](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/hosts.md)
 - [Work modes](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/work-modes.md): presence and role per actor decide the mode and who holds the click right
 - [Integrating an existing app](https://github.com/ellmos-ai/cowork-protocol/blob/main/apps/formbuilder-showcase/INTEGRATION.md)
 
@@ -23,8 +23,8 @@ Cowork Protocol is the submission to The WebMCP Challenge (2026). The FormBuilde
 
 ## Hosts
 
-- [Browser extension install](https://github.com/ellmos-ai/cowork-protocol/blob/main/apps/browser-companion/INSTALL.md)
-- [Desktop Companion](https://github.com/ellmos-ai/cowork-protocol/blob/main/apps/desktop-companion/README.md)
+- [Browser Bridge install](https://github.com/ellmos-ai/cowork-protocol/blob/main/apps/browser-companion/INSTALL.md): the bridge as an extension, for pages that built none
+- [Desktop Companion](https://github.com/ellmos-ai/cowork-protocol/blob/main/apps/desktop-companion/README.md): the vehicle that carries a model across a bridge
 
 ## Optional
 

@@ -30,7 +30,7 @@ Imported web source:
 
 The original copyright notice and file-specific provenance are retained in `apps/formbuilder-showcase/FORMBUILDER-NOTICE.md`.
 
-The protocol packages, same-origin model transport, WebMCP adapters, FormBuilder connector, Cowork panel, the FormBuilder Studio Build/Fill/Export product, the optional `apps/browser-companion` extension and the `apps/desktop-companion` application are new challenge work. The Browser Companion reuses only the new Cowork core/bridge modules from this repository; it imports no additional pre-existing application source.
+The protocol packages, same-origin model transport, WebMCP adapters, FormBuilder connector, Cowork panel, the FormBuilder Studio Build/Fill/Export product, the optional `apps/browser-companion` extension and the `apps/desktop-companion` application are new challenge work. The Browser Bridge reuses only the new Cowork core/bridge modules from this repository; it imports no additional pre-existing application source.
 
 ## Publication boundary
 

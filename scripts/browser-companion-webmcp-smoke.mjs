@@ -334,7 +334,9 @@ try {
         offerId: button?.dataset.offerId ?? "",
         route: document.documentElement.dataset.route ??
           document.querySelector("[data-route]")?.dataset.route ?? "",
-        routeExplainer: document.querySelector("#route-explainer")?.textContent ?? ""
+        routeExplainer: document.querySelector("#route-explainer")?.textContent ?? "",
+        bridge: document.querySelector(".cowork-cockpit")?.dataset.bridge ?? "",
+        bridgeMessage: document.querySelector("#bridge-message")?.textContent ?? ""
       };
     })()`,
     (value) => value?.visible === true
@@ -393,9 +395,28 @@ try {
   );
   requireCondition(
     panelOffer.route === "bridge-webmcp" &&
-      panelOffer.routeExplainer.includes("registered Cowork tools here"),
+      panelOffer.routeExplainer.includes("this bridge registered them"),
     "The Side Panel must name the registered-tools route",
     { panelOffer }
+  );
+  // An attached bridge with nobody on it says so, and only an agent's own tool
+  // call puts a model on it. Enabling the relay is the human's hand and must
+  // not count.
+  requireCondition(
+    enabledState.agentLastSeenAt === null,
+    "An enabled bridge no agent has called must still be empty",
+    { agentLastSeenAt: enabledState.agentLastSeenAt }
+  );
+  requireCondition(
+    Number.isFinite(offeredState.agentLastSeenAt) &&
+      panelOffer.bridge === "crossing" &&
+      panelOffer.bridgeMessage.trim() === "A model is on the bridge.",
+    "The agent's tool calls must put a model on the bridge in the panel",
+    {
+      agentLastSeenAt: offeredState.agentLastSeenAt,
+      bridge: panelOffer.bridge,
+      bridgeMessage: panelOffer.bridgeMessage
+    }
   );
   requireCondition(
     afterClickState.lastTrustedHumanClick === true &&
@@ -413,6 +434,8 @@ try {
     mode: enabledState.mode,
     toolsRegistered: enabledState.toolsRegistered,
     panelRoute: panelOffer.route,
+    bridgeEmptyBeforeAgent: enabledState.agentLastSeenAt === null,
+    panelBridgeAfterAgent: panelOffer.bridge,
     focusTargetId: focus.targetId,
     valueBeforeOffer,
     valueAfterOffer,

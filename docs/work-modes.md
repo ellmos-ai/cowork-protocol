@@ -147,8 +147,9 @@ attached model is doing:
 Keeping these apart matters because they have different remedies. A model on
 standby is woken with a click. A model with no seat needs a seat: the Desktop
 Companion, a same-origin model host, an OpenAI-compatible endpoint, or a
-WebMCP-capable browser agent. The browser extension has no seat of its own, and
-says so rather than pretending.
+WebMCP-capable browser agent. A bridge is a place, not a vehicle: neither the
+bridge a page builds in nor the one the extension carries has a seat of its
+own, and both say so rather than pretending.
 
 ## Transitions
 
@@ -186,13 +187,13 @@ from the focused target, the same call budget and expiry the surface's
 hand-over button uses, and a visible line saying so. Nothing executes outside a
 grant either way; the two paths differ in who authored the gesture.
 
-- **Embedded panel** - human here: hand over and watch. Human away: the away
+- **Bridge built into the page** - human here: hand over and watch. Human away: the away
   path, model solo inside the lease. Either way the next press returns the job.
 - **Desktop Companion** - the Companion is the Session Authority, so it mints
   the grant itself instead of sending you back to the page. With no page linked
   it says `PAGE_NOT_LINKED`; with no field pointed at, `NO_FOCUSED_TARGET`. A
   grant is about something, and it will not invent what.
-- **Browser extension** - mints no grant, so its seat skips `executing` and says
+- **Bridge as an extension** - mints no grant, so its seat skips `executing` and says
   why. Same rule, applied where no authority record can exist.
 
 ## What did not change
@@ -218,10 +219,10 @@ not on the 0.1 wire.
 | --- | --- |
 | The matrix, authority, legacy bridge | `packages/core/src/index.js` |
 | Every visible word and badge | `packages/reference-ui/src/index.js` |
-| Showcase panel | `apps/formbuilder-showcase/` |
-| Browser side panel | `apps/browser-companion/` |
-| Desktop Companion | `apps/desktop-companion/` |
+| Bridge built into the page | `apps/formbuilder-showcase/` |
+| Bridge as an extension | `apps/browser-companion/` |
+| Desktop Companion (the vehicle) | `apps/desktop-companion/` |
 
-No surface writes its own status wording. Three surfaces that spell their own
-labels drift apart within a week; one vocabulary module is why the side panel
-and the Companion say "Model is advising" in the same words.
+No surface writes its own status wording. Surfaces that spell their own labels
+drift apart within a week; one vocabulary module is why both bridges and the
+Companion say "Model is advising" in the same words.

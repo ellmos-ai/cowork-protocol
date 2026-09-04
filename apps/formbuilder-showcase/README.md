@@ -47,9 +47,9 @@ extension and in the Desktop Companion.
 | Mode | What you need | What happens |
 | --- | --- | --- |
 | Solo | just this app | Fill in and export the form; no agent anywhere |
-| Embedded Cowork | nothing to install | The page voluntarily embeds the Cowork instrument beside the form |
-| Browser extension | the Cowork Browser Companion | The same session appears in Chrome's side panel, outside the page DOM |
-| Desktop Companion | the Cowork Desktop Companion | The session surfaces in a native window with presence in the tray |
+| Bridge in the page | nothing to install | The page builds the Cowork bridge in beside the form |
+| Bridge as an extension | the Cowork Protocol Bridge | The same bridge appears in Chrome's side panel, outside the page DOM |
+| Desktop Companion | the Cowork Desktop Companion | The vehicle: it takes the model seat and drives it over the bridge, with presence in the tray |
 
 In every mode the contract is the same: the model sees one bounded focus
 instead of your screen, proposals stay inert until your real click, and each

@@ -15,14 +15,15 @@ This UML-like C4 component view answers one question: which component owns conte
 
 ![Cowork Protocol architecture overview](../design/architecture-overview.svg)
 
-The overview above is the compact submission view: one protocol, one human
-surface, three hosts. Each partner answers three questions -- present, working
-on what, in which role -- and the resulting work mode
-([work-modes.md](work-modes.md)) names who may click; a model executes only
-inside a grant or lease. The same human surface is rendered by an embedded
-panel, the extension side panel or the Desktop Companion, and one panel serves
-both halves of the showcase page: FormBuilder Studio above and the sample form
-below. One versioned Session Authority and one serialized gateway feed the
+The overview above is the compact submission view: one protocol, two bridges
+with a place, one vehicle ([hosts.md](hosts.md)). Each partner answers three
+questions -- present, working on what, in which role -- and the resulting work
+mode ([work-modes.md](work-modes.md)) names who may click; a model executes
+only inside a grant or lease. The same deck is drawn by the bridge a page
+builds into itself and by the bridge the extension carries onto a page that
+built none; the Desktop Companion is the vehicle that drives a model over
+either. One deck serves both halves of the showcase page: FormBuilder Studio
+above and the sample form below. One versioned Session Authority and one serialized gateway feed the
 single active model seat, which resolves to a scripted demo helper, a direct
 OpenAI-compatible connection, a same-origin page host, the connected Companion,
 or nothing at all. The Protocol Core then selects the strongest connector the
@@ -362,7 +363,7 @@ sequenceDiagram
   Companion->>Host: executeAuthorizedAction(authorization)
 ```
 
-## Concrete no-WebMCP browser companion
+## Concrete no-WebMCP Browser Bridge
 
 ```mermaid
 sequenceDiagram

@@ -25,6 +25,13 @@ function requireCondition(condition, message) {
 // for its own summary (+-0), and the folded Handoff section takes its six
 // controls out of the default view (-6). Measured on the canvas the workspace
 // opens on (see apps/formbuilder-showcase/INTEGRATION.md and docs/evidence.md).
+//
+// Still 34 after the bridge learned to rest: demo mode is on at load, so the
+// seat is occupied and the panel opens with a model already on the bridge.
+// This number therefore measures the panel WITH a model, which is the state a
+// visitor meets. The resting panel is a different, smaller walk, covered where
+// it is produced - by the demo switch in npm run smoke:builder.
+//
 // Exported so scripts/test/webmcp-browser-smoke.test.js does not hold its own
 // copy of this number.
 export const CURRENT_INTERACTIVE_CONTROL_COUNT = 34;

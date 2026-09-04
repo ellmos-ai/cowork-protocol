@@ -417,17 +417,72 @@ try {
   );
   requireCondition(returnVerdictResolved, "Expected a real feedback click to close the round and clear the highlights");
 
-  // --- An empty model seat reads as an absent model, not an advising one. ---
+  // --- An empty model seat reads as an absent model, not an advising one,
+  // and the panel is a bridge with nobody on it rather than a cockpit that
+  // would refuse every press. ---
   await dispatchTrustedClick(call, "#demo-mode");
   const emptySeat = await evaluateValue(call, `(() => ({
     modelState: document.querySelector(".cowork-panel").dataset.modelState,
-    seatActive: document.querySelector("#model-seat").classList.contains("is-active")
+    seatActive: document.querySelector("#model-seat").classList.contains("is-active"),
+    bridge: document.querySelector(".cowork-panel").dataset.bridge,
+    bridgeMessage: document.querySelector("#bridge-message").textContent.trim()
   }))()`);
   requireCondition(
     !emptySeat.modelState.startsWith("here") && emptySeat.seatActive === false,
     `Expected an empty model seat to read as absent, got ${JSON.stringify(emptySeat)}`
   );
+  requireCondition(
+    emptySeat.bridge === "leaving" &&
+      emptySeat.bridgeMessage === "The model left the bridge.",
+    `Expected the model to visibly leave the bridge, got ${JSON.stringify(emptySeat)}`
+  );
+  await waitForExpression(
+    call,
+    `document.querySelector(".cowork-panel").dataset.bridge === "resting"`,
+    "the bridge to come to rest after the model left",
+    120
+  );
+  const restingBridge = await evaluateValue(call, `(() => {
+    const shown = (selector) => {
+      const element = document.querySelector(selector);
+      return Boolean(element) && getComputedStyle(element).display !== "none";
+    };
+    return {
+      message: document.querySelector("#bridge-message").textContent.trim(),
+      markPaths: document.querySelectorAll("#bridge-mark svg path").length,
+      seatSectionShown: shown(".panel-section.model-seat"),
+      lensShown: shown(".focus-readout"),
+      receiptsShown: shown(".receipt-panel"),
+      actorsShown: shown(".embedded-collaboration-deck")
+    };
+  })()`);
+  requireCondition(
+    restingBridge.message === "No model is crossing the bridge." &&
+      restingBridge.markPaths === 4 &&
+      restingBridge.seatSectionShown === true &&
+      restingBridge.lensShown === false &&
+      restingBridge.receiptsShown === false &&
+      restingBridge.actorsShown === false,
+    `Expected an empty bridge to show the seat and nothing it cannot deliver, got ${JSON.stringify(restingBridge)}`
+  );
+
   await dispatchTrustedClick(call, "#demo-mode");
+  const arriving = await evaluateValue(call, `(() => ({
+    bridge: document.querySelector(".cowork-panel").dataset.bridge,
+    message: document.querySelector("#bridge-message").textContent.trim()
+  }))()`);
+  requireCondition(
+    arriving.bridge === "arriving" &&
+      arriving.message === "A model is coming across the bridge.",
+    `Expected the demo helper to arrive across the bridge, got ${JSON.stringify(arriving)}`
+  );
+  await waitForExpression(
+    call,
+    `document.querySelector(".cowork-panel").dataset.bridge === "crossing" &&
+     getComputedStyle(document.querySelector(".focus-readout")).display !== "none"`,
+    "the panel to open once the model is on the bridge",
+    120
+  );
   const demoSeat = await evaluateValue(call, `document.querySelector(".cowork-panel").dataset.modelState`);
   requireCondition(
     demoSeat.startsWith("here"),
@@ -467,6 +522,7 @@ try {
     builderReceiptVerifiedClaim: true,
     onePanelServesBothCanvasesClaim: true,
     emptySeatReadsAsAbsentModelClaim: true,
+    bridgeRestAndArrivalClaim: true,
     presentDelegationClaim: true,
     soloDraftBatchClaim: true,
     handoverReturnHighlightClaim: true,

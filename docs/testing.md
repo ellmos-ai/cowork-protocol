@@ -34,7 +34,7 @@ This gate contains:
 - bridge tests for 350-code-unit host capability summaries, isolated rejection of an identity that cannot fit after JSON escaping, JSON-normalized small results and read-result previews, malformed or duplicate declarations, unserializable results, required arguments and offer-only mutation handling;
 - adaptive runtime tests proving native-first selection, fallback to a usable host WebMCP catalog, fallback to the no-WebMCP companion, code-only probe diagnostics and fail-closed exhaustion;
 - no-WebMCP companion tests for callback-backed semantic tiers, bounded visual delivery, explain-only ephemeral targets, inert visible offers and execution only after a matching human-click confirmation;
-- Browser Companion unit/build tests for stable versus sensitive DOM targets, bounded screenshot crop geometry, the restricted page-message allowlist and the self-contained Manifest V3 artifact;
+- Browser Bridge unit/build tests for stable versus sensitive DOM targets, bounded screenshot crop geometry, the restricted page-message allowlist and the self-contained Manifest V3 artifact;
 - integration-policy tests proving protocol-only, automatic selected UI and user-activated selected UI stay provider-neutral;
 - Session Authority and Companion Link tests for contiguous revisions, stale-surface rejection, persistence, exact snapshot handoff and pull-only page replication;
 - Context Manager and Handoff Capsule tests for deterministic compaction, bounded newest-turn projection and restart continuity without HTML/history replay;

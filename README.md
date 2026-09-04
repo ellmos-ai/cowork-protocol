@@ -6,19 +6,27 @@ Cowork Protocol is a small collaboration contract for people and web agents. It 
 
 > Native when available. Bridged when necessary.
 
-**[Try the live showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/)** · **[Watch the demo video](https://youtu.be/9CJehV7Bugk)** · [Three in one: protocol, surface, hosts](docs/hosts.md) · [Architecture](docs/architecture.md) · [Work modes](docs/work-modes.md) · [Panel tour](docs/panel-tour.md) · [How to use it](docs/panel-tour.md#walkthrough-one-session-start-to-finish) · [Evidence ledger](docs/evidence.md) · [Pre-existing and new work](PREEXISTING-AND-NEW.md)
+**[Try the live showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/)** · **[Watch the demo video](https://youtu.be/9CJehV7Bugk)** · [Three in one: two bridges, one vehicle](docs/hosts.md) · [Architecture](docs/architecture.md) · [Work modes](docs/work-modes.md) · [Panel tour](docs/panel-tour.md) · [How to use it](docs/panel-tour.md#walkthrough-one-session-start-to-finish) · [Evidence ledger](docs/evidence.md) · [Pre-existing and new work](PREEXISTING-AND-NEW.md)
 
 **Install it with your AI assistant:** hand [docs/install-with-your-assistant.md](docs/install-with-your-assistant.md) to Claude Code, Codex CLI or a comparable agent and say "install this for me". [`llms.txt`](llms.txt) is the machine-readable index.
 
-## Three in one
+## Three in one: two bridges with a place, one vehicle
 
 The protocol is the submission; everything else here exists to show it holds up
-wherever the human happens to be. Three hosts, the first one in two flavours:
+wherever the human happens to be. A **bridge** has a place: it sits between one
+page and one model, and it is where you see what the model sees and where the
+click happens. A **vehicle** carries a model across it. Building the bridge
+twice is the whole argument — once where a page invites it, once where a page
+knows nothing about it.
 
-1a. **Protocol only** — the packages, wired into your own app's own UI. No Cowork surface at all.
-1b. **Protocol plus the embedded panel** — one instrument the page itself renders, no install. The live showcase runs at this level.
-2. **Browser extension** — a side panel for pages that carry neither, registering the same Cowork tools over WebMCP.
-3. **Desktop Companion** — an app window without an extension: freer, not tied to one browser, with a filtered Computer Use fallback, and while connected it holds the session's model seat.
+1a. **The rails alone** — the packages, wired into your own app's own UI. The contract without a single Cowork pixel, and no bridge yet.
+1b. **The bridge, built into the page** — one instrument the page itself renders, no install. The live showcase runs at this level.
+2. **The same bridge, as a browser extension** — it carries that deck onto pages that built none, registering the same Cowork tools over WebMCP. Not a second product: on a page that has its own bridge, it steps aside.
+3. **Desktop Companion — the vehicle** — an app window without an extension: freer, not tied to one browser, with a filtered Computer Use fallback. It holds the session's model seat and drives that model over the bridge it is connected to.
+
+Only what runs on the rails crosses: an agent that does not speak the protocol
+does not get over. A bridge with nothing on it says so — *No model is crossing
+the bridge.*
 
 [![Cowork Protocol architecture: human and preferred model collaborate through any compatible UI, the provider-neutral protocol core and three bounded connector paths](design/architecture-overview.png)](docs/architecture.md)
 
@@ -30,18 +38,18 @@ flowchart TB
   HUMAN["Human\nfocus, speech, click, presence"]
   AGENT["Web agent\nhypothesis, proposal, scoped work"]
   BROWSER["WebMCP-capable browser\nModelContext mediation"]
-  SURFACES["Interchangeable surfaces\nembedded panel, extension side panel, Desktop Companion or provider chat"]
+  SURFACES["The bridge deck\nbuilt into the page, or carried there by the extension"]
   SESSION["Session Authority\nrevision, surface lease, model-seat lease"]
   CONTEXT["Context Manager\ncompact summary and bounded recent turns"]
   GATEWAY["Model Gateway\none serialized inference queue"]
   CORE["Protocol Core\ncausal events, budgets, rights, leases"]
   MODE["Work modes\npresent, area and role per partner"]
-  SEAT["Model seat\ndemo, direct, page host, companion or none"]
+  SEAT["Model seat - whose vehicle crosses\ndemo, direct, page host, Desktop Companion or none"]
   LOCALAGENTS["Local agents over MCP\nClaude Code, Codex CLI"]
   NATIVE["Native WebMCP Connector"]
   WEBBRIDGE["WebMCP Bridge"]
   LEGACY["Legacy DOM/A11y/Visual-request Bridge"]
-  EXTENSION["Browser Extension Relay\nheadless near page; UI in Side Panel"]
+  EXTENSION["Bridge as an extension\nheadless relay near the page; deck in the Side Panel"]
   LEGACYPAGE["Arbitrary web page\nCowork and WebMCP absent"]
   FORM["FormBuilder Showcase"]
 
@@ -242,17 +250,17 @@ answers for the whole session. The switch and its endpoint fields live in the
 page's **Model seat** panel (`apps/formbuilder-showcase/index.html`); the API key
 is kept in the tab only, never in the page's persistent storage.
 
-### The three Cowork surfaces
+### The four levels
 
-The same versioned session is reachable from three places, and the names are not
+The same versioned session is reachable from four levels, and the names are not
 interchangeable:
 
-| Level | Surface | What it is |
+| Level | What it is | Bridge or vehicle |
 | --- | --- | --- |
-| 1a | Protocol only | the packages, wired into your own app's own UI. No Cowork surface at all |
-| 1b | Embedded panel | the Cowork instrument the page itself renders, no install. This showcase runs at this level |
-| 2 | Browser extension | the Cowork Browser Companion, Chrome's side panel outside the page DOM, for pages that carry neither the protocol nor a panel |
-| 3 | Desktop Companion | the loopback app window with a Windows tray icon, no extension; while connected it holds the session's model seat |
+| 1a | the packages, wired into your own app's own UI. No Cowork surface at all | neither: the rails, with nothing built on them |
+| 1b | the bridge the page builds into itself, no install. This showcase runs at this level | bridge |
+| 2 | the Cowork Protocol Bridge, Chrome's side panel outside the page DOM, for pages that built none | the same bridge, carried onto a foreign page |
+| 3 | the Desktop Companion: loopback app window with a Windows tray icon, no extension | vehicle: it holds the model seat and drives it over a bridge |
 
 ## Build the optional browser extension
 
@@ -322,7 +330,7 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 - `apps/formbuilder-showcase/src/builder-cowork.js`, `builder-model-suggester.js`, `builder-directive-classifier.js` — the layer on top of Cowork Protocol that knows what a form field is: three canvas capabilities (`form-add-field`, `form-update-field`, `form-move-field`) offered, clicked and verified through the same path as every other FormBuilder capability, plus grants, solo drafting and utterance-authorized directives. No new WebMCP tool.
 - `apps/formbuilder-showcase/src/builder-cowork-ui.js` — the headless adapter (`initBuilderCowork`) between that layer and the page. It owns the Studio canvas's attention target, offers, grant and directives and renders nothing: the page's one Cowork panel is the only Cowork surface and serves both the demo form and the Studio canvas. The Studio's own "Model suggestions", "Delegate to the model" and "Say what to do" sections were removed for that reason; see [`apps/formbuilder-showcase/INTEGRATION.md`](apps/formbuilder-showcase/INTEGRATION.md).
 
-See the [adapter runtime guide](packages/bridge/README.md), [browser companion guide](apps/browser-companion/README.md), [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), [docs/deployment.md](docs/deployment.md), [docs/evidence.md](docs/evidence.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
+See the [adapter runtime guide](packages/bridge/README.md), [Browser Bridge guide](apps/browser-companion/README.md), [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), [docs/deployment.md](docs/deployment.md), [docs/evidence.md](docs/evidence.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
 
 ## Evidence and boundaries
 
@@ -355,7 +363,7 @@ unsupported or failing range and the same 4.5656:1 minimum. Real microphone prac
 screen-reader practice and a connected ChatGPT-agent invocation remain open.
 
 A separate Chrome for Testing 152 acceptance explicitly disabled WebMCP and
-loaded the built Browser Companion extension. Before the trusted action
+loaded the built Browser Bridge extension. Before the trusted action
 shortcut, the page contained neither Cowork bridge nor extension execution
 world. Temporary `activeTab` access then injected the headless relay on demand;
 its extension-origin Side Panel

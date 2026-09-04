@@ -1,5 +1,11 @@
-import { resolveWorkMode } from "../../../packages/core/src/index.js";
-import { buildWorkModePresentation } from "../../../packages/reference-ui/src/index.js";
+import {
+  resolveBridgeState,
+  resolveWorkMode
+} from "../../../packages/core/src/index.js";
+import {
+  BRIDGE_COPY,
+  buildWorkModePresentation
+} from "../../../packages/reference-ui/src/index.js";
 
 const NO_SEAT_NOTE =
   "Model seat: none. This extension has no model client, so nothing is proposed here " +
@@ -11,33 +17,35 @@ const ROUTES = Object.freeze({
     route: "off",
     routeLabel: "Not attached",
     routeExplainer:
-      "Not attached. Click the toolbar icon on a page to attach this panel.",
+      "Not attached. Click the toolbar icon on a page to attach this bridge.",
     seatNote: "No page attached."
   }),
   "native-cowork": Object.freeze({
     route: "native",
-    routeLabel: "Native Cowork",
+    // "Native" describes the page, never this bridge. The old label read as if
+    // the extension itself were the native thing, which is the opposite.
+    routeLabel: "Page has its own tools (native WebMCP)",
     routeExplainer:
-      "Native — this page speaks Cowork Protocol. This panel relays the page's own tools; " +
-      "offers appear in the page's Cowork panel and are clicked there.",
+      "This page speaks Cowork Protocol itself, so this bridge only relays the " +
+      "page's own tools; offers appear in the page's own panel and are clicked there.",
     seatNote:
       "Model seat: the page's own (Desktop Companion, page host, direct model or demo helper). " +
       "This extension adds no model."
   }),
   "native-webmcp": Object.freeze({
     route: "webmcp",
-    routeLabel: "Native WebMCP",
+    routeLabel: "Page has WebMCP tools, no Cowork",
     routeExplainer:
-      "WebMCP — the page exposes WebMCP tools but no Cowork Protocol. Reads may run; " +
+      "The page exposes WebMCP tools but speaks no Cowork Protocol. Reads may run; " +
       "changes stay offer-only.",
     seatNote: NO_SEAT_NOTE
   }),
   "legacy-host-companion": Object.freeze({
     route: "bridge",
-    routeLabel: "Bounded Bridge",
+    routeLabel: "Bridge only (no WebMCP in this browser)",
     routeExplainer:
-      "Bridge — no protocol on this page. Bounded DOM/accessibility fallback; " +
-      "nothing changes without your click here.",
+      "No protocol on this page, and no WebMCP to register tools into. Bounded " +
+      "DOM/accessibility view; nothing changes without your click here.",
     seatNote: NO_SEAT_NOTE
   })
 });
@@ -47,12 +55,12 @@ const ROUTES = Object.freeze({
 // the click stays in this panel either way.
 const TOOLS_REGISTERED_ROUTE = Object.freeze({
   route: "bridge-webmcp",
-  routeLabel: "Bridge + WebMCP",
+  routeLabel: "Bridge tools registered for this page",
   routeExplainer:
-    "Bridge + WebMCP — this extension registered Cowork tools here; any WebMCP agent " +
-    "may read focus and propose, your click stays in this panel.",
+    "This page carried no Cowork tools, so this bridge registered them. Any WebMCP " +
+    "agent in this browser may now read focus and propose; your click stays here.",
   seatNote:
-    "Model seat: whichever WebMCP agent this browser attaches. This extension supplies " +
+    "Model seat: whichever WebMCP agent this browser attaches. This bridge supplies " +
     "the tools, not the model."
 });
 
@@ -120,6 +128,8 @@ export function nextAvailableStatus(actor, unavailable) {
   return null;
 }
 
+export { resolveBridgeState };
+
 export function buildCockpitPresentation(input) {
   const baseRoute = ROUTES[input?.mode];
   if (!baseRoute) throw new TypeError("Cockpit requires a supported connector route");
@@ -153,10 +163,34 @@ export function buildCockpitPresentation(input) {
     ...presentation
   } = buildWorkModePresentation(workMode);
 
+  const bridgeState = resolveBridgeState({
+    companionConnected: input.companionConnected === true,
+    pageOwnsBridge: input.pageOwnsBridge === true,
+    agentLastSeenAt: input.agentLastSeenAt ?? null,
+    agentIdleTimeoutMs: Number.isFinite(input.agentIdleTimeoutMs)
+      ? input.agentIdleTimeoutMs
+      : 90_000,
+    offerPending: input.offerPending === true,
+    // This bridge has no seat of its own; only an agent puts a model on it.
+    seatOccupied: false,
+    now: Number.isFinite(input.now) ? input.now : Date.now()
+  });
+
   return {
     ...route,
     ...execution,
     ...presentation,
+    bridgeState,
+    // Every bridge word comes from packages/reference-ui, like every status
+    // word, so both bridges say the same thing about the same emptiness.
+    bridgeMessage:
+      bridgeState === "companion"
+        ? BRIDGE_COPY.companion
+        : bridgeState === "page-owns"
+          ? BRIDGE_COPY.pageOwnsBridge
+          : bridgeState === "crossing"
+            ? BRIDGE_COPY.crossing
+            : BRIDGE_COPY.resting,
     authorityLapsed: workMode.authorityLapsed,
     doublingAvailable: workMode.doublingAvailable,
     contextLevel: input.contextLevel,
