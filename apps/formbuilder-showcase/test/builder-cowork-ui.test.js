@@ -258,3 +258,38 @@ test("a JSON patch rewrites a field's choices, and may never touch its id or typ
   assert.deepEqual(updated.options, ["1", "2", "3 or more"]);
   assert.equal(updated.required, true);
 });
+
+// --- Where an agent learns the formats. The tool schema says a paletteId is
+// a string; it cannot say which string a "how often does this happen" question
+// needs. The canvas context is where that is answered. ---
+
+test("the canvas context tells an agent which field types exist and what each is for", () => {
+  const { cowork, point } = fakeStudio();
+  point(null, "click");
+  const context = cowork.requestContext({ reason: "What can I build here?" });
+  const related = JSON.parse(context.relatedContext);
+  assert.equal(related.fieldTypes.length, 8);
+  assert.ok(
+    related.fieldTypes.some((line) => line.startsWith("checkbox-single (Choose one, takes options):")),
+    `no option-bearing type described: ${JSON.stringify(related.fieldTypes)}`
+  );
+  assert.ok(
+    related.fieldTypes.every((line) => /: \w/.test(line)),
+    "every type states what it is for"
+  );
+  assert.match(related.title, /Family survey/);
+});
+
+test("a crowded canvas drops labels rather than handing back half a JSON object", () => {
+  const many = Array.from({ length: 40 }, (_, index) =>
+    createField("text-short", { label: `Question number ${index} about something quite long` })
+  );
+  const { cowork, point } = fakeStudio(many.reduce((list, field) => insertField(list, field), []));
+  point(null, "click");
+  const context = cowork.requestContext({ reason: "What is on this form?" });
+  assert.ok(context.relatedContext.length <= 1200, `context was ${context.relatedContext.length}`);
+  const related = JSON.parse(context.relatedContext); // the point: still parses
+  assert.equal(related.fieldCount, 40, "the true count survives even when the labels do not");
+  assert.equal(related.fieldTypes.length, 8, "the formats are never the part that gets dropped");
+  assert.ok(related.labels.length < 40, "labels are what yields to the budget");
+});

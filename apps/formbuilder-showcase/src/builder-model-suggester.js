@@ -27,6 +27,37 @@ const OPTION_PALETTE_IDS = new Set(
   FIELD_TYPE_PALETTE.filter((entry) => entry.hasOptions).map((entry) => entry.paletteId)
 );
 
+// What each field type is FOR. The palette itself carries ids and display
+// names but no purpose, and an agent that has never seen this form cannot infer
+// from "text-short" whether a number belongs there. Kept to one clause each so
+// the whole palette still fits beside the form's own content in one bounded
+// context expansion.
+const PALETTE_PURPOSE = Object.freeze({
+  heading: "a section title, not a question",
+  description: "explanatory text, not a question",
+  "text-short": "one line of free text, such as a name or an email address",
+  "text-long": "several lines of free text",
+  date: "one calendar date",
+  "checkbox-single": "exactly one answer from a fixed list",
+  "checkbox-multi": "any number of answers from a fixed list",
+  separator: "a visual divider, not a question"
+});
+
+/**
+ * The field types an agent may propose, as short lines it can read once and
+ * then build from: id, the name the human sees, whether it takes answer
+ * choices, and what it is for. This is the knowledge transfer the tool schema
+ * alone cannot carry - a schema says a paletteId is a string, not which string
+ * a "how often does this happen" question needs.
+ */
+export function describeFieldPalette() {
+  return FIELD_TYPE_PALETTE.map(
+    (entry) =>
+      `${entry.paletteId} (${entry.displayName}${entry.hasOptions ? ", takes options" : ""}): ` +
+      `${PALETTE_PURPOSE[entry.paletteId] ?? "a form element"}`
+  );
+}
+
 /** True for the field types that actually render answer choices. */
 export function paletteTakesOptions(paletteId) {
   return OPTION_PALETTE_IDS.has(paletteId);
@@ -144,7 +175,12 @@ function buildSuggestionTranscript({ intent, formTitle, existingLabels, goal, pa
   // characters, so a long label list is the first thing dropped. Callers who
   // need duplicate avoidance in a long drafting run should pass only the most
   // recent labels; a duplicate is still caught on the way back, as a raise.
-  if (intent === "question") pushWhole("Label = one survey question; prefer text-short.");
+  // "prefer text-short" was right when a field could only be a label. With
+  // answer choices it is actively wrong: measured 2026-09-04, a frequency
+  // question drafted under a grant came back as a free-text field whose
+  // "Never/Rarely/Sometimes" list was then dropped for a type that has none.
+  // A survey that can never draft a scale is not a survey.
+  if (intent === "question") pushWhole("Label = one survey question; a scale is checkbox-single.");
   if (goal) pushShortened("Goal: ", goal, ".");
   // Measured against qwen3.8:27b-mlx on 2026-09-04: spelling this rule out
   // costs 43 characters, and when those came out of the goal the model stopped
