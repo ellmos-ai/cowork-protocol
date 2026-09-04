@@ -299,6 +299,50 @@ try {
       value?.snapshot?.state?.surface?.kind === "embedded"
   );
 
+  // The chat window is the same detached panel under a different layout, so
+  // the round trip that matters is: it detaches, it carries only Role and
+  // Conversation, and closing it docks the panel back into the page.
+  await trustedClick(call, "#chat-window");
+  const chatWindow = await waitForValue(
+    call,
+    `(() => {
+      const detached = window.documentPictureInPicture?.window ?? null;
+      const panel = detached?.document.querySelector(".cowork-panel") ?? null;
+      const visibleSections = panel === null
+        ? []
+        : [...panel.children]
+            .filter((node) => node.tagName === "SECTION")
+            .filter((node) => detached.getComputedStyle(node).display !== "none")
+            .map((node) => node.getAttribute("aria-labelledby"));
+      const transcript = detached?.document.querySelector("#transcript") ?? null;
+      return {
+        chatLayout: detached?.document.body.classList.contains("cowork-chat-focus") ?? false,
+        visibleSections,
+        transcriptHeight: transcript?.getBoundingClientRect().height ?? 0,
+        transcriptScrolls: transcript === null
+          ? false
+          : detached.getComputedStyle(transcript).overflowY === "auto",
+        snapshot: window.coworkSession.readSnapshot(),
+        buttonLabel: detached?.document.querySelector("#chat-window")?.textContent ?? null
+      };
+    })()`,
+    (value) => value?.chatLayout === true && value.visibleSections.length > 0
+  );
+  await evaluateValue(call, `(() => {
+    window.documentPictureInPicture.window.close();
+    return true;
+  })()`);
+  const chatDocked = await waitForValue(
+    call,
+    `(() => ({
+      panelRestored: Boolean(document.querySelector(".cowork-panel")),
+      buttonLabel: document.querySelector("#chat-window")?.textContent ?? null,
+      snapshot: window.coworkSession.readSnapshot()
+    }))()`,
+    (value) =>
+      value?.panelRestored === true && value?.snapshot?.state?.surface?.kind === "embedded"
+  );
+
   await trustedClick(call, "#open-companion");
   let companion;
   try {
@@ -644,6 +688,14 @@ try {
     ["main panel is gone while detached", detached.mainPanelAbsent, true],
     ["detached button label", detached.buttonLabel, "Dock in page"],
     ["restored button label", restored.buttonLabel, "Detach"],
+    ["chat window uses the chat layout", chatWindow.chatLayout, true],
+    ["chat window shows Role and Conversation only", chatWindow.visibleSections.join(","), "work-mode-heading,audio-heading"],
+    ["chat transcript grows past its two docked lines", chatWindow.transcriptHeight >= 100, true],
+    ["chat transcript scrolls instead of growing the window", chatWindow.transcriptScrolls, true],
+    ["chat window button label", chatWindow.buttonLabel, "Close chat"],
+    ["chat window keeps the session", chatWindow.snapshot.sessionId, initial.snapshot.sessionId],
+    ["closing the chat window docks the panel", chatDocked.panelRestored, true],
+    ["docked chat button label", chatDocked.buttonLabel, "Chat window"],
     ["page panel collapses for the Companion", companion.collapsed, true],
     ["page conversation is disabled", companion.conversationDisabled, true],
     ["companion snapshot revision", companionSnapshot?.revision, resumed.snapshot.revision],

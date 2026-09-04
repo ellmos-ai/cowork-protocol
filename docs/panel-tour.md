@@ -143,6 +143,14 @@ work mode, and two buttons that move the panel without moving the session.
 - **Detach** opens the panel in a Document Picture-in-Picture window and turns
   into **Dock in page**. A browser without Document PiP is told so
   (`DETACHED_SURFACE_UNAVAILABLE`) instead of failing silently.
+- **Chat window** opens the same detached window laid out for conversing: Role
+  and Conversation fill it, the transcript takes the height the form sections
+  were using and scrolls, and the input grows with it. It is one window and one
+  panel, not a copy — the same session, the same model seat, the same handlers,
+  and your fold states survive the trip. Pressing it again, or closing the
+  window, docks everything back into the page. If the panel is already
+  detached, the button switches that window's layout instead of opening a
+  second one.
 - **Desktop Companion** joins the session at `http://127.0.0.1:47831/cowork/v1`.
   While it is connected the label reads *Connected*, and the panel's own
   conversation controls and both surface buttons are disabled — the companion

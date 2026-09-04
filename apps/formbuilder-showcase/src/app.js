@@ -328,6 +328,9 @@ let offerCounter = 0;
 let changeCounter = 0;
 let recognitionSession = null;
 let holdToTalk = null;
+// The detached window can carry the whole panel or just the two sections a
+// conversation needs. Same window, same session - only the layout differs.
+let chatWindowOpen = false;
 let leaseCallsUsed = 0;
 // Declared up here because authorityState() reads both while the module is
 // still initializing - the Studio bridge and the workspace switcher are
@@ -874,6 +877,7 @@ function leaveCompanion() {
 function dockCoworkSurface({ closeDetachedWindow = false } = {}) {
   const windowToClose = detachedSurfaceWindow;
   detachedSurfaceWindow = null;
+  chatWindowOpen = false;
   if (coworkPanel.ownerDocument !== document && panelHomeMarker.parentNode) {
     panelHomeMarker.parentNode.insertBefore(coworkPanel, panelHomeMarker.nextSibling);
   }
@@ -891,7 +895,7 @@ function dockCoworkSurface({ closeDetachedWindow = false } = {}) {
   render();
 }
 
-async function detachCoworkSurface() {
+async function detachCoworkSurface({ chatFocus = false } = {}) {
   if (detachedSurfaceWindow && !detachedSurfaceWindow.closed) {
     dockCoworkSurface({ closeDetachedWindow: true });
     setStatus("Cowork surface docked back into FormBuilder with the same session.");
@@ -910,9 +914,13 @@ async function detachCoworkSurface() {
       height: 780
     });
     detachedSurfaceWindow = detached;
-    detached.document.title = "Cowork Protocol — Shared session";
+    chatWindowOpen = chatFocus;
+    detached.document.title = chatFocus
+      ? "Cowork Protocol — Chat"
+      : "Cowork Protocol — Shared session";
     detached.document.documentElement.lang = document.documentElement.lang;
     detached.document.body.className = "cowork-detached-body";
+    applyDetachedLayout();
     copySurfaceStyles(detached.document);
     attachHoldToTalk(detached.document);
     document.querySelector(".workspace")?.classList.add("cowork-surface-detached");
@@ -927,13 +935,43 @@ async function detachCoworkSurface() {
       () => dockCoworkSurface({ closeDetachedWindow: false }),
       { once: true }
     );
-    setStatus("Cowork surface detached. It is still the same session and model seat.");
+    setStatus(
+      chatFocus
+        ? "Role and Conversation are their own window now. Same session, same model seat."
+        : "Cowork surface detached. It is still the same session and model seat."
+    );
     render();
   } catch (error) {
     detachedSurfaceWindow = null;
+    chatWindowOpen = false;
     document.querySelector(".workspace")?.classList.remove("cowork-surface-detached");
     setStatus(`DETACHED_SURFACE_ERROR: ${error.message}`);
   }
+}
+
+/** Role and Conversation are the two sections a person converses through, so
+ *  the chat layout gives them the whole window and lets the transcript take
+ *  the height instead of two fixed lines. Nothing is moved or copied: it is
+ *  the same panel, the same session and the same handlers, laid out
+ *  differently. */
+function applyDetachedLayout() {
+  detachedSurfaceWindow?.document?.body?.classList.toggle("cowork-chat-focus", chatWindowOpen);
+}
+
+async function openChatWindow() {
+  if (!detachedSurfaceWindow || detachedSurfaceWindow.closed) {
+    await detachCoworkSurface({ chatFocus: true });
+    return;
+  }
+  if (chatWindowOpen) {
+    dockCoworkSurface({ closeDetachedWindow: true });
+    setStatus("Chat window closed. The panel is back in the page with the same session.");
+    return;
+  }
+  chatWindowOpen = true;
+  applyDetachedLayout();
+  setStatus("Role and Conversation now fill the detached window.");
+  render();
 }
 
 function scheduleLeaseExpiry(nowMilliseconds) {
@@ -1385,6 +1423,9 @@ function render() {
     "aria-pressed",
     String(session.surface?.kind === "document-pip")
   );
+  setButtonLabel("#chat-window", chatWindowOpen ? "Close chat" : "Chat window");
+  $("#chat-window").disabled = companionConnected;
+  $("#chat-window").setAttribute("aria-pressed", String(chatWindowOpen));
   $("#surface-label").textContent = companionConnected
     ? "Desktop Companion"
     : session.surface?.kind === "document-pip"
@@ -2856,6 +2897,9 @@ window.addEventListener("message", (event) => {
     "Browser extension attached (Native route): it reads focus here and proposes into this panel; your clicks stay here. The side panel mirrors this panel, it does not replace it.";
   setStatus("Browser extension attached through the native page bridge.");
   render();
+});
+$("#chat-window").addEventListener("click", () => {
+  void openChatWindow();
 });
 $("#detach-cowork").addEventListener("click", () => {
   void detachCoworkSurface();
