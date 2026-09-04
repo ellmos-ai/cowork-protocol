@@ -83,9 +83,16 @@ function formatContact(isoText) {
 function render(state) {
   currentSession = state.sessions[0] ?? null;
   const connected = Boolean(currentSession);
+  // A configured model whose seat this Companion does not hold cannot answer:
+  // every turn comes back MODEL_SEAT_NOT_OWNED. That is the same situation as
+  // an empty seat, so it reads the same - away - instead of claiming a model
+  // that is advising. See modelSeatOwned in the host's UI state.
+  const seatless = connected && currentSession.modelAvailable && !currentSession.modelSeatOwned;
   // The host resolves the matrix; this surface only renders it.
   const presentation = buildWorkModePresentation(
-    currentSession?.workMode ?? IDLE_WORK_MODE
+    seatless
+      ? { ...(currentSession.workMode ?? IDLE_WORK_MODE), model: IDLE_WORK_MODE.model }
+      : currentSession?.workMode ?? IDLE_WORK_MODE
   );
   const cockpit = $(".companion-cockpit");
 
@@ -144,7 +151,9 @@ function render(state) {
     : agent.pageLinked ? "linked" : "unreachable";
   $("#human-label").textContent = presentation.humanLabel;
   $("#model-label").textContent = presentation.modelLabel;
-  const modelIdentity = currentSession?.modelIdentity ?? "No model connected";
+  const modelIdentity = seatless
+    ? `${currentSession.modelIdentity} - no seat for this session`
+    : currentSession?.modelIdentity ?? "No model connected";
   $("#model-identity").textContent = modelIdentity;
   $("#model-identity").title = currentSession?.modelIdentity
     ? `Current model: ${modelIdentity}`
@@ -229,8 +238,15 @@ function render(state) {
   // Derived from the matrix, not from a rights setting: a model that is here
   // can be addressed, whether it acts or advises.
   const modelInputEnabled = Boolean(
-    currentSession?.modelAvailable && presentation.modelState.startsWith("here")
+    currentSession?.modelAvailable &&
+    currentSession?.modelSeatOwned &&
+    presentation.modelState.startsWith("here")
   );
+  // Silence would read as a dead window. Say why, and how to fix it.
+  if (seatless) {
+    $("#status").textContent =
+      "No seat for this session - link the page, then the model can answer.";
+  }
   $("#human-control").disabled = !connected || controlBusy;
   $("#model-control").disabled = !currentSession?.modelAvailable || controlBusy;
   $("#execution-control").disabled = !connected || !computerUseInstalled || controlBusy;

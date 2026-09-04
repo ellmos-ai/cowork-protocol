@@ -59,6 +59,25 @@ function sessionProjection(snapshot) {
   };
 }
 
+/**
+ * Whether this owner holds a still-valid model seat. Exported because a
+ * surface has to be able to say so before it offers to send a turn: the
+ * Companion cockpit used to show "Model is advising" for a seat its gateway
+ * did not own, and the human only found out when the turn came back
+ * MODEL_SEAT_NOT_OWNED. One reading of the condition, used by both.
+ */
+export function ownsModelSeat({ state, seatOwner, at }) {
+  const seat = state?.modelSeat;
+  const expiresAt = Date.parse(seat?.expiresAt);
+  const currentTime = Date.parse(at);
+  return (
+    seat?.owner === seatOwner &&
+    Number.isFinite(expiresAt) &&
+    Number.isFinite(currentTime) &&
+    currentTime < expiresAt
+  );
+}
+
 export function createCoworkModelGateway({
   sessionId,
   seatOwner,
@@ -114,20 +133,13 @@ export function createCoworkModelGateway({
           "Model Gateway requires the current Cowork session snapshot"
         );
       }
-      const seat = snapshot.state.modelSeat;
-      const expiresAt = Date.parse(seat?.expiresAt);
-      const currentTime = Date.parse(now());
-      if (
-        seat?.owner !== seatOwner ||
-        !Number.isFinite(expiresAt) ||
-        !Number.isFinite(currentTime) ||
-        currentTime >= expiresAt
-      ) {
+      if (!ownsModelSeat({ state: snapshot.state, seatOwner, at: now() })) {
         throw new CoworkModelGatewayError(
           "MODEL_SEAT_NOT_OWNED",
           "This gateway does not own the active Cowork model seat"
         );
       }
+      const seat = snapshot.state.modelSeat;
       if (seat.contextAuthority !== "cowork-session") {
         throw new CoworkModelGatewayError(
           "MODEL_CONTEXT_EXTERNAL",
