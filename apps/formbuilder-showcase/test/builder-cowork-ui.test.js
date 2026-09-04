@@ -115,3 +115,90 @@ test("pointing at a Studio row focuses that field on the form-field target; an u
   assert.equal(controller.getElements()[0].label, "Work email");
   assert.equal(cowork.pendingOffers().length, 0);
 });
+
+// --- The same reach the panel's own model has: a field with answer choices.
+// A label cannot carry choices, and an agent that tries writes the question
+// "How many kids do you have? (1, 2, 3)" instead of asking it. ---
+
+test("an agent offers a field with answer choices by sending JSON instead of a label", () => {
+  const { cowork, controller, point } = fakeStudio();
+  point(null, "click");
+  const offer = cowork.offerFromAgent({
+    capabilityId: "form-add-field",
+    targetId: BUILDER_CANVAS_TARGET_ID,
+    value: JSON.stringify({
+      paletteId: "checkbox-single",
+      label: "How many kids do you have?",
+      options: ["1", "2", "3", "8 or more"],
+      required: true
+    }),
+    summary: "Add the number-of-children question"
+  });
+  const { field } = offer.proposedArguments;
+  assert.equal(field.label, "How many kids do you have?");
+  assert.equal(field.type, "Checkbox (Single)");
+  assert.deepEqual(field.options, ["1", "2", "3", "8 or more"]);
+  assert.equal(field.required, true);
+  assert.equal(controller.getElements().length, 0, "an offer alone changes nothing");
+
+  const receipt = cowork.applyOffer(offer.offerId);
+  assert.equal(receipt.status, "verified");
+  assert.deepEqual(controller.getElements()[0].options, ["1", "2", "3", "8 or more"]);
+});
+
+test("unusable answer choices cost the choices, not the field, and the summary says why", () => {
+  const { cowork, point } = fakeStudio();
+  point(null, "click");
+  const offer = cowork.offerFromAgent({
+    capabilityId: "form-add-field",
+    targetId: BUILDER_CANVAS_TARGET_ID,
+    value: JSON.stringify({ paletteId: "text-short", label: "Your name", options: ["a", "b"] }),
+    summary: "Add a name field."
+  });
+  assert.equal(offer.proposedArguments.field.label, "Your name");
+  assert.equal(offer.proposedArguments.field.options, undefined);
+  assert.match(offer.summary, /this field type has none/);
+
+  assert.throws(
+    () =>
+      cowork.offerFromAgent({
+        capabilityId: "form-add-field",
+        targetId: BUILDER_CANVAS_TARGET_ID,
+        value: JSON.stringify({ paletteId: "checkbox-single" }),
+        summary: "x"
+      }),
+    { code: "INVALID_ARGUMENTS" }
+  );
+});
+
+test("a JSON patch rewrites a field's choices, and may never touch its id or type", () => {
+  const field = createField("checkbox-single", { label: "Kids", options: ["Yes", "No"] });
+  const { cowork, controller, point } = fakeStudio(insertField([], field));
+  point(field.id);
+  const focus = cowork.readFocusPacket();
+
+  assert.throws(
+    () =>
+      cowork.offerFromAgent({
+        capabilityId: "form-update-field",
+        targetId: focus.targetId,
+        value: JSON.stringify({ type: "Textfeld (Kurz)", label: "Kids" }),
+        summary: "x"
+      }),
+    { code: "INVALID_ARGUMENTS" }
+  );
+
+  const offer = cowork.offerFromAgent({
+    capabilityId: "form-update-field",
+    targetId: focus.targetId,
+    value: JSON.stringify({ label: "How many kids?", options: ["1", "2", "3 or more"], required: true }),
+    summary: "Rewrite the choices"
+  });
+  assert.equal(controller.getElements()[0].label, "Kids", "inert before the click");
+  const receipt = cowork.applyOffer(offer.offerId);
+  assert.equal(receipt.status, "verified");
+  const updated = controller.getElements()[0];
+  assert.equal(updated.label, "How many kids?");
+  assert.deepEqual(updated.options, ["1", "2", "3 or more"]);
+  assert.equal(updated.required, true);
+});

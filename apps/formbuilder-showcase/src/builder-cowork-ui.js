@@ -6,11 +6,24 @@
 // See ../INTEGRATION.md.
 
 import { classificationDisplayName, classificationOf, createField, FIELD_TYPE_PALETTE } from "./form-builder.mjs";
-import { createBuilderModelSuggester } from "./builder-model-suggester.js";
+import {
+  createBuilderModelSuggester,
+  normalizeFieldOptions,
+  paletteTakesOptions,
+  parseFieldValueJson
+} from "./builder-model-suggester.js";
 import { addFieldSummary, BUILDER_CANVAS_TARGET_ID, builderFieldTargetId, createBuilderCoworkBridge } from "./builder-cowork.js";
 import { classifyBuilderDirective } from "./builder-directive-classifier.js";
 import { buildContextExpansion, CoworkProtocolError } from "../../../packages/core/src/index.js";
 import { buildFormBuilderContextExpansion } from "../../../packages/formbuilder-connector/src/index.js";
+
+/** One field from a model suggestion or an agent's JSON value. createField
+ *  owns the shape; `required` is applied on top because a newly created field
+ *  is never required by default. */
+function fieldFrom({ paletteId, label, options, required }) {
+  const field = createField(paletteId, options ? { label, options } : { label });
+  return required === true ? { ...field, required: true } : field;
+}
 
 const SUGGESTABLE_FIELDS = [
   { paletteId: "text-short", label: "Email address" },
@@ -202,7 +215,7 @@ export function initBuilderCowork({
       ...(goal ? { goal } : {}),
       presence: presenceFor("present")
     });
-    const field = createField(suggestion.paletteId, { label: suggestion.label });
+    const field = fieldFrom(suggestion);
     const summary = suggestion.summary || addFieldSummary(field.label);
     proposeField(field, summary);
     return summary;
@@ -241,7 +254,7 @@ export function initBuilderCowork({
         goal: grant.goal,
         presence: presenceFor(humanPresence)
       });
-      field = createField(suggestion.paletteId, { label: suggestion.label });
+      field = fieldFrom(suggestion);
     }
     const result = bridge.soloExecute({
       field,
@@ -402,9 +415,13 @@ export function initBuilderCowork({
   }
 
   /** An agent's cowork_offer_action aimed at the Studio. The tool carries one
-   *  string, `value`: for form-add-field the new field's label, optionally
-   *  prefixed with a palette id ("date: Preferred date"); for
-   *  form-update-field the new label; for form-move-field "up" or "down".
+   *  string, `value`. For form-add-field that is either the new field's label,
+   *  optionally prefixed with a palette id ("date: Preferred date"), or a JSON
+   *  object {"paletteId","label","options","required"} when the field needs
+   *  answer choices - a label cannot carry them, and a model that tries ends
+   *  up writing "How many kids? (1, 2, 3)" into the question itself. For
+   *  form-update-field it is the new label or a JSON patch
+   *  {"label","options","required"}; for form-move-field "up" or "down".
    *  The offer is inert until a real click, exactly like the panel's own. */
   function offerFromAgent({ capabilityId, targetId, value, summary }) {
     const focusPacket = requireFocusPacket();
@@ -416,14 +433,57 @@ export function initBuilderCowork({
     }
     const text = typeof value === "string" ? value.trim() : "";
     if (text === "") throw new CoworkProtocolError("INVALID_ARGUMENTS", "The offer needs a value");
+    const spec = parseFieldValueJson(text);
+    let noticeText = "";
     let proposedArguments;
     if (capabilityId === "form-add-field") {
-      const prefixed = /^([a-z-]+):\s*(.+)$/.exec(text);
-      const paletteId = prefixed && paletteIds.includes(prefixed[1]) ? prefixed[1] : "text-short";
-      const label = prefixed && paletteIds.includes(prefixed[1]) ? prefixed[2] : text;
-      proposedArguments = { field: createField(paletteId, { label }) };
+      if (spec) {
+        const requested = typeof spec.paletteId === "string" ? spec.paletteId.trim() : "";
+        const paletteId = paletteIds.includes(requested) ? requested : "text-short";
+        const label = typeof spec.label === "string" ? spec.label.trim() : "";
+        if (label === "") {
+          throw new CoworkProtocolError("INVALID_ARGUMENTS", "The field JSON needs a label");
+        }
+        const normalized = normalizeFieldOptions(spec.options, { allowed: paletteTakesOptions(paletteId) });
+        noticeText = normalized.notice;
+        proposedArguments = {
+          field: fieldFrom({ paletteId, label, options: normalized.options, required: spec.required === true })
+        };
+      } else {
+        const prefixed = /^([a-z-]+):\s*(.+)$/.exec(text);
+        const paletteId = prefixed && paletteIds.includes(prefixed[1]) ? prefixed[1] : "text-short";
+        const label = prefixed && paletteIds.includes(prefixed[1]) ? prefixed[2] : text;
+        proposedArguments = { field: createField(paletteId, { label }) };
+      }
     } else if (capabilityId === "form-update-field") {
-      proposedArguments = { fieldId: focusedFieldId, patch: { label: text } };
+      if (spec) {
+        // id and type are what a receipt is checked against, so a patch may
+        // never carry them - the connector says so here rather than letting
+        // form-builder raise it after the human has already clicked.
+        const forbidden = ["id", "type"].find((key) => key in spec);
+        if (forbidden) {
+          throw new CoworkProtocolError(
+            "INVALID_ARGUMENTS",
+            `A field's ${forbidden} cannot change after it is created`
+          );
+        }
+        const element = focusedElement();
+        const normalized = normalizeFieldOptions(spec.options, { allowed: Array.isArray(element?.options) });
+        noticeText = normalized.notice;
+        const patch = {};
+        if (typeof spec.label === "string" && spec.label.trim() !== "") patch.label = spec.label.trim();
+        if (typeof spec.required === "boolean") patch.required = spec.required;
+        if (normalized.options) patch.options = normalized.options;
+        if (Object.keys(patch).length === 0) {
+          throw new CoworkProtocolError(
+            "INVALID_ARGUMENTS",
+            noticeText === "" ? "The patch changes nothing" : `The patch changes nothing. ${noticeText}`
+          );
+        }
+        proposedArguments = { fieldId: focusedFieldId, patch };
+      } else {
+        proposedArguments = { fieldId: focusedFieldId, patch: { label: text } };
+      }
     } else if (capabilityId === "form-move-field") {
       const direction = text.toLowerCase();
       if (direction !== "up" && direction !== "down") {
@@ -437,7 +497,7 @@ export function initBuilderCowork({
       capabilityId,
       targetId,
       proposedArguments,
-      summary,
+      summary: noticeText === "" ? summary : `${summary} ${noticeText}`,
       pageVersion: controller.getPageVersion(),
       now: new Date().toISOString()
     });
