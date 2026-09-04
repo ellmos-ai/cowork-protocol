@@ -752,6 +752,42 @@ test("the movable cockpit commits model engagement and fails closed while paused
       !state.lease.allowedCapabilityIds.includes("form.explain_field"),
       "explaining is not acting, so it stays out of every grant"
     );
+
+    // The Studio publishes one target that stands for the whole canvas, so
+    // one call per target would grant three calls for drafting a whole form.
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "observing" }
+    )).status, 200);
+    const beforeStudio = host.readSnapshot("cockpit-link");
+    await host.commitSession("cockpit-link", {
+      kind: "workspace-changed",
+      nextState: {
+        ...beforeStudio.state,
+        focus: null,
+        pageVersion: 9,
+        canvasTargetIds: ["form-builder:canvas"],
+        canvasCapabilityIds: ["form-add-field"]
+      },
+      expectedRevision: beforeStudio.revision,
+      sourceSurfaceId: beforeStudio.state.surface.primarySurfaceId,
+      at: now
+    });
+    assert.equal((await postUi(
+      "/cowork/v1/ui/sessions/cockpit-link/engagement",
+      { agentEngagement: "collaborating" }
+    )).status, 200);
+    state = (await fetch(`${companionOrigin}/cowork/v1/ui/state`).then(
+      (response) => response.json()
+    )).sessions[0];
+    assert.deepEqual(state.lease.allowedTargetIds, ["form-builder:canvas"]);
+    assert.deepEqual(state.lease.allowedCapabilityIds, ["form-add-field"]);
+    assert.equal(state.lease.goal, "Draft the rest of this form");
+    assert.equal(
+      state.lease.maxCalls,
+      6,
+      "a structural canvas gets the same budget the page's own Studio handover mints"
+    );
   } finally {
     await host.close();
   }

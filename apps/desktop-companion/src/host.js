@@ -76,6 +76,13 @@ function hasCurrentSoloLease(state, at) {
 // under it - see apps/formbuilder-showcase LEASE_MAX_CALLS / LEASE_DURATION_MS.
 const COMPANION_LEASE_MAX_CALLS = 2;
 const COMPANION_LEASE_DURATION_MS = 120_000;
+// A canvas whose capability is structural is one target that stands for many
+// pieces of work, so one call per target would grant three calls for drafting
+// a whole form. Same number the page's own Studio handover uses
+// (BUILDER_GRANT_MAX_CALLS in apps/formbuilder-showcase), so the same canvas
+// does not get two different budgets depending on who clicked.
+const COMPANION_CANVAS_GRANT_MAX_CALLS = 6;
+const STRUCTURAL_CANVAS_CAPABILITY_IDS = new Set(["form-add-field"]);
 
 // The cockpit has no pointer of its own, and a human at the cockpit is not
 // pointing at the page. Requiring a focused field there meant the seat click
@@ -96,28 +103,33 @@ function mintCompanionLease(state, at) {
   const capabilityIds = Array.isArray(focus?.capabilityIds)
     ? focus.capabilityIds.filter((id) => id !== "form.explain_field")
     : [];
+  const canvasCapabilityIds =
+    Array.isArray(state.canvasCapabilityIds) && state.canvasCapabilityIds.length > 0
+      ? state.canvasCapabilityIds.filter((id) => id !== "form.explain_field")
+      : ["form.set_value", "form.clear_value"];
+  const allowedCapabilityIds = capabilityIds.length > 0 ? capabilityIds : canvasCapabilityIds;
+  const structural = allowedCapabilityIds.some((id) => STRUCTURAL_CANVAS_CAPABILITY_IDS.has(id));
   return {
     leaseId: `companion-lease-${Date.parse(at)}`,
     // A trusted click in the local cockpit is a human origin, the same way the
     // page's own handover buttons are.
     origin: "human-click",
-    goal: wholeCanvas
-      ? "Fill in the visible form fields"
-      : `Work on ${focus.focus?.label ?? targetId}`,
+    goal: !wholeCanvas
+      ? `Work on ${focus.focus?.label ?? targetId}`
+      : structural
+        ? "Draft the rest of this form"
+        : "Fill in the visible form fields",
     // Without a focus packet there is no per-field capability list to read, so
     // the grant carries what the page says its active canvas can do - the demo
     // form's value capabilities, or the Studio's structural one.
     // form.explain_field stays out of every grant: explaining is not acting.
-    allowedCapabilityIds:
-      capabilityIds.length > 0
-        ? capabilityIds
-        : Array.isArray(state.canvasCapabilityIds) && state.canvasCapabilityIds.length > 0
-          ? state.canvasCapabilityIds.filter((id) => id !== "form.explain_field")
-          : ["form.set_value", "form.clear_value"],
+    allowedCapabilityIds,
     allowedTargetIds: targetIds,
-    maxCalls: wholeCanvas
-      ? targetIds.length + COMPANION_LEASE_MAX_CALLS
-      : COMPANION_LEASE_MAX_CALLS,
+    maxCalls: !wholeCanvas
+      ? COMPANION_LEASE_MAX_CALLS
+      : structural
+        ? COMPANION_CANVAS_GRANT_MAX_CALLS
+        : targetIds.length + COMPANION_LEASE_MAX_CALLS,
     maxContextLevel: 2,
     pageVersion: Number.isInteger(focus?.pageVersion)
       ? focus.pageVersion
