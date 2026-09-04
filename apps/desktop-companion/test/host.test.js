@@ -1274,3 +1274,159 @@ test("a model offer reaches the linked page and a failed turn says so on both su
     await host.close();
   }
 });
+
+// A host restart leaves the joined session in the store with no page contact -
+// that is how the user's Companion ended up holding six twins of one page, and
+// how a session nobody speaks to came to sit in front of the live one.
+async function restartedHostWithRestoredSession({ origin, sessionId, surfaceId, sessionStorePath }) {
+  const firstHost = createCompanionSessionHost({
+    allowedOrigins: [origin],
+    port: 0,
+    sessionStorePath,
+    createLinkSessionId: () => `restored-${sessionId}`
+  });
+  const address = await firstHost.listen();
+  const authority = createCoworkSessionAuthority({
+    sessionId,
+    initialState: {
+      humanPresence: "present",
+      agentPresence: "active",
+      effectiveMode: "cowork"
+    },
+    primarySurface: { surfaceId, kind: "embedded" }
+  });
+  const snapshot = authority.readSnapshot();
+  const link = createHttpCompanionLink({
+    endpoint: `http://${address.hostname}:${address.port}/cowork/v1`,
+    fetchImpl: (url, init) => fetch(url, {
+      ...init,
+      headers: { ...init.headers, origin }
+    })
+  });
+  await link.join({
+    hello: createCompanionHello({
+      sessionId: snapshot.sessionId,
+      surfaceId,
+      revision: snapshot.revision,
+      origin
+    }),
+    snapshot
+  });
+  await firstHost.close();
+}
+
+function joinPage({ address, origin, sessionId, surfaceId }) {
+  const authority = createCoworkSessionAuthority({
+    sessionId,
+    initialState: {
+      humanPresence: "present",
+      agentPresence: "active",
+      effectiveMode: "cowork"
+    },
+    primarySurface: { surfaceId, kind: "embedded" }
+  });
+  const snapshot = authority.readSnapshot();
+  const link = createHttpCompanionLink({
+    endpoint: `http://${address.hostname}:${address.port}/cowork/v1`,
+    fetchImpl: (url, init) => fetch(url, {
+      ...init,
+      headers: { ...init.headers, origin }
+    })
+  });
+  return link.join({
+    hello: createCompanionHello({
+      sessionId: snapshot.sessionId,
+      surfaceId,
+      revision: snapshot.revision,
+      origin
+    }),
+    snapshot
+  });
+}
+
+function readUiSessions(address) {
+  return fetch(`http://${address.hostname}:${address.port}/cowork/v1/ui/state`)
+    .then((response) => response.json())
+    .then((state) => state.sessions);
+}
+
+test("a relinked page leaves no contactless twin of itself behind", async () => {
+  const origin = "https://forms.example";
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "cowork-twin-store-"));
+  const sessionStorePath = path.join(tempRoot, "sessions.json");
+  await restartedHostWithRestoredSession({
+    origin,
+    sessionId: "formbuilder-showcase",
+    surfaceId: "formbuilder:embedded",
+    sessionStorePath
+  });
+  const host = createCompanionSessionHost({
+    allowedOrigins: [origin],
+    port: 0,
+    sessionStorePath,
+    createLinkSessionId: () => "live-link"
+  });
+  try {
+    const address = await host.listen();
+    assert.equal(host.sessionCount(), 1, "the restored session is there before the page returns");
+    await joinPage({
+      address,
+      origin,
+      sessionId: "formbuilder-showcase",
+      surfaceId: "formbuilder:embedded"
+    });
+
+    const sessions = await readUiSessions(address);
+    assert.equal(
+      sessions.length,
+      1,
+      "the same page linking again replaces its own contactless leftover"
+    );
+    assert.equal(sessions[0].linkSessionId, "live-link");
+    assert.notEqual(sessions[0].lastPageContactAt, null);
+  } finally {
+    await host.close();
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("a session nobody speaks to never outranks the live one in the cockpit", async () => {
+  const origin = "https://forms.example";
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "cowork-rank-store-"));
+  const sessionStorePath = path.join(tempRoot, "sessions.json");
+  // A different page, so this one is not the live page's twin and is kept -
+  // only the ordering decides which session the cockpit acts on.
+  await restartedHostWithRestoredSession({
+    origin,
+    sessionId: "other-page",
+    surfaceId: "formbuilder:document-pip",
+    sessionStorePath
+  });
+  const host = createCompanionSessionHost({
+    allowedOrigins: [origin],
+    port: 0,
+    sessionStorePath,
+    createLinkSessionId: () => "live-link"
+  });
+  try {
+    const address = await host.listen();
+    await joinPage({
+      address,
+      origin,
+      sessionId: "formbuilder-showcase",
+      surfaceId: "formbuilder:embedded"
+    });
+
+    const sessions = await readUiSessions(address);
+    assert.equal(sessions.length, 2);
+    assert.equal(
+      sessions[0].linkSessionId,
+      "live-link",
+      "the cockpit reads sessions[0]; a session with no page contact must never be it"
+    );
+    assert.equal(sessions[1].lastPageContactAt, null);
+  } finally {
+    await host.close();
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});

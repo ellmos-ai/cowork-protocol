@@ -105,10 +105,15 @@ function mintCompanionLease(state, at) {
       ? "Fill in the visible form fields"
       : `Work on ${focus.focus?.label ?? targetId}`,
     // Without a focus packet there is no per-field capability list to read, so
-    // the grant carries the value capabilities the demo form's controls have.
+    // the grant carries what the page says its active canvas can do - the demo
+    // form's value capabilities, or the Studio's structural one.
     // form.explain_field stays out of every grant: explaining is not acting.
     allowedCapabilityIds:
-      capabilityIds.length > 0 ? capabilityIds : ["form.set_value", "form.clear_value"],
+      capabilityIds.length > 0
+        ? capabilityIds
+        : Array.isArray(state.canvasCapabilityIds) && state.canvasCapabilityIds.length > 0
+          ? state.canvasCapabilityIds.filter((id) => id !== "form.explain_field")
+          : ["form.set_value", "form.clear_value"],
     allowedTargetIds: targetIds,
     maxCalls: wholeCanvas
       ? targetIds.length + COMPANION_LEASE_MAX_CALLS
@@ -636,7 +641,16 @@ export function createCompanionSessionHost({
           (value) => value.lastPageContactAt !== null
         )
       },
-      sessions: [...sessions].map(([linkSessionId, value]) => {
+      // The cockpit reads sessions[0] as the one it acts on, and insertion
+      // order is not liveness: a store carrying restored twins of the same
+      // page put a session no page speaks to in front of the live one, so the
+      // human's clicks landed on a corpse and the live session never moved.
+      // Most recent contact first, never-contacted last.
+      sessions: [...sessions]
+        .sort(([, a], [, b]) =>
+          (Date.parse(b.lastPageContactAt ?? "") || 0) -
+          (Date.parse(a.lastPageContactAt ?? "") || 0))
+        .map(([linkSessionId, value]) => {
         const snapshot = value.authority.readSnapshot();
         const agentEngagement = value.gateway === null
           ? "paused"
@@ -1326,6 +1340,17 @@ export function createCompanionSessionHost({
           authority,
           lastPageContactAt: claimedAt
         }));
+        // The same page just linked again, so any earlier link session for it
+        // that no page ever spoke to is a leftover, not a second workplace.
+        // Keeping them grew the store to six twins of one page in real use.
+        for (const [otherId, other] of sessions) {
+          if (otherId === linkSessionId) continue;
+          if (other.lastPageContactAt !== null) continue;
+          if (other.origin !== origin) continue;
+          if (other.hello?.surfaceId !== joined.hello.surfaceId) continue;
+          if (other.authority.readSnapshot().sessionId !== joined.snapshot.sessionId) continue;
+          sessions.delete(otherId);
+        }
         await persistSessions();
         writeJson(response, 200, {
           protocolVersion: PROTOCOL_VERSION,
