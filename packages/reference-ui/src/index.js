@@ -300,10 +300,15 @@ export function selectSpeechVoice(voices) {
     (voice) => typeof voice?.name === "string" && /^en-us/i.test(voice.lang ?? "")
   );
   const natural = english.filter((voice) => /natural|neural/i.test(voice.name));
-  for (const preferred of PREFERRED_VOICE_NAMES) {
-    const match = natural.find((voice) => voice.name.includes(preferred));
-    if (match) return match;
+  for (const candidates of [natural, english]) {
+    for (const preferred of PREFERRED_VOICE_NAMES) {
+      const match = candidates.find((voice) => voice.name.includes(preferred));
+      if (match) return match;
+    }
   }
+  // A machine whose only en-US voice is the female Zira gets Zira: an en-US
+  // voice the surface picked on purpose still beats a browser default that,
+  // on a German Windows, reads English aloud in a German voice.
   return natural[0] ?? english[0] ?? null;
 }
 

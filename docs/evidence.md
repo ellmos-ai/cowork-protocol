@@ -865,6 +865,18 @@ headless Chrome used by the smokes offers a different voice list than Edge
 does. What is measured is the selection logic, in
 `packages/reference-ui/test/speech.test.js`.
 
+One measurement about the machine does belong here, because it bounds what any
+selection can achieve. `System.Speech` reports five installed voices on this
+host - Zira (en-US), and Hedda, Katja, Stefan (de-DE) - so the *only* locally
+installed en-US voice is female. Every male voice this session can use reaches
+Edge as an Online (Natural) voice, over the network. With the voice list
+unloaded or the network down, no male en-US voice exists here at all, and the
+selection falls to Zira on purpose rather than to a browser default that may
+read English aloud in a German voice. Installing "Microsoft David Desktop" is
+what would give this host an offline male voice; the selection already prefers
+a locally installed David over Zira even though Windows does not call him
+Natural.
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;

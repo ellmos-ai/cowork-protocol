@@ -215,3 +215,19 @@ test("handing the session over cuts the sentence the surface had started", () =>
   assert.equal(synthesis.spoken.length, 0);
   assert.equal(synthesis.cancels, 1);
 });
+
+test("a preferred male voice wins even when it is not a Natural one", () => {
+  // Measured on the machine that reported the two voices: its only installed
+  // en-US voice is the female "Microsoft Zira Desktop", and the male voices
+  // reach Edge as Online (Natural) ones. A locally installed David must not
+  // lose to Zira just because Windows does not call him Natural.
+  const installed = [
+    voice("Microsoft Zira Desktop - English (United States)"),
+    voice("Microsoft David Desktop - English (United States)"),
+    voice("Microsoft Hedda Desktop", "de-DE")
+  ];
+  assert.equal(
+    selectSpeechVoice(installed).name,
+    "Microsoft David Desktop - English (United States)"
+  );
+});
