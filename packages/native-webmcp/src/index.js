@@ -104,7 +104,7 @@ export async function registerNativeCoworkTools({
                 type: "string",
                 maxLength: 350,
                 description:
-                  "Proposed field value. On the Studio canvas: the new field's label for form-add-field (optionally prefixed with a palette id, e.g. \"date: Preferred date\"), the new label for form-update-field, \"up\" or \"down\" for form-move-field."
+                  "Proposed field value. On the Studio canvas: the new field's label for form-add-field (optionally prefixed with a palette id, e.g. \"date: Preferred date\"), the new label for form-update-field, \"up\" or \"down\" for form-move-field. A field that needs answer choices sends JSON instead of a label, because a label cannot carry them: form-add-field takes {\"paletteId\",\"label\",\"options\",\"required\"} and form-update-field takes the patch {\"label\",\"options\",\"required\"} (never id or type). options is a list of 2-12 choices, each at most 60 characters, and only checkbox-single and checkbox-multi render them."
               },
               summary: {
                 type: "string",

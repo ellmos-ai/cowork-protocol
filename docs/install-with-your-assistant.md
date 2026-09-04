@@ -57,4 +57,12 @@ step's expected output differs, show me the output and ask before continuing.
 - `docs/work-modes.md` — the presence/role matrix that decides who may click.
 - `docs/evidence.md` — every claim with the measurement behind it.
 - `apps/formbuilder-showcase/INTEGRATION.md` — how an existing app attaches the protocol.
+- `docs/agent-guide.md` — the page's side of the contract, for the agent itself.
 - `llms.txt` at the repository root — the short machine-readable index.
+
+Once it runs, the assistant that installed it can also drive it. `docs/agent-guide.md`
+is written for whatever is reading the tools rather than for the person who
+installed them: it lists the nine tools in the order a build uses them, says
+which capabilities each focus target carries, and shows the JSON `value` a field
+with answer choices needs — a label cannot hold them, and a model that tries
+writes the choices into the question instead of asking it.

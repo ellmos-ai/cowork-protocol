@@ -3,7 +3,8 @@ import { test } from "node:test";
 
 import {
   BuilderModelSuggestionError,
-  createBuilderModelSuggester
+  createBuilderModelSuggester,
+  normalizeFieldOptions
 } from "../src/builder-model-suggester.js";
 import { FIELD_TYPE_PALETTE } from "../src/form-builder.mjs";
 
@@ -62,6 +63,8 @@ test("returns the field the model actually proposed", async () => {
   assert.deepEqual(suggestion, {
     paletteId: "text-long",
     label: "What should we improve?",
+    options: null,
+    required: false,
     summary: "Add one field",
     message: "Here is one field.",
     rawValue: "text-long: What should we improve?"
@@ -75,6 +78,101 @@ test("matches the palette id case-insensitively but returns the canonical id", a
   const suggestion = await suggester.suggestField({ formTitle: "Signup", presence: PRESENCE });
   assert.equal(suggestion.paletteId, "text-short");
   assert.equal(suggestion.label, "Email address");
+});
+
+// --- Answer choices: the field the human described, not a label that lists it. ---
+
+// The measured failure this contract exists for (qwen3.8:27b-mlx, 2026-09-04):
+// asked for "how many kids ... options are 1 2 3 4 5 6 7 8 or more", the model
+// wrote the choices into the label and the Studio kept "Option 1, Option 2".
+test("carries the model's answer choices as a list, leaving the label a question", async () => {
+  const { suggester } = withReply(
+    addFieldReply(
+      JSON.stringify({
+        paletteId: "checkbox-single",
+        label: "How many kids do you have?",
+        options: ["1", "2", "3", "4", "5", "6", "7", "8 or more"]
+      })
+    )
+  );
+  const suggestion = await suggester.suggestField({ formTitle: "Family", presence: PRESENCE });
+  assert.equal(suggestion.paletteId, "checkbox-single");
+  assert.equal(suggestion.label, "How many kids do you have?");
+  assert.deepEqual(suggestion.options, ["1", "2", "3", "4", "5", "6", "7", "8 or more"]);
+  assert.doesNotMatch(suggestion.label, /\(/);
+});
+
+test("reads required from the JSON value and defaults it to false", async () => {
+  const { suggester } = withReply(
+    addFieldReply(JSON.stringify({ paletteId: "text-short", label: "Email address", required: true }))
+  );
+  const suggestion = await suggester.suggestField({ formTitle: "Signup", presence: PRESENCE });
+  assert.equal(suggestion.required, true);
+  assert.equal(suggestion.options, null);
+});
+
+test("keeps the plain \"<paletteId>: <label>\" value working, with no options", async () => {
+  const { suggester } = withReply(addFieldReply("date: Preferred date"));
+  const suggestion = await suggester.suggestField({ formTitle: "Booking", presence: PRESENCE });
+  assert.equal(suggestion.paletteId, "date");
+  assert.equal(suggestion.options, null);
+});
+
+// Fail-closed: a field still arrives, its answer choices do not, and the
+// summary says why - the human never clicks a field whose options were quietly
+// repaired into something they did not ask for.
+test("drops answer choices the Builder cannot render and says so in the summary", async () => {
+  const { suggester } = withReply(
+    addFieldReply(
+      JSON.stringify({
+        paletteId: "checkbox-single",
+        label: "How many kids do you have?",
+        options: ["only one choice"]
+      })
+    )
+  );
+  const suggestion = await suggester.suggestField({ formTitle: "Family", presence: PRESENCE });
+  assert.equal(suggestion.options, null);
+  assert.match(suggestion.summary, /Add one field/);
+  assert.match(suggestion.summary, /dropped: 1 of them, and a choice needs 2-12/);
+});
+
+test("drops answer choices offered for a field type that has none", async () => {
+  const { suggester } = withReply(
+    addFieldReply(JSON.stringify({ paletteId: "text-short", label: "Your name", options: ["a", "b"] }))
+  );
+  const suggestion = await suggester.suggestField({ formTitle: "Signup", presence: PRESENCE });
+  assert.equal(suggestion.options, null);
+  assert.match(suggestion.summary, /this field type has none/);
+});
+
+test("an empty options list is silence, not a fault", async () => {
+  const { suggester } = withReply(
+    addFieldReply(JSON.stringify({ paletteId: "text-short", label: "Your name", options: [] }))
+  );
+  const suggestion = await suggester.suggestField({ formTitle: "Signup", presence: PRESENCE });
+  assert.equal(suggestion.options, null);
+  assert.equal(suggestion.summary, "Add one field");
+});
+
+test("normalizeFieldOptions trims, de-duplicates and refuses to shorten a long choice", () => {
+  assert.deepEqual(normalizeFieldOptions(["  Yes ", "yes", "No"], { allowed: true }), {
+    options: ["Yes", "No"],
+    notice: ""
+  });
+  const long = normalizeFieldOptions(["x".repeat(61), "ok"], { allowed: true });
+  assert.equal(long.options, null);
+  assert.match(long.notice, /longer than 60 characters/);
+  assert.deepEqual(normalizeFieldOptions(undefined, { allowed: true }), { options: null, notice: "" });
+  assert.match(normalizeFieldOptions("1, 2, 3", { allowed: true }).notice, /not a list/);
+});
+
+test("rejects a JSON value that never names a field type", async () => {
+  const { suggester } = withReply(addFieldReply(JSON.stringify({ label: "How many kids?" })));
+  await assert.rejects(
+    () => suggester.suggestField({ formTitle: "Family", presence: PRESENCE }),
+    rejectsWith("INVALID_MODEL_SUGGESTION", /no paletteId/)
+  );
 });
 
 // --- No silent fallback: every bad answer surfaces with a code and a cause. ---
@@ -99,7 +197,7 @@ test("rejects a label the form already uses, case-insensitively", async () => {
   );
 });
 
-test("rejects an offer value that is not \"<paletteId>: <label>\"", async () => {
+test("rejects an offer value that is neither shape", async () => {
   const { suggester } = withReply(addFieldReply("please add an email field"));
   await assert.rejects(
     () => suggester.suggestField({ formTitle: "Signup", presence: PRESENCE }),

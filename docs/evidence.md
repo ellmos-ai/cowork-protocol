@@ -886,6 +886,10 @@ what would give this host an offline male voice; the selection already prefers
 a locally installed David over Zira even though Windows does not call him
 Natural.
 
+## Answer choices reach the field, not the label (2026-09-04)
+
+- **Measured against `qwen3.8:27b-mlx`** through the real suggester and transport: "create a field that asks the question how many kids do you have and answer options are 1 2 3 4 5 6 7 8 or more" returned `checkbox-single`, the label `How many kids do you have?` with no choices in it, and `["1","2","3","4","5","6","7","8 or more"]` as a list, in 21.3 s and again in 18.9 s. Before the change the same request produced a Choose-one field labelled `How many kids do you have? (1, 2, 3, 4, 5, 6, 7, 8+)` whose options stayed "Option 1, Option 2" - the offer value could only say `<paletteId>: <label>`, and the 350-character transcript spent 243 on the fixed instruction, cutting the human's own 110-character sentence at 106 so the model never read the choices and invented its own. Instruction now 214 characters, goal intact; `node --test` 508 pass.
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;
