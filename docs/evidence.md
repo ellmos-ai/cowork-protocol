@@ -825,6 +825,46 @@ measured saying it.
   adding `panel-bridge-resting.png` and replacing the stale extension frame with
   a crossing and a resting one from the cockpit smoke.
 
+## One session, one voice (2026-09-04)
+
+A live session answered in two voices and repeated itself: the page picked a
+voice, the Companion window picked none and got whatever the browser offered,
+and both windows were open and speaking at the same time. Measured in the
+code, not inferred from the recording:
+
+| Finding | Where |
+|---|---|
+| The page's own preference list ranked three female voices (Ava, Emma, Aria) right after Andrew, so a machine without Andrew answered in a female voice by design | `apps/formbuilder-showcase/src/speech-controller.js` before this change |
+| `getVoices()` is empty until the browser has loaded the list, and the old `speak()` spoke anyway - the first sentence of a session took the browser default, later ones took Andrew. That is the "sometimes the better male voice" | `apps/formbuilder-showcase/src/app.js` |
+| The Companion window chose no voice at all: `new SpeechSynthesisUtterance(text)` and nothing else | `apps/desktop-companion/ui/app.js` |
+| Nothing remembered what had already been said, and every announcement called `cancel()` first, so any burst of announcements cut each other mid-word - the "fragments" | both surfaces |
+
+Two candidate causes were checked and ruled out. The Companion dequeues an
+agent request when the page reads it (`takeAgentRequests`,
+`apps/desktop-companion/src/host.js`), so the relay does not redeliver the same
+tool call; and the 500ms delta pull reaches `showCompanionConversation` and
+`render()`, neither of which speaks. The repetition is therefore missing
+de-duplication across the two delivery routes into `presentConversationReply`
+(the page's own send path and the relay's `cowork_reply_turn` handler), not a
+redelivering transport.
+
+One speaker now serves every surface (`createSpeaker` in
+`packages/reference-ui/src/index.js`): male Natural voices first (Andrew, Guy,
+Christopher, David), then any en-US Natural/Neural voice, then any en-US voice,
+and the unchecked browser default only where the browser offers no en-US voice
+at all. It waits for `voiceschanged` before the first sentence, says each
+keyed announcement once, joins announcements from one burst into a single
+sentence, and stays silent on the page while the Companion window holds the
+session. Gates: `node --test` 503 pass / 0 fail, and `smoke:webmcp`,
+`smoke:surface`, `smoke:companion-cockpit`, `smoke:companion-mcp`,
+`smoke:accessibility`, `build:pages`, `build:companion`, `check:secrets`,
+`check:architecture` each exit 0.
+
+The voice actually chosen in Edge on this machine is not claimed here: the
+headless Chrome used by the smokes offers a different voice list than Edge
+does. What is measured is the selection logic, in
+`packages/reference-ui/test/speech.test.js`.
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;
