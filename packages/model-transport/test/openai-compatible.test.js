@@ -245,7 +245,7 @@ test("an exhausted answer budget is named, never folded into a generic failure",
   assert.equal(sent[0].reasoning_effort, "high");
 });
 
-test("a fenced JSON reply is accepted and prose is refused with its own code", async () => {
+test("a fenced JSON reply is accepted, and prose becomes a message with no offers", async () => {
   const fenced = createOpenAiCompatibleTurnSender({
     endpoint: "https://models.example.test/v1/chat/completions",
     model: "preferred-model",
@@ -266,7 +266,21 @@ test("a fenced JSON reply is accepted and prose is refused with its own code", a
     fetchImpl: async () =>
       Response.json({ choices: [{ message: { content: "Sure, I can help with that." } }] })
   });
-  await assert.rejects(() => prose(turn), (error) => error.code === "MODEL_REPLY_NOT_JSON");
+  const proseReply = await prose(turn);
+  assert.equal(proseReply.message, "Sure, I can help with that.");
+  assert.deepEqual(proseReply.offers, []);
+
+  const wrapped = createOpenAiCompatibleTurnSender({
+    endpoint: "https://models.example.test/v1/chat/completions",
+    model: "preferred-model",
+    fetchImpl: async () =>
+      Response.json({
+        choices: [{
+          message: { content: "Here you go: {\"message\": \"Ada Byron fits the field.\"} Hope that helps." }
+        }]
+      })
+  });
+  assert.equal((await wrapped(turn)).message, "Ada Byron fits the field.");
 
   const offSchema = createOpenAiCompatibleTurnSender({
     endpoint: "https://models.example.test/v1/chat/completions",

@@ -237,10 +237,22 @@ function createOpenAiCompatibleSender({
     try {
       parsed = parseJsonReply(answer.content);
     } catch {
-      throw new ModelGatewayError(
-        "MODEL_REPLY_NOT_JSON",
-        "The preferred model answered in prose. It must return one JSON object with message, speak and offers."
-      );
+      // A prose answer is still an answer: the model said something and
+      // proposed nothing. Refusing it left the human with an error code where
+      // a sentence was waiting (measured 2026-09-04 with qwen3.8 asked for a
+      // free-text field). If the prose wraps a JSON object, that object is the
+      // reply; otherwise the prose becomes the message, bounded like every
+      // reply, with no offers - nothing is invented on the model's behalf.
+      const embedded = answer.content.match(/\{[\s\S]*\}/);
+      let embeddedReply = null;
+      if (embedded) {
+        try {
+          embeddedReply = JSON.parse(embedded[0]);
+        } catch {
+          embeddedReply = null;
+        }
+      }
+      parsed = embeddedReply ?? { message: answer.content.trim(), speak: "", offers: [], replyKind: "prose" };
     }
     try {
       return normalizeConversationReply(parsed);
