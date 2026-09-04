@@ -38,6 +38,7 @@ import {
   BRIDGE_COPY,
   BRIDGE_ICON,
   REFERENCE_UI_PROVIDER_ID,
+  createSpeaker,
   createStepIcon,
   STATUS_STEPS,
   statusForWorkModeChoice,
@@ -70,7 +71,7 @@ import {
   prepareVisibleActionOffer,
   workModeChoiceId
 } from "./view-model.js";
-import { createRecognitionSession, selectSpeechVoice } from "./speech-controller.js";
+import { createRecognitionSession } from "./speech-controller.js";
 import { replyToShowcaseTurn } from "./local-conversation.js";
 import { createModelSeat } from "./model-seat.js";
 import { adviseCommentForHumanChange } from "./advisor-comment.js";
@@ -739,6 +740,9 @@ async function openInCompanion() {
       visibilityWarning =
         `${error.code ?? "COMPANION_SYNC_ERROR"}: initial page visibility is unknown`;
     }
+    // The Companion window is the session authority from here on, and it is
+    // the one that speaks. Cut a sentence the page had started.
+    speaker.silence();
     coworkPanel.classList.add("is-companion-connected");
     setButtonLabel("#open-companion", "Connected");
     setStatus(
@@ -882,26 +886,18 @@ function scheduleLeaseExpiry(nowMilliseconds) {
   }, delay);
 }
 
-let preferredVoice = null;
+// One session, one voice, one speaker: while the Companion window holds the
+// session it does the talking, so the two windows never answer over each
+// other in two different voices. The chosen voice is never announced in the
+// transcript or the console.
+const speaker = createSpeaker({
+  synthesis: window.speechSynthesis,
+  isEnabled: () =>
+    $("#speak-output").checked && session.surface?.kind !== "desktop"
+});
 
-function refreshPreferredVoice() {
-  preferredVoice = selectSpeechVoice(window.speechSynthesis?.getVoices() ?? []) ?? preferredVoice;
-}
-
-// Chrome fills the voice list asynchronously, so resolve once now and again when the
-// list arrives. The chosen voice is never announced in the transcript or the console.
-window.speechSynthesis?.addEventListener?.("voiceschanged", refreshPreferredVoice);
-refreshPreferredVoice();
-
-function speak(message) {
-  if (!$("#speak-output").checked || !("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(message);
-  utterance.lang = "en-US";
-  utterance.rate = 1.02;
-  if (!preferredVoice) refreshPreferredVoice();
-  if (preferredVoice) utterance.voice = preferredVoice;
-  window.speechSynthesis.speak(utterance);
+function speak(message, options) {
+  speaker.speak(message, options);
 }
 
 function currentControl(field = focusedField) {
@@ -1445,7 +1441,9 @@ function presentConversationReply({ turn, reply, transportLabel, contextHumanTur
         : REPLY_STATUS_BY_TRANSPORT[transportLabel] ??
           "Reply received for the bounded conversation turn."
   );
-  speak(reply.speak || reply.message);
+  // Keyed on the turn, so a reply that reaches this surface twice - the page
+  // route and the relay both present one - is announced once.
+  speak(reply.speak || reply.message, { once: `turn:${turn.turnId}` });
   render();
   return { visibleOffers: createdOffers, rejectedOffers };
 }
@@ -1787,7 +1785,9 @@ function executeOffer(event, offer) {
         ? "Action verified after the human click."
         : "VERIFICATION_FAILED: the action is not reported as successful."
     );
-    speak(verified ? "Done and verified." : "The change could not be verified.");
+    speak(verified ? "Done and verified." : "The change could not be verified.", {
+      once: `receipt:${receipt.offerId}:${receipt.status}`
+    });
     render();
   } catch (error) {
     setStatus(`${error.code ?? "ERROR"}: ${error.message}`);

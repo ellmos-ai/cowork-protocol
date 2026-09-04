@@ -1,4 +1,9 @@
-import { buildWorkModePresentation, createStepIcon, STATUS_STEPS } from "./reference-ui.js";
+import {
+  buildWorkModePresentation,
+  createSpeaker,
+  createStepIcon,
+  STATUS_STEPS
+} from "./reference-ui.js";
 
 const $ = (selector) => document.querySelector(selector);
 // The 0.1 wire carries availability for the human and availability+role for
@@ -24,10 +29,17 @@ let controlBusy = false;
 let computerUseInstalled = false;
 let executionError = null;
 
-function speech(text) {
-  if (!$("#speak").checked || !("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+// The same voice the page uses, from packages/reference-ui. Without it this
+// window answered in whatever voice the browser picked by itself, so one
+// session spoke in two voices - and said the same sentence twice, once per
+// window.
+const speaker = createSpeaker({
+  synthesis: window.speechSynthesis,
+  isEnabled: () => $("#speak").checked
+});
+
+function speech(text, options) {
+  speaker.speak(text, options);
 }
 
 function nextValue(values, current) {
@@ -357,6 +369,7 @@ $("#conversation-form").addEventListener("submit", async (event) => {
   if (!currentSession || busy || transcript === "") return;
   busy = true;
   render({ sessions: [currentSession] });
+  const turnId = `companion-human-${crypto.randomUUID()}`;
   $("#status").textContent =
     "Model working from the shared bounded context… a local model that still has to load takes tens of seconds.";
   try {
@@ -365,10 +378,7 @@ $("#conversation-form").addEventListener("submit", async (event) => {
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          turnId: `companion-human-${crypto.randomUUID()}`,
-          input: { transcript }
-        })
+        body: JSON.stringify({ turnId, input: { transcript } })
       }
     );
     const result = await response.json();
@@ -385,7 +395,7 @@ $("#conversation-form").addEventListener("submit", async (event) => {
         ? ` ${delivery.rejected} suggestion${delivery.rejected === 1 ? "" : "s"} could not reach the page (${delivery.reason}).`
         : "";
     $("#status").textContent = `${result.reply.message ?? "Reply received."}${placed}`;
-    speech(result.reply.message ?? "");
+    speech(result.reply.message ?? "", { once: `turn:${turnId}` });
   } catch (error) {
     $("#status").textContent = error.message;
   } finally {
