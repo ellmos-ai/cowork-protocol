@@ -279,3 +279,105 @@ export function statusForWorkModeChoice(choiceId, current = {}) {
       throw new TypeError(`Unknown work-mode choice: ${choiceId}`);
   }
 }
+
+// --- Spoken replies --------------------------------------------------------
+// One voice for every Cowork surface: the page, the detached panel and the
+// Companion window all speak through this, so a session never answers in two
+// different voices. Male Natural voices first - Andrew is the voice of the
+// project's videos - then any en-US Natural/Neural voice, then any en-US voice
+// at all. The browser default is only used when the browser offers no en-US
+// voice, because that default is what made the Companion answer in a
+// different voice than the page.
+export const PREFERRED_VOICE_NAMES = Object.freeze([
+  "Andrew",
+  "Guy",
+  "Christopher",
+  "David"
+]);
+
+export function selectSpeechVoice(voices) {
+  const english = (Array.isArray(voices) ? voices : []).filter(
+    (voice) => typeof voice?.name === "string" && /^en-us/i.test(voice.lang ?? "")
+  );
+  const natural = english.filter((voice) => /natural|neural/i.test(voice.name));
+  for (const preferred of PREFERRED_VOICE_NAMES) {
+    const match = natural.find((voice) => voice.name.includes(preferred));
+    if (match) return match;
+  }
+  return natural[0] ?? english[0] ?? null;
+}
+
+/**
+ * A speaker that says each thing once. `once` keys a receipt or a turn, so a
+ * re-render, a delta pull or a session handover replays no announcement, and
+ * announcements that arrive in the same burst become one sentence instead of
+ * cutting each other into fragments.
+ */
+export function createSpeaker({
+  synthesis,
+  Utterance = globalThis.SpeechSynthesisUtterance,
+  isEnabled = () => true,
+  coalesceMs = 120,
+  // getVoices() is empty until the browser has loaded the list. Speaking
+  // before that is what picked the browser default for the first sentence.
+  voiceWaitMs = 1200,
+  setTimer = setTimeout,
+  clearTimer = clearTimeout
+} = {}) {
+  const announced = new Set();
+  let pending = [];
+  let timer = null;
+  let voice = null;
+
+  function resolveVoice() {
+    if (!voice) voice = selectSpeechVoice(synthesis?.getVoices?.() ?? []);
+    return voice;
+  }
+
+  function schedule() {
+    if (!pending.length) return;
+    if (timer !== null) clearTimer(timer);
+    timer = setTimer(flush, resolveVoice() ? coalesceMs : voiceWaitMs);
+  }
+
+  function flush() {
+    timer = null;
+    const message = pending.join(" ");
+    pending = [];
+    if (!message) return;
+    synthesis.cancel();
+    const utterance = new Utterance(message);
+    utterance.lang = "en-US";
+    utterance.rate = 1.02;
+    const chosen = resolveVoice();
+    if (chosen) utterance.voice = chosen;
+    synthesis.speak(utterance);
+  }
+
+  synthesis?.addEventListener?.("voiceschanged", () => {
+    voice = null;
+    resolveVoice();
+    schedule();
+  });
+
+  return {
+    speak(message, { once = null } = {}) {
+      if (!synthesis || !Utterance || !message || !isEnabled()) return false;
+      if (once !== null) {
+        if (announced.has(once)) return false;
+        announced.add(once);
+      }
+      pending.push(String(message));
+      schedule();
+      return true;
+    },
+    // Only for a surface that stops speaking mid-sentence, e.g. when the page
+    // hands the session to the Companion window.
+    silence() {
+      if (timer !== null) clearTimer(timer);
+      timer = null;
+      pending = [];
+      synthesis?.cancel?.();
+    }
+  };
+}
