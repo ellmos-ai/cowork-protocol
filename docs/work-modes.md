@@ -216,7 +216,8 @@ not on the 0.1 wire.
 
 Every offer and every receipt names its author: `seat:<model>` for the Companion's
 own model, `mcp:<client>` for a local agent that reached the page through the
-Companion, `webmcp-agent` for a tool call made in the page itself. The author is
+Companion, `webmcp-agent` for a tool call made in the page itself, `demo` for
+the panel's own demo button. The author is
 read from the call as it arrives, so none of the nine tools grew a field. Naming
 the author is not granting rights: whoever proposed it, the right to propose is
 still the one model seat's `canPropose`, and the right to execute is still a real

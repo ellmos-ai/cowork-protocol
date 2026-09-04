@@ -35,6 +35,19 @@ export function currentActor() {
   return activeActor ?? "webmcp-agent";
 }
 
+/** Runs `propose` as `actor` - for the callers that are not a relayed tool
+ *  call, like the panel's own demo button. Synchronous by design: the actor is
+ *  a page-wide context, and an async body would hand it to whatever ran next. */
+export function withActor(actor, propose) {
+  const previous = activeActor;
+  activeActor = actor;
+  try {
+    return propose();
+  } finally {
+    activeActor = previous;
+  }
+}
+
 function actorForRequest(request) {
   if (typeof request.actor === "string" && request.actor !== "") return request.actor;
   const client = typeof request.clientName === "string" ? request.clientName.trim() : "";

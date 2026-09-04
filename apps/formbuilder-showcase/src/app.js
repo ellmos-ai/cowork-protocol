@@ -71,7 +71,7 @@ import { createRecognitionSession, selectSpeechVoice } from "./speech-controller
 import { replyToShowcaseTurn } from "./local-conversation.js";
 import { createModelSeat } from "./model-seat.js";
 import { adviseCommentForHumanChange } from "./advisor-comment.js";
-import { currentActor, startCompanionAgentRelay } from "./companion-agent-relay.js";
+import { currentActor, startCompanionAgentRelay, withActor } from "./companion-agent-relay.js";
 
 const SESSION_ID = "formbuilder-showcase";
 const EMBEDDED_SURFACE_ID = "formbuilder:embedded";
@@ -1623,9 +1623,18 @@ function createVisibleStudioOffer(input) {
 function addDemoOffer() {
   if (builderFocus !== null) {
     if (!builderProposalsAllowed()) return;
+    // The demo button is a script helper, not an agent, and it says so on what
+    // it proposes. suggestField() answers with a summary, so the offer it made
+    // is the one the Studio did not have before.
+    const known = new Set(builderCowork.pendingOffers().map((offer) => offer.offerId));
     builderCowork
       .suggestField()
       .then((summary) => {
+        for (const offer of builderCowork.pendingOffers()) {
+          if (known.has(offer.offerId)) continue;
+          offer.actor = "demo";
+          offerActors.set(offer.offerId, offer.actor);
+        }
         setStatus(`${summary}. Only a real click on the offer can authorize it.`);
         render();
       })
@@ -1639,12 +1648,14 @@ function addDemoOffer() {
   const control = currentControl();
   const value = valueForDemo(control);
   try {
-    createVisibleOffer({
-      capabilityId: "form.set_value",
-      targetId: focusPacket.targetId,
-      value,
-      summary: `Set ${focusPacket.focus.label} to ${value}`
-    });
+    withActor("demo", () =>
+      createVisibleOffer({
+        capabilityId: "form.set_value",
+        targetId: focusPacket.targetId,
+        value,
+        summary: `Set ${focusPacket.focus.label} to ${value}`
+      })
+    );
   } catch (error) {
     setStatus(`${error.code ?? "ERROR"}: ${error.message}`);
   }

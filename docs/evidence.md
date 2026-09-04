@@ -775,9 +775,10 @@ Gate numbers for that change:
 
 ### Who proposed it (offer attribution)
 
-- measured on this branch: `node --test` 490 passing (488 before, plus the two
+- measured on this branch: `node --test` 491 passing (488 before, plus the three
   that pin the actor derivation - `seat:` from the request, `mcp:<client>` from
-  the client name, `webmcp-agent` outside a relayed call), with
+  the client name, `webmcp-agent` outside a relayed call, `demo` for the demo
+  button's own call), with
   `smoke:webmcp`, `smoke:companion-mcp`, `smoke:surface`, `build:pages`,
   `build:companion`, `check:secrets` and `check:architecture` all exit 0; the
   nine tool schemas are unchanged, so attribution cost the protocol nothing

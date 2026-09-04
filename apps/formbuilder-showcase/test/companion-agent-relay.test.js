@@ -6,7 +6,8 @@ import {
   coworkAgentToolNames,
   currentActor,
   runCompanionAgentRequest,
-  startCompanionAgentRelay
+  startCompanionAgentRelay,
+  withActor
 } from "../src/companion-agent-relay.js";
 
 test("the relay serves exactly the tools the page registers over WebMCP", async () => {
@@ -193,5 +194,16 @@ test("a failed call still hands the actor context back", async () => {
       }
     }
   });
+  assert.equal(currentActor(), "webmcp-agent");
+});
+
+test("a caller that is not a relayed call can name itself, and only for its own call", () => {
+  // The panel's own demo button is a script helper. Calling it webmcp-agent
+  // would be exactly the lie attribution is here to prevent.
+  assert.equal(withActor("demo", () => currentActor()), "demo");
+  assert.equal(currentActor(), "webmcp-agent");
+  assert.throws(() => withActor("demo", () => {
+    throw new Error("the offer was refused");
+  }));
   assert.equal(currentActor(), "webmcp-agent");
 });
