@@ -1049,6 +1049,7 @@ test("a model offer reaches the linked page and a failed turn says so on both su
     }
   });
   const address = await host.listen();
+  let stopRelay = async () => {};
   try {
     const authority = createCoworkSessionAuthority({
       sessionId: "offer-session",
@@ -1077,18 +1078,31 @@ test("a model offer reaches the linked page and a failed turn says so on both su
       snapshot
     });
 
-    // The page's relay loop: it pulls what waits for it and answers.
+    // The page's relay loop: it pulls what waits for it and answers. Held as
+    // one promise the test awaits, because clearing a timer does not cancel a
+    // pull already in flight: that pull would then reject against the host
+    // closed below, after the test ended, and node:test charges such an escaped
+    // rejection to the whole file while every subtest still reads green.
     const ranOnPage = [];
-    const relay = setInterval(async () => {
-      for (const request of await link.pullAgentRequests({ linkSessionId: "offer-link" })) {
-        ranOnPage.push(request);
-        await link.reportAgentResult({
-          linkSessionId: "offer-link",
-          requestId: request.requestId,
-          result: { offerId: "offer-1" }
-        });
+    let relayFailure = null;
+    let relaying = true;
+    const relayed = (async () => {
+      while (relaying) {
+        for (const request of await link.pullAgentRequests({ linkSessionId: "offer-link" })) {
+          ranOnPage.push(request);
+          await link.reportAgentResult({
+            linkSessionId: "offer-link",
+            requestId: request.requestId,
+            result: { offerId: "offer-1" }
+          });
+        }
+        await new Promise((resolve) => { setTimeout(resolve, 20); });
       }
-    }, 20);
+    })().catch((error) => { relayFailure = error; });
+    stopRelay = async () => {
+      relaying = false;
+      await relayed;
+    };
 
     const answered = await host.submitModelTurn("offer-link", {
       turnId: "offer-turn",
@@ -1112,7 +1126,8 @@ test("a model offer reaches the linked page and a failed turn says so on both su
       turnId: "failing-turn",
       input: { transcript: "Fill in the form fields please." }
     }));
-    clearInterval(relay);
+    await stopRelay();
+    assert.equal(relayFailure, null);
 
     const failedState = host.readSnapshot("offer-link").state.lastConversation;
     assert.equal(failedState.status, "MODEL_THOUGHT_PAST_ITS_BUDGET");
@@ -1124,6 +1139,7 @@ test("a model offer reaches the linked page and a failed turn says so on both su
       failedTurns: 1
     });
   } finally {
+    await stopRelay();
     await host.close();
   }
 });
