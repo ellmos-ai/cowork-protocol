@@ -1,15 +1,14 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { removeTempProfile } from "./smoke-runtime.mjs";
+import { createTempProfile, removeTempProfile } from "./smoke-runtime.mjs";
 
 import { createOpenAiCompatibleTurnSender } from "../packages/model-transport/src/openai-compatible.js";
 import { validateModelHostBrowserObservation } from "./model-host-browser-smoke-lib.mjs";
 import { createStaticServer } from "./serve.mjs";
 
-const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-model-host-smoke-"));
+const profilePath = await createTempProfile("cowork-model-host-smoke-");
 const providerAcceptance = process.env.COWORK_ACCEPT_CONNECTED_MODEL === "1";
 let server;
 let browser;

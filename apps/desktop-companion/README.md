@@ -75,6 +75,18 @@ The Companion displays the configured `COWORK_MODEL` identifier in its model
 seat. Model endpoint, key and reasoning settings remain host-owned startup
 configuration; the browser surface does not receive them.
 
+The Companion's loopback link covers only the browser-to-host connection. A
+configured model request goes from the host to `COWORK_MODEL_ENDPOINT`, which
+accepts an HTTP(S) URL and may point to a remote provider; an optional API key
+is sent to that endpoint in a Bearer header. Plain HTTP does not encrypt that
+upstream connection. When reasoning effort is unset and reply content is empty,
+the gateway may send one retry if hidden reasoning is present or the provider
+reported `finish_reason: "length"`. See [the model-host boundary](../../docs/model-host.md).
+
+Speech input and synthesis use browser-provided Web Speech APIs. The app does
+not choose or verify where a browser processes microphone audio. Dictation is
+placed in the conversation field, and the human decides when to send the turn.
+
 ### Reasoning models (Ollama qwen3.x, gpt-oss)
 
 A reasoning model answers in two parts: hidden thinking and the reply text.
