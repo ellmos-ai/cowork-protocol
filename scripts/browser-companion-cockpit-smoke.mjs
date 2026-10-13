@@ -1,15 +1,14 @@
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { removeTempProfile, resolveExtensionBrowserPath } from "./smoke-runtime.mjs";
+import { createTempProfile, removeTempProfile, resolveExtensionBrowserPath } from "./smoke-runtime.mjs";
 
 import { buildBrowserCompanion } from "./build-browser-companion.mjs";
 import { validateCockpitBrowserObservation } from "./browser-companion-cockpit-smoke-lib.mjs";
 import { createStaticServer } from "./serve.mjs";
 
-const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-cockpit-smoke-"));
+const profilePath = await createTempProfile("cowork-cockpit-smoke-");
 const evidenceDirectory = process.env.COWORK_COMPANION_EVIDENCE_DIR
   ? path.resolve(process.env.COWORK_COMPANION_EVIDENCE_DIR)
   : null;

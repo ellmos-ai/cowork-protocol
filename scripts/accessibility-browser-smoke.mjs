@@ -1,14 +1,13 @@
 import { spawn } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { removeTempProfile } from "./smoke-runtime.mjs";
+import { createTempProfile, removeTempProfile } from "./smoke-runtime.mjs";
 
 import { createStaticServer } from "./serve.mjs";
 import { validateAccessibilityObservation } from "./webmcp-browser-smoke-lib.mjs";
 
-const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-accessibility-smoke-"));
+const profilePath = await createTempProfile("cowork-accessibility-smoke-");
 let server;
 let browser;
 

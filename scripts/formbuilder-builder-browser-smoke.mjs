@@ -4,15 +4,14 @@
 // handover and conversation - click-gated exactly like the rest of the
 // protocol. See apps/formbuilder-showcase/INTEGRATION.md.
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { removeTempProfile } from "./smoke-runtime.mjs";
+import { createTempProfile, removeTempProfile } from "./smoke-runtime.mjs";
 
 import { createStaticServer } from "./serve.mjs";
 
-const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-formbuilder-smoke-"));
+const profilePath = await createTempProfile("cowork-formbuilder-smoke-");
 let server;
 let browser;
 

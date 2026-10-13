@@ -2,11 +2,10 @@
 // so any WebMCP agent in the browser reads and proposes through the same
 // bounded relay, and the click still happens in the Side Panel.
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { removeTempProfile, resolveExtensionBrowserPath } from "./smoke-runtime.mjs";
+import { createTempProfile, removeTempProfile, resolveExtensionBrowserPath } from "./smoke-runtime.mjs";
 import { buildBrowserCompanion } from "./build-browser-companion.mjs";
 import { createStaticServer } from "./serve.mjs";
 
@@ -18,7 +17,7 @@ const EXPECTED_TOOLS = [
 ];
 const PROPOSED_VALUE = "Cowork Everywhere";
 
-const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-webmcp-companion-"));
+const profilePath = await createTempProfile("cowork-webmcp-companion-");
 const extensionPath = path.resolve("dist-browser-companion");
 let browser;
 let server;

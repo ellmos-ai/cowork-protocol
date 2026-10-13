@@ -2,6 +2,19 @@
 
 Cowork can use a preferred model without putting a provider key into the page. The browser discovers a same-origin endpoint, sends one exact bounded Cowork turn, and receives a provider-neutral reply. The server alone knows the upstream endpoint, model ID and optional key.
 
+## Upstream transport
+
+The loopback-only Companion link describes the browser-to-host hop, not the
+upstream model route. `COWORK_MODEL_ENDPOINT` accepts an HTTP or HTTPS URL, so
+the host can send the bounded turn to a remote provider. If configured, the API
+key is sent to that endpoint in an `Authorization: Bearer` header; it is not
+part of the browser envelope. Plain HTTP does not encrypt the upstream request.
+When reasoning effort is unset and reply content is empty, the gateway sends
+one retry if hidden reasoning is present or the provider reports
+`finish_reason: "length"`. It retries with `reasoning_effort: "none"`, which is
+another request to the configured endpoint. Choose an endpoint and sharing
+policy that fit the data you send.
+
 ## Start
 
 Requirements: Node.js 22 or newer and an OpenAI-compatible chat-completions endpoint that can return JSON object content.

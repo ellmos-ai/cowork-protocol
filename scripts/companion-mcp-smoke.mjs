@@ -1,11 +1,10 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { removeTempProfile, resolveExtensionBrowserPath } from "./smoke-runtime.mjs";
+import { createTempProfile, removeTempProfile, resolveExtensionBrowserPath } from "./smoke-runtime.mjs";
 
 import { createCompanionSessionHost } from "../apps/desktop-companion/src/host.js";
 import { createOpenAiCompatibleGatewaySender } from "../packages/model-transport/src/openai-compatible.js";
@@ -19,7 +18,7 @@ import { createStaticServer } from "./serve.mjs";
 const MCP_SERVER = fileURLToPath(
   new URL("../apps/desktop-companion/src/mcp-server.js", import.meta.url)
 );
-const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-companion-mcp-smoke-"));
+const profilePath = await createTempProfile("cowork-companion-mcp-smoke-");
 let server;
 let provider;
 let browser;

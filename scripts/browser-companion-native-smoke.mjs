@@ -1,14 +1,13 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { removeTempProfile, resolveExtensionBrowserPath } from "./smoke-runtime.mjs";
+import { createTempProfile, removeTempProfile, resolveExtensionBrowserPath } from "./smoke-runtime.mjs";
 
 import { buildBrowserCompanion } from "./build-browser-companion.mjs";
 import { createStaticServer } from "./serve.mjs";
 
-const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-native-companion-"));
+const profilePath = await createTempProfile("cowork-native-companion-");
 const extensionPath = path.resolve("dist-browser-companion");
 let browser;
 let server;

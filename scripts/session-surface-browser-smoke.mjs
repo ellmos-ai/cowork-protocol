@@ -1,14 +1,13 @@
 import { spawn } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { removeTempProfile } from "./smoke-runtime.mjs";
+import { createTempProfile, removeTempProfile } from "./smoke-runtime.mjs";
 
 import { createCompanionSessionHost } from "../apps/desktop-companion/src/host.js";
 import { createStaticServer } from "./serve.mjs";
 
-const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-session-surface-smoke-"));
+const profilePath = await createTempProfile("cowork-session-surface-smoke-");
 let server;
 let browser;
 let companionHost;

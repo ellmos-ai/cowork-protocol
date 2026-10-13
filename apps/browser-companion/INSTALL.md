@@ -6,8 +6,12 @@ default: it declares no automatic content script and no persistent host
 permission, and only a toolbar click or `Ctrl+Shift+Y` grants temporary
 `activeTab` access to the current page. Its surface is a browser Side Panel on
 the extension origin, so nothing is injected into the website's own UI. The
-packaged extension loads no remote code and contacts no server; nothing leaves
-your machine.
+packaged extension code loads no remote code and does not itself send page
+context to a server. It exchanges bounded messages with the current page and a
+connected Companion. A page's WebMCP agent or the Companion's configured model
+gateway may forward requested context to its own model endpoint, which can be
+remote. Review that agent and endpoint before sharing page context; the
+extension's temporary `activeTab` grant does not control downstream transport.
 
 It is not published in any web store. You build it from this repository and load
 it unpacked, which is why every step below is reproducible on your own machine.

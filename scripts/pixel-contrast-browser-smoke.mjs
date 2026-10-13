@@ -1,9 +1,8 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { removeTempProfile } from "./smoke-runtime.mjs";
+import { createTempProfile, removeTempProfile } from "./smoke-runtime.mjs";
 
 import { createStaticServer } from "./serve.mjs";
 import {
@@ -12,7 +11,7 @@ import {
   validatePixelContrastObservation
 } from "./pixel-contrast-smoke-lib.mjs";
 
-const profilePath = await mkdtemp(path.join(tmpdir(), "cowork-contrast-smoke-"));
+const profilePath = await createTempProfile("cowork-contrast-smoke-");
 let server;
 let browser;
 
