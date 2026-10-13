@@ -25,9 +25,9 @@ appears.
 1. **Stable, immutable identifiers.** Every mutable thing an agent might
    target needs an ID that survives edits and never changes for a given
    object. FormBuilder's fields already had this for value changes
-   (`element.id` from `form-engine.mjs`, matching the upstream
-   `formularerstellen-form-v1` schema's field-ID contract in
-   `../FormularErstellen/EXPORTFORMAT.md`). Adding *structural* editing
+   (`element.id` from the [attributed local engine](src/form-engine.mjs);
+   see [the source notice](FORMBUILDER-NOTICE.md) for provenance). Adding
+   *structural* editing
    required nothing new here: `createField()` mints an id once
    (`crypto.randomUUID().replace(/-/g, "")`) and every other core function
    (`insertField`, `updateField`, `moveField`, `removeField`) refuses to

@@ -7,6 +7,8 @@ Cowork Protocol is the submission to The WebMCP Challenge (2026). Two things car
 ## Start here
 
 - [README](https://github.com/ellmos-ai/cowork-protocol/blob/main/README.md): what it is, how to run everything, all npm scripts
+- [README (Deutsch)](https://github.com/ellmos-ai/cowork-protocol/blob/main/README_de.md): vollständige deutsche Fassung mit korrespondierenden Abschnittsankern
+
 - [Install with your AI assistant](https://github.com/ellmos-ai/cowork-protocol/blob/main/docs/install-with-your-assistant.md): a paste-ready prompt that installs and runs the repository step by step
 - [Live showcase](https://ellmos-ai.github.io/cowork-protocol/apps/formbuilder-showcase/): FormBuilder Studio with the embedded Cowork panel (Chrome/Edge 150+ with WebMCP flags for native tool discovery)
 
@@ -32,3 +34,9 @@ Cowork Protocol is the submission to The WebMCP Challenge (2026). Two things car
 
 - [Demo video](https://youtu.be/9CJehV7Bugk)
 - [Devpost entry](https://devpost.com/software/cowork-protocol)
+
+## Data-flow boundaries
+
+- The Browser Bridge does not load remote code or itself send page context to a remote server. A WebMCP agent or configured companion/model endpoint may receive context selected or requested through the protocol.
+- The Desktop Companion accepts a configurable HTTP(S) model endpoint and may send an optional bearer key to it; HTTP does not encrypt that upstream connection. Speech recognition and synthesis depend on the browser and its provider.
+- See the README and docs/hosts.md, docs/model-host.md, and docs/evidence.md for implementation details and evidence limits.
