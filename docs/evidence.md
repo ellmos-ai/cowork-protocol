@@ -907,6 +907,79 @@ Natural.
 - **The AX baseline was re-measured, not derived** (D9, then D8). `CURRENT_INTERACTIVE_CONTROL_COUNT` moved 34 -> 35 for `Keep listening` and 35 -> 36 for `Chat window`, both in the default view. `npm run smoke:accessibility` reported 36 interactive, 36 reachable and 36 focus-visible controls, with a 36-long unique tab sequence, and exits 0; `npm run smoke:webmcp` exits 0 against the same number.
 - **Role and Conversation as a chat window** (D8). The two sections a person converses through were the smallest part of the panel. The smaller of the two available solutions was taken: no second Picture-in-Picture window and no node juggling, because the existing `Detach` already moves the whole panel into a PiP window at full width and Role and Conversation are already adjacent in it. `Chat window` opens that same window under one layout class - other sections hidden, transcript given the remaining height with its own scrollbar, input taller - so session, model seat, handlers and fold states are untouched by construction. `npm run smoke:surface` exits 0 with eight new named expectations, including: the detached body carries the chat layout, the visible sections are exactly `work-mode-heading,audio-heading`, the transcript renders at 100px or more (against the 2.2rem it gets docked) and scrolls, the session id is unchanged, and closing the window docks the panel back into the page.
 
+## Browser acceptance details retained from the README (2026-10-13)
+
+The README now keeps a short current-run summary and links here for the dated records. The records below describe observed runs and retain their individual claim boundaries.
+
+<a id="accepted-browser-runs"></a>
+### Accepted browser runs
+
+The browser results below are dated acceptance records, not a promise of current
+coverage. In this care run on 2026-10-13, five Edge 154 browser smokes passed.
+Chrome was unavailable, so this care run did not test it.
+
+The native browser path has both contract and browser evidence. An isolated
+Chrome 152 run discovered all nine tools through
+`document.modelContext.getTools()`, exercised bounded focus/context and
+latest-only conversation, and proved that two action offers plus human
+feedback remained click-gated. Its explicit boundaries stay
+`agentClientClaim: false` and `hostTokenClaim: false`: this is browser WebMCP
+mediation, not a connected ChatGPT-agent journey.
+
+That same native WebMCP smoke was also run in a recorded branded Google
+Chrome session (152.0.7977.77, started with `WebMCP,WebMCPTesting`) rather
+than a Chrome for Testing build. It discovered nine tools. The report records
+`browserClaim`, `conversationClaim` and `webMcpReplyClaim` as true, and
+`agentClientClaim` and `hostTokenClaim` as false. Those values describe that
+run's checks; they do not establish a current browser baseline. Earlier
+extension-smoke setup used Chrome for Testing because the branded Chrome build
+under test ignored `--load-extension`. Support for this flag depends on the
+browser build.
+
+A separate Chrome 152 run proves the same-origin model-host plumbing with one
+468-character deterministic turn and no browser credential. An earlier
+provider-backed repetition sent one 502-character turn to local Ollama
+`qwen3:4b`, whose exact offer stayed inert until the trusted click;
+`providerLocation` is `local` and `externalModelClaim` remains false.
+
+A recorded UI acceptance run kept every control reachable at true 200% browser zoom and
+at a 390×844 CSS viewport: all 36 interactive controls had a named
+accessibility node and a visible Tab stop, and horizontal overflow remained zero.
+That baseline fell from 41 to 34 as the panel's sections learned to fold and
+rose to 36 as talking and the chat window gained their controls; it counts the
+panel a visitor meets, with demo mode on and a model already on the bridge. The rendered-contrast smoke audits every visible text item across
+eleven states (the FormBuilder Studio field suggestion, now offered in the one
+Cowork panel, is one of them) with no unsupported or failing range and a
+4.5656:1 minimum, measured before the last panel fold and unchanged by it. Real
+microphone practice, a remote provider, screen-reader practice and a connected
+ChatGPT-agent invocation remain open.
+
+A separate Chrome for Testing 152 acceptance explicitly disabled WebMCP and
+loaded the built Browser Bridge extension. Before the trusted action
+shortcut, the page contained neither Cowork bridge nor extension execution
+world. Temporary `activeTab` access then injected the headless relay on demand;
+its extension-origin Side Panel
+surface communicated with the headless page relay without inserting a Cowork
+root into the page DOM. It proved default-off and toggle-on/off behavior, exact
+350/1,200-character semantic tiers, a real one-shot 400×400 PNG pointer crop,
+one visible value offer that stayed inert, and mutation plus verification only
+after a trusted browser click. The report sets `browserCompanionClaim: true`,
+`sidePanelSurfaceClaim: true`, `pageUiInjected: false`,
+`visualCaptureClaim: true`, `visualDeliveryOneShot: true`, `webMcpAbsent: true`
+and keeps model-client, external-model, host-token and full-page-delivery claims
+false.
+
+A second extension acceptance enables WebMCP on FormBuilder. It proves that
+the Side Panel discovers all nine native Cowork tools from the page execution
+world, reads the native focus packet, keeps `fallbackActive: false` and still
+injects no page UI. The no-extension surface smoke then detaches the embedded
+UI into Document Picture-in-Picture, hands the exact session plus bounded
+context to the local Companion, opens a separate Companion app window and
+routes its reply through one serialized Model Gateway. The Embed disables its
+own model input after that handoff. A hidden/visible tab cycle then proves that
+the Companion receives no page content and creates no model turn, while the
+returning page catches up from its last revision.
+
 ## Explicitly not yet evidenced
 
 - screen-reader practice and final submission-asset branding;

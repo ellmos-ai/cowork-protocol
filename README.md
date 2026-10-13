@@ -1,4 +1,5 @@
 # Cowork Protocol
+**English** · [Deutsch](README_de.md)
 
 ![Cowork Protocol — one protocol, one human surface, three hosts](design/banner.svg)
 
@@ -127,14 +128,14 @@ The agent reads a structured `cowork_read_focus` tool instead of guessing from t
 - **Bounded attention instead of page dumps.** Character-capped focus packets, a
   digest for long selections, and one reasoned, one-shot context request capped
   at 1,200 adapter characters. Silence and unchanged state emit nothing.
-- **Offers that cannot authorize themselves, and each one is signed.** An agent
-  proposes an exact visible value; only a real human click applies it, and every
-  change comes back as a causal, latest-only receipt with click-authenticated
-  feedback. Every offer and receipt names its author — the seat model, a named
-  MCP client, or a WebMCP agent calling in the page — read from the call as it
-  arrives, so none of the nine tool schemas had to grow a field. Naming an
-  author is not granting rights: the right to propose is still the one model
-  seat's, and the right to execute is still a person's click.
+- **Offers cannot authorize themselves and carry an attributed author.** An
+  agent proposes an exact visible value; only a real human click applies it, and
+  every change comes back as a causal, latest-only receipt with
+  click-authenticated feedback. Every offer and receipt names its author — the
+  seat model, a named MCP client, or a WebMCP agent calling in the page — read
+  from the call as it arrives, so none of the nine tool schemas had to grow a
+  field. Naming an author is not granting rights: the right to propose is still
+  the one model seat's, and the right to execute is still a person's click.
 - **Three questions instead of a settings panel.** Each partner answers who is
   here, on what, and in which role - executing or advising. The work mode and the
   click right follow; nothing chooses action rights separately. A model executes
@@ -310,45 +311,33 @@ The allowlisted `dist/` artifact contains only the browser showcase and required
 
 ## Packages
 
-- `packages/core` — protocol packets, causal changes, human feedback, state decisions, authorizations and budgets.
-- `packages/conversation` — provider-neutral bounded turns and replies plus a latest-only pull inbox; silence and a paused agent never call the host model transport.
-- `packages/model-transport` — browser discovery plus a server-side OpenAI-compatible gateway; the browser sees neither provider configuration nor credentials.
-- `packages/formbuilder-connector` — maps a stable FormBuilder field into a native Cowork focus, plus the same offer/plan contract for three canvas-editing capabilities (add/update/move a field) used by the Builder below.
-- `packages/native-webmcp` — registers the nine Cowork tools with the current WebMCP API.
-- `packages/integration-contract` — declares provider-neutral protocol hosts,
-  replaceable surface clients and the three operator-controlled page-UI modes.
-- `packages/reference-ui` — shared Cowork reference-surface identity, human/model
-  icons and the single work-mode vocabulary (status labels, mode labels, the three
-  status steps) consumed by FormBuilder Embed, the extension Side Panel and the
-  Desktop Companion. No surface writes its own status wording.
-- `packages/session-authority` — owns versioned collaboration snapshots, bounded deltas, exact-revision surface handoffs and compact optional model briefings shared across Cowork surfaces.
-- `packages/companion-link` — performs a loopback-only, exact-revision
-  Companion join and ordered delta acknowledgement.
-- `packages/context-manager` — persists a compact summary plus a bounded recent
-  turn window and creates cross-provider Handoff Capsules.
-- `packages/model-gateway` — enforces the active model-seat lease, deduplicates
-  turn IDs and serializes inference across Cowork-owned surfaces.
-- `packages/bridge` — negotiates native → generic WebMCP → no-WebMCP host companion, while adapting explicit host catalogs and bounded legacy semantic/visual-delivery callbacks without claiming browser-wide discovery or built-in image capture.
-- `packages/open-compute-adapter` — lazy, operator-enabled Computer Use path for
-  the Desktop Companion; its bundled profile exposes only focus-near semantics, a
-  requested visual lens and exact click-authorized actions.
-- `packages/evals` — reproducible character-budget and silence evals with no host-token claim.
-- `apps/browser-companion` — optional default-off MV3 bridge for
-  pages without Cowork/WebMCP, with bounded semantic tiers, a one-shot pointer
-  crop and trusted-click-only value changes; its visual surface lives on the
-  extension origin declared as the Chrome/Edge Side Panel, while its content
-  relay injects no page UI.
-- `apps/desktop-companion` — persistent loopback-only Session Authority with a
-  movable reference window, shared model conversation, audio controls and a
-  Windows presence tray.
-- `apps/formbuilder-showcase` — visible reference journey for focus, offer, confirmation, causal receipt, feedback, work modes, solo lease and audio controls.
-- `apps/formbuilder-showcase/src/form-engine.mjs` — attributed web-only FormBuilder engine for required-field validation and JSON response export.
-- `apps/formbuilder-showcase/src/form-builder.mjs`, `fodt-export.mjs`, `builder-view.js` — the new, Cowork-free FormBuilder Studio product (design a form from a palette, fill it in, export schema/response/printable `.fodt`); see [`apps/formbuilder-showcase/INTEGRATION.md`](apps/formbuilder-showcase/INTEGRATION.md) for how it was then connected to Cowork on top.
-- `apps/formbuilder-showcase/src/builder-cowork.js`, `builder-model-suggester.js`, `builder-directive-classifier.js` — the layer on top of Cowork Protocol that knows what a form field is: three canvas capabilities (`form-add-field`, `form-update-field`, `form-move-field`) offered, clicked and verified through the same path as every other FormBuilder capability, plus grants, solo drafting and utterance-authorized directives. No new WebMCP tool.
-- `apps/formbuilder-showcase/src/builder-cowork-ui.js` — the headless adapter (`initBuilderCowork`) between that layer and the page. It owns the Studio canvas's attention target, offers, grant and directives and renders nothing: the page's one Cowork panel is the only Cowork surface and serves both the demo form and the Studio canvas. The Studio's own "Model suggestions", "Delegate to the model" and "Say what to do" sections were removed for that reason; see [`apps/formbuilder-showcase/INTEGRATION.md`](apps/formbuilder-showcase/INTEGRATION.md).
+Cowork separates protocol state and bounded turns from its surface connectors and reference applications. The
+links below open the source directories; the [component reference](docs/components.md#packages) keeps the full
+module map and responsibilities.
 
-See the [adapter runtime guide](packages/bridge/README.md), [Browser Bridge guide](apps/browser-companion/README.md), [docs/architecture.md](docs/architecture.md), [docs/testing.md](docs/testing.md), [docs/deployment.md](docs/deployment.md), [docs/evidence.md](docs/evidence.md), and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
+- **State and turns:** [packages/core](packages/core/) · [packages/conversation](packages/conversation/) ·
+  [packages/context-manager](packages/context-manager/) ·
+  [packages/session-authority](packages/session-authority/) · [packages/model-gateway](packages/model-gateway/)
+  · [packages/companion-link](packages/companion-link/).
+- **Surfaces and connectors:** [packages/model-transport](packages/model-transport/) ·
+  [packages/native-webmcp](packages/native-webmcp/) ·
+  [packages/integration-contract](packages/integration-contract/) ·
+  [packages/reference-ui](packages/reference-ui/) · [packages/bridge](packages/bridge/) ·
+  [packages/open-compute-adapter](packages/open-compute-adapter/) · [packages/evals](packages/evals/) ·
+  [packages/formbuilder-connector](packages/formbuilder-connector/).
+- **Reference applications:** [apps/browser-companion](apps/browser-companion/) ·
+  [apps/desktop-companion](apps/desktop-companion/) · [apps/formbuilder-showcase](apps/formbuilder-showcase/).
+  The component reference also maps the FormBuilder Studio and Cowork adapter files.
 
+## Data-flow boundaries
+
+The Browser Bridge does not load remote code or itself send page context to a remote server. A WebMCP agent or
+configured companion/model endpoint may receive context selected or requested through the protocol. The Desktop
+Companion accepts a configurable HTTP(S) endpoint and may send an optional bearer key to it; an HTTP endpoint
+does not encrypt that upstream connection. Speech recognition and synthesis use browser APIs, and their
+processing location depends on the browser and its provider. See [docs/hosts.md](docs/hosts.md),
+[docs/model-host.md](docs/model-host.md) and [docs/evidence.md](docs/evidence.md) for the implementation and
+evidence boundaries.
 ## Evidence and boundaries
 
 This section records what has actually been observed and where each claim stops.
@@ -357,121 +346,10 @@ is in [docs/evidence.md](docs/evidence.md).
 
 ### Accepted browser runs
 
-The native browser path has both contract and browser evidence. An isolated
-Chrome 152 run discovered all nine tools through
-`document.modelContext.getTools()`, exercised bounded focus/context and
-latest-only conversation, and proved that two action offers plus human
-feedback remained click-gated. Its explicit boundaries stay
-`agentClientClaim: false` and `hostTokenClaim: false`: this is browser WebMCP
-mediation, not a connected ChatGPT-agent journey.
-
-That same smoke was then repeated against the **installed branded Google
-Chrome** (152.0.7977.77, started with `WebMCP,WebMCPTesting`) rather than a
-Chrome for Testing build, by pointing `COWORK_CHROME_PATH` at it. It passed
-whole: nine tools discovered and every claim in the report true. The wording of
-the challenge rule is "Google Chrome with WebMCP enabled", and that is now
-literally what was measured. Chrome for Testing is still required for the three
-extension smokes, because branded Chrome has ignored `--load-extension` since
-Chrome 137.
-
-A separate Chrome 152 run proves the same-origin model-host plumbing with one
-468-character deterministic turn and no browser credential. An earlier
-provider-backed repetition sent one 502-character turn to local Ollama
-`qwen3:4b`, whose exact offer stayed inert until the trusted click;
-`providerLocation` is `local` and `externalModelClaim` remains false.
-
-The current UI keeps every control reachable at true 200% browser zoom and
-at a 390×844 CSS viewport: all 36 interactive controls carry a named
-accessibility node and a visible Tab stop, and horizontal overflow is zero.
-That baseline fell from 41 to 34 as the panel's sections learned to fold and
-rose to 36 as talking and the chat window gained their controls; it counts the
-panel a visitor meets, with demo mode on and a model already on the bridge. The rendered-contrast smoke audits every visible text item across
-eleven states (the FormBuilder Studio field suggestion, now offered in the one
-Cowork panel, is one of them) with no unsupported or failing range and a
-4.5656:1 minimum, measured before the last panel fold and unchanged by it. Real
-microphone practice, a remote provider, screen-reader practice and a connected
-ChatGPT-agent invocation remain open.
-
-A separate Chrome for Testing 152 acceptance explicitly disabled WebMCP and
-loaded the built Browser Bridge extension. Before the trusted action
-shortcut, the page contained neither Cowork bridge nor extension execution
-world. Temporary `activeTab` access then injected the headless relay on demand;
-its extension-origin Side Panel
-surface communicated with the headless page relay without inserting a Cowork
-root into the page DOM. It proved default-off and toggle-on/off behavior, exact
-350/1,200-character semantic tiers, a real one-shot 400×400 PNG pointer crop,
-one visible value offer that stayed inert, and mutation plus verification only
-after a trusted browser click. The report sets `browserCompanionClaim: true`,
-`sidePanelSurfaceClaim: true`, `pageUiInjected: false`,
-`visualCaptureClaim: true`, `visualDeliveryOneShot: true`, `webMcpAbsent: true`
-and keeps model-client, external-model, host-token and full-page-delivery claims
-false.
-
-A second extension acceptance enables WebMCP on FormBuilder. It proves that
-the Side Panel discovers all nine native Cowork tools from the page execution
-world, reads the native focus packet, keeps `fallbackActive: false` and still
-injects no page UI. The no-extension surface smoke then detaches the embedded
-UI into Document Picture-in-Picture, hands the exact session plus bounded
-context to the local Companion, opens a separate Companion app window and
-routes its reply through one serialized Model Gateway. The Embed disables its
-own model input after that handoff. A hidden/visible tab cycle then proves that
-the Companion receives no page content and creates no model turn, while the
-returning page catches up from its last revision.
-
+Five Edge 154 browser smokes passed in the 2026-10-13 care run. Chrome was unavailable, so this run did not test it. The detailed, dated browser records and their limits are in the [evidence ledger](docs/evidence.md#accepted-browser-runs); they document observed runs, not a promise of current coverage.
 ### What each check proves
 
-`npm run demo:adapter` is a deterministic host-contract harness. It selects all three paths with explicit fixtures: native Cowork, host-supplied WebMCP and no-WebMCP legacy companion. The latter reads a semantic target and one bounded context tier through host callbacks. The output explicitly keeps browser-wide discovery, an extension transport and a connected model client false; those require a real browser host or extension and separate acceptance evidence.
-
-`npm run eval` reports `adapter-characters`, defined here as JavaScript UTF-16 code units rather than browser or model tokens. Its twelve cases verify the 350-unit focus, change and feedback budgets; the 160/161 selected-text boundary; silence and unchanged-state suppression; one-step expansion; latest-only event and conversation snapshots; the bounded bridge catalog summary; the 1,200-unit bridge read-result preview; and a complete conversation packet below its 1,200-character ceiling without inventing unavailable host telemetry.
-
-`npm run proof` is a deterministic ten-step juror dry-run. It exercises the real focus, one-shot related-context request, latest-only conversation inbox and bounded reply, offer, human-click authorization, verified change and feedback, scoped AFK lease, collaborative form design (a `form-add-field` offer applied to an empty canvas and independently verified), a full delegation-grant → utterance-authorized directive → awaiting-feedback → verdict loop (a `form-update-field` change authorized by a human-utterance grant instead of a click, then held for a real Good/Adjust/Different verdict), and FormBuilder export contracts in seconds. Its output explicitly sets `browserClaim: false` and `hostTokenClaim: false`; it is reproducible core evidence, not a substitute for the required live WebMCP browser demonstration.
-
-`npm run check:architecture` validates the published architecture artifact: it reports the supported connector paths, the provider-neutral surface claim, the accessible SVG and the rendered PNG dimensions, so the diagram cannot drift away from the connector paths the code actually offers.
-
-`npm run smoke:companion` builds the actual Manifest V3 extension and loads it into a fresh Chrome for Testing profile. The fixture explicitly disables WebMCP. The smoke proves that no Cowork page world exists before a trusted `_execute_action` shortcut grants temporary `activeTab` access and injects the relay. It then requires toggle-on/off behavior, a stable pointer target, exact 350/1,200-character semantic tiers, a real 400×400 PNG pointer crop that is consumable once only inside the isolated extension host, an inert extension-origin Side Panel offer and a trusted browser click followed by verified mutation. It also requires `pageUiInjected: false`. Branded Chrome and Edge ignore `--load-extension` since Chrome 137, so the three extension smokes need a Chrome for Testing build (for example `npx @puppeteer/browsers install chrome@152.0.7977.65 --path C:\_Local_DEV\tools\chrome-for-testing`); set `COWORK_COMPANION_BROWSER_PATH` or `COWORK_CHROME_PATH` when it is outside that optional local cache. If the selected build does not load extensions headlessly, set `COWORK_COMPANION_HEADFUL=1` and `COWORK_COMPANION_VISIBLE=1`; the bounded pixel proof needs the temporary test window to remain on-screen. The report does not claim a connected model, host tokens or delivery of the full page.
-
-`npm run smoke:companion-cockpit` renders the shipped Side Panel code at an
-exact 390×844 CSS viewport with a bounded runtime fixture. It captures and
-validates the four work modes one relayed page can reach - sparring either way
-round, the model working alone and the human working alone - requires
-zero horizontal overflow, named controls and the complete nine-control
-keyboard order, and executes the real focus and context instruments. Set
-`COWORK_COMPANION_EVIDENCE_DIR` to retain the four PNG frames and JSON report.
-The accepted Native/WebMCP/Bridge states all remain `executionMode: structured`
-and the smoke fails if they falsely display the Computer Use pointer.
-
-`npm run smoke:companion-native` runs the complementary Native-first branch.
-With WebMCP enabled on FormBuilder, the extension must discover nine Cowork
-tools in the page's main execution world, return a native focus packet, keep
-the legacy fallback inactive and keep all extension UI outside the page DOM.
-
-`npm run smoke:companion-webmcp` covers the route in between. On a fixture page
-with no Cowork tools of its own, the extension registers `cowork_read_focus`,
-`cowork_request_context`, `cowork_offer_action` and `cowork_read_presence`
-through WebMCP and answers them from its own bounded relay, so any WebMCP agent
-in the browser can read focus and propose there. The Side Panel reports this as
-the `bridge-webmcp` route and still carries no model seat of its own; the
-proposed value changes nothing until a trusted click in the panel.
-
-`npm run smoke:webmcp` starts the showcase and an isolated Chrome profile, enables the current Chrome WebMCP testing features, and discovers exactly the nine Cowork tools. It executes ten tool calls: focus, one-shot context, two inert visible offers, latest change, latest feedback, latest conversation turn, one bounded reply, `cowork_read_presence` and `cowork_execute_solo`. Chrome DevTools dispatches trusted clicks that authorize the exact visible field values, human feedback, the local helper offer, the WebMCP reply offer, and a real Delegated-lease "briefly away" click; the solo call afterward is verified directly through `document.modelContext.executeTool()` with no click at all, matching a genuine AFK model call. Neither offer tool nor reply tool authorizes or applies a value on its own. In the same browser runtime, a host-supplied two-tool calendar fixture proves the portable bridge: two read calls execute, an oversized result becomes a 1,200-character preview, and the booking mutation remains `offer-only` without reaching the host executor. The report distinguishes `browserHostClaim: true` from `foreignLiveSiteClaim: false`. It requires Chrome 150 or newer; set `COWORK_CHROME_PATH` when Chrome is installed outside the usual Windows, macOS or Linux locations. It never uses a personal browser profile or a non-local page.
-
-`npm run smoke:model-host` starts the real same-origin host route with a deterministic reply fixture and a fresh Chrome profile. It requires the browser to discover the bridge, deliver exactly one bounded turn without page HTML or authorization credentials, display `Grace Hopper` as an inert offer, and change the field only after a trusted click. Its output explicitly keeps external- and connected-model claims false; this proves the host plumbing, not a provider response.
-
-To repeat the optional provider-backed acceptance against an already available compatible endpoint, set `COWORK_ACCEPT_CONNECTED_MODEL=1` together with the model-host variables before the same smoke command. A passing provider run adds `preferredModelClaim: true` and `connectedModelClaim: true`; a loopback endpoint still keeps `externalModelClaim: false`. No model is downloaded by this command.
-
-`npm run smoke:surface` proves the no-install Embed → Document PiP → Embed →
-Desktop Companion journey in Chrome. The Companion accepts the exact revision,
-claims the only model seat, opens a separate app-window surface with audio
-controls, observes token-free page visibility, sends one turn through its
-shared Model Gateway and leaves the page as a synchronized application/UI
-replica that pulls intervening deltas on return.
-
-`npm run smoke:accessibility` opens another isolated Chrome profile at an exact 390×844 CSS viewport. It requires exactly 36 non-ignored interactive browser accessibility nodes (including the FormBuilder Studio Build/Fill/Export controls, the ARIA `tab` role and Chrome's `DisclosureTriangle` role for the panel's collapsible sections alongside `button`/`checkbox`/`combobox`/`link`/`textbox`; the Studio's Delegate and Directive controls are gone, and with them the last `spinbutton` on the page, while the folded Handoff section keeps its six controls out of the default view) with non-empty names and unique DOM identities, then drives the same number of real Tab events and requires every stop to remain visible with `:focus-visible`. It also clicks the embedded model through observing, paused and collaborating and the human through brief-away, long-away and present. Horizontal control/text clipping and more than one pixel of document overflow fail the gate. This is browser accessibility-tree and keyboard/layout evidence, not screen-reader practice.
-
-`npm run smoke:builder` opens the FormBuilder Studio Build/Fill/Export section in an isolated Chrome profile and proves it end to end with no agent involved: add a field from the palette, fill it in on the Fill tab, submit a valid `formularerstellen-response-v1` response, and confirm all three export controls are present. It then proves one addressable field (not just the canvas) can be pointed at and targeted (GAP-00) — the page's one Cowork panel, not a second surface inside the Studio, is where that target is read back — and that the Cowork integration is click-gated like everything else: a "Model suggests a field" offer stays inert in the panel's offer list until a real trusted click, after which exactly one verified receipt appears there. It then drives the full delegation flow through the panel's own handover buttons: stepping away under a canvas-scoped grant adds six fields with no per-field click (GAP-01/GAP-04), "I'm back" reports what changed and highlights exactly those fields and waits for a verdict (GAP-03/GAP-05), a real feedback click resolves it, and a recognized directive ("make it required") applies with no offer chip and no second click (GAP-02) — the smoke types it into the panel's conversation input, so what is proven is the `human-utterance` authorization origin, not speech recognition or a microphone before entering awaiting-feedback again. It also checks that `document.modelContext.getTools().length` (when WebMCP is enabled) is still 9.
-
-`npm run smoke:contrast` uses a separate temporary Chrome profile and audits the actual rendered foreground against Chrome-resolved background ranges. It requires exactly eleven collaboration states (ten Cowork demo states plus one FormBuilder Studio state, `builder-offer-visible`: a Studio field suggestion visible as an offer chip — which now means a chip in the Cowork panel, since the Studio no longer has an offer list of its own), at least 30 visible text items in every state, zero unresolved backgrounds and an unrounded 4.5:1 minimum for every audited range. The deterministic Listening state substitutes only the recognition boundary; it does not claim microphone capture or audible output.
-
+The deterministic core runs (`demo:adapter`, `eval` and `proof`) verify protocol contracts, not a live browser host. Browser and surface smokes use isolated profiles and fixtures; provider-backed acceptance is opt-in. The full command contracts are in [docs/testing.md](docs/testing.md#what-each-check-proves), and dated browser records are in the [evidence ledger](docs/evidence.md#accepted-browser-runs).
 ### Scope of the imported showcase
 
 Only the browser-based portion of the pre-existing FormBuilder belongs to the
@@ -496,4 +374,4 @@ already exists underneath it, and why it was left undone.
 
 ## License
 
-MIT. The repository-wide license also covers the FormBuilder showcase. Any pre-existing FormBuilder source imported later must retain its original MIT notice and be recorded in [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).
+MIT. The repository-wide license applies to new work here, including the showcase integration. The imported FormBuilder engine keeps its original MIT notice; its provenance is recorded in [apps/formbuilder-showcase/FORMBUILDER-NOTICE.md](apps/formbuilder-showcase/FORMBUILDER-NOTICE.md) and [PREEXISTING-AND-NEW.md](PREEXISTING-AND-NEW.md).

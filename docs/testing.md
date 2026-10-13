@@ -1,5 +1,8 @@
 # Testing strategy
 
+[English](testing.md) · [Deutsch](testing_de.md) · [Project README](../README.md)
+
+
 The test design is risk-based. The most serious failures are excessive context, simulated human consent, lease escape and a connector claiming native guarantees without a stable target.
 
 ## Fast blocking gate
@@ -47,40 +50,82 @@ This gate contains:
 
 Tests use the real protocol and connector. Only the browser-owned `ModelContext` boundary is represented by a small contract fake, because Node does not implement WebMCP.
 
-`npm run demo:adapter` is the reference host harness for the adaptive runtime. It executes native, generic WebMCP and legacy-companion fixtures, including the explicit visual-region callback and the visible-offer/confirm/action callback chain. It is deterministic library evidence, not proof of browser-wide discovery, extension transport or a connected model client.
+## Command-by-command reference
 
-`npm run smoke:companion` is the real no-WebMCP extension acceptance. It builds `dist-browser-companion`, starts Chrome for Testing 152 in a fresh profile, loads the unpacked Manifest V3 artifact and explicitly disables WebMCP on the fixture page. Branded Chrome ignores `--load-extension` since Chrome 137 and makes the extension smokes fail with `Extension … context not found`, so the runtime prefers the newest cached Chrome for Testing and otherwise needs `COWORK_COMPANION_BROWSER_PATH` or `COWORK_CHROME_PATH` pointed at one. It first requires that no Cowork MAIN bridge or extension isolated world exists. A real `_execute_action` browser accelerator then grants temporary `activeTab` access and performs on-demand injection. The enabled relay must expose a stable pointer target, return exactly bounded 350- and 1,200-character semantic tiers, capture and immediately crop a real 400×400 PNG, deliver that crop once only inside the isolated extension host, keep a Side Panel exact-value offer inert, accept a trusted browser click, verify the new field value and toggle off again. The page must contain no injected Cowork UI root. The report sets `browserCompanionClaim`, `userInitiatedActiveTabClaim`, `sidePanelSurfaceClaim`, `visualCaptureClaim` and `visualDeliveryOneShot` true and `pageUiInjected` false while keeping model-client, external-model, host-token and full-page-delivery claims false.
+These contracts explain what each named command establishes and where its evidence stops. Dated browser outcomes are collected in the [evidence ledger](evidence.md#accepted-browser-runs).
 
-`npm run smoke:companion-native` is the complementary Native-first acceptance. It enables WebMCP on FormBuilder and loads the same extension. Before the trusted accelerator there may be no Cowork extension world; afterward the on-demand main-world bridge must discover nine native Cowork tools, while the isolated extension runtime reports `mode: native-cowork`, returns the page's native focus packet, keeps `fallbackActive: false` and inserts no visual root into the page.
+### What each check proves
 
-`npm run smoke:companion-webmcp` covers the third connector route. On a
-fixture page that has no Cowork tools of its own, the extension registers
-`cowork_read_focus`, `cowork_request_context`, `cowork_offer_action` and
-`cowork_read_presence` through WebMCP, so any WebMCP agent in the browser can
-read focus and propose there. The registered tools answer from the bounded
-relay and never route back through the page's own WebMCP, and a proposed value
-still changes nothing until a trusted click in the Side Panel. The Side Panel
-reports this state as the `bridge-webmcp` route with no model seat of its own.
+`npm run demo:adapter` is a deterministic host-contract harness. It selects all three paths with explicit fixtures: native Cowork, host-supplied WebMCP and no-WebMCP legacy companion. The latter reads a semantic target and one bounded context tier through host callbacks. The output explicitly keeps browser-wide discovery, an extension transport and a connected model client false; those require a real browser host or extension and separate acceptance evidence.
 
-`npm run smoke:companion-cockpit` isolates the production Side Panel visual
-surface from the fallback pixel-capture pipeline. Chrome renders the shipped
-HTML/CSS/JS at 390×844 and drives the real controls through the four work
-modes the status answers can produce on one relayed page: sparring with the
-model executing, the model working alone, sparring with the human executing,
-and the human working alone. The validator
-requires zero horizontal overflow, no clipped or unnamed controls, the exact
-nine-control keyboard sequence and real focus/context instrument responses. It
-also requires `executionMode: structured` with the Computer Use pointer hidden
-in every current state, preventing the bounded bridge from impersonating the
-more expensive visual-control executor.
+`npm run eval` reports `adapter-characters`, defined here as JavaScript UTF-16 code units rather than browser or model tokens. Its twelve cases verify the 350-unit focus, change and feedback budgets; the 160/161 selected-text boundary; silence and unchanged-state suppression; one-step expansion; latest-only event and conversation snapshots; the bounded bridge catalog summary; the 1,200-unit bridge read-result preview; and a complete conversation packet below its 1,200-character ceiling without inventing unavailable host telemetry.
 
-`npm run smoke:surface` exercises the Cowork-owned continuity path without an extension. Chrome moves FormBuilder's selected reference UI from Embed to Document Picture-in-Picture and back, grants the user-mediated loopback permission, sends one exact snapshot plus compact context to the Companion, and applies the two contiguous authority deltas for Desktop surface and model seat. After handoff it first requires an immediate token-free `page-visible` report, then emits a real hidden visibility change, requires the Companion authority to receive only the bounded SurfaceEvent without a model request, commits deterministic background work, returns the page to visible and requires the page replica to pull and apply every intervening delta. It then opens a separate 430×760 Companion window with zero horizontal overflow, verifies the shared reference identity, visible page-availability indicator, actual host model identifier and three audio controls, and drives the real actor buttons through collaborating, observing, paused and short-away presentations. Short-away stays dormant without a lease, while a later bounded lease produces the directional Agent-Solo relay. The smoke selects a cockpit background and requires it plus the same shared session to survive a Companion reload, captures the visual states, submits one deterministic turn through the serialized Model Gateway, observes human plus assistant context, and confirms that the embedded model input is disabled after handoff.
+`npm run proof` is a deterministic ten-step juror dry-run. It exercises the real focus, one-shot related-context request, latest-only conversation inbox and bounded reply, offer, human-click authorization, verified change and feedback, scoped AFK lease, collaborative form design (a `form-add-field` offer applied to an empty canvas and independently verified), a full delegation-grant → utterance-authorized directive → awaiting-feedback → verdict loop (a `form-update-field` change authorized by a human-utterance grant instead of a click, then held for a real Good/Adjust/Different verdict), and FormBuilder export contracts in seconds. Its output explicitly sets `browserClaim: false` and `hostTokenClaim: false`; it is reproducible core evidence, not a substitute for the required live WebMCP browser demonstration.
 
-The eval output deliberately uses `adapter-characters`, defined as JavaScript UTF-16 code units. It does not convert those units to tokens or claim visibility into a browser/agent host. A passing run covers twelve named cases, including the native target-bound 1,200-unit context request, the 1,200-unit bridge read-result preview, latest-only 350-unit change and feedback snapshots, and a complete latest-only conversation turn below 1,200 units. It reports both included and avoided source units where meaningful and records the bounded visual request without claiming an image was captured.
+`npm run check:architecture` validates the published architecture artifact: it reports the supported connector paths, the provider-neutral surface claim, the accessible SVG and the rendered PNG dimensions, so the diagram cannot drift away from the connector paths the code actually offers.
+
+`npm run smoke:companion` builds the actual Manifest V3 extension and loads it into a fresh profile for the selected browser. Historical accepted extension runs used Chrome for Testing; this care run used Edge 154. Chrome was unavailable in this care run, so it was not tested. The fixture explicitly disables WebMCP. The smoke proves that no Cowork page world exists before a trusted `_execute_action` shortcut grants temporary `activeTab` access and injects the relay. It then requires toggle-on/off behavior, a stable pointer target, exact 350/1,200-character semantic tiers, a real 400×400 PNG pointer crop that is consumable once only inside the isolated extension host, an inert extension-origin Side Panel offer and a trusted browser click followed by verified mutation. It also requires `pageUiInjected: false`. The three historical Chrome-based extension-smoke runs used Chrome for Testing. In one recorded run, the branded Chrome 152.0.7977.77 build under test ignored `--load-extension`; support for the flag depends on the browser build. To install Chrome for Testing into a project-local cache, for example, run `npx @puppeteer/browsers install chrome@152.0.7977.65 --path ./browser-cache`; set `COWORK_COMPANION_BROWSER_PATH` or `COWORK_CHROME_PATH` to select a browser outside that cache. If the selected build does not load extensions headlessly, set `COWORK_COMPANION_HEADFUL=1` and `COWORK_COMPANION_VISIBLE=1`; the bounded pixel proof needs the temporary test window to remain on-screen. The report does not claim a connected model, host tokens or delivery of the full page.
+
+`npm run smoke:companion-cockpit` renders the shipped Side Panel code at an
+exact 390×844 CSS viewport with a bounded runtime fixture. It captures and
+validates the four work modes one relayed page can reach: sparring with the
+model advising while the human executes, sparring with the human advising while
+the model executes, the model working alone, and the human working alone. The
+validator requires zero horizontal overflow, named controls and the complete
+nine-control keyboard order, and executes the real focus and context instruments. Set
+`COWORK_COMPANION_EVIDENCE_DIR` to retain the four PNG frames and JSON report.
+The accepted Native/WebMCP/Bridge states all remain `executionMode: structured`
+and the smoke fails if they falsely display the Computer Use pointer.
+
+`npm run smoke:companion-native` runs the complementary Native-first branch.
+With WebMCP enabled on FormBuilder, the extension must discover nine Cowork
+tools in the page's main execution world, return a native focus packet, keep
+the legacy fallback inactive and keep all extension UI outside the page DOM.
+
+`npm run smoke:companion-webmcp` covers the route in between. On a fixture page
+with no Cowork tools of its own, the extension registers `cowork_read_focus`,
+`cowork_request_context`, `cowork_offer_action` and `cowork_read_presence`
+through WebMCP and answers them from its own bounded relay, so any WebMCP agent
+in the browser can read focus and propose there. The Side Panel reports this as
+the `bridge-webmcp` route and still carries no model seat of its own; the
+proposed value changes nothing until a trusted click in the panel.
+
+`npm run smoke:webmcp` starts the showcase and an isolated Chrome profile, enables the current Chrome WebMCP testing features, and discovers exactly the nine Cowork tools. It executes ten tool calls: focus, one-shot context, two inert visible offers, latest change, latest feedback, latest conversation turn, one bounded reply, `cowork_read_presence` and `cowork_execute_solo`. Chrome DevTools dispatches trusted clicks that authorize the exact visible field values, human feedback, the local helper offer, the WebMCP reply offer, and a real Delegated-lease "briefly away" click; the solo call afterward is verified directly through `document.modelContext.executeTool()` with no click at all, matching a genuine AFK model call. Neither offer tool nor reply tool authorizes or applies a value on its own. In the same browser runtime, a host-supplied two-tool calendar fixture proves the portable bridge: two read calls execute, an oversized result becomes a 1,200-character preview, and the booking mutation remains `offer-only` without reaching the host executor. The report distinguishes `browserHostClaim: true` from `foreignLiveSiteClaim: false`. It requires Chrome 150 or newer; set `COWORK_CHROME_PATH` when Chrome is installed outside the usual Windows, macOS or Linux locations. It never uses a personal browser profile or a non-local page.
+
+`npm run smoke:model-host` starts the real same-origin host route with a deterministic reply fixture and a fresh Chrome profile. It requires the browser to discover the bridge, deliver exactly one bounded turn without page HTML or authorization credentials, display `Grace Hopper` as an inert offer, and change the field only after a trusted click. Its output explicitly keeps external- and connected-model claims false; this proves the host plumbing, not a provider response.
+
+To repeat the optional provider-backed acceptance against an already available compatible endpoint, set `COWORK_ACCEPT_CONNECTED_MODEL=1` together with the model-host variables before the same smoke command. A passing provider run adds `preferredModelClaim: true` and `connectedModelClaim: true`; a loopback endpoint still keeps `externalModelClaim: false`. No model is downloaded by this command.
+
+`npm run smoke:surface` proves the no-install Embed → Document PiP → Embed → Desktop Companion journey in
+  Chrome. Its complete continuity contract is listed under [Surface continuity acceptance
+  details](#surface-continuity-acceptance-details).
+
+### Surface continuity acceptance details
+
+The smoke exercises the Cowork-owned continuity path without an extension. Chrome moves FormBuilder's selected
+  reference UI from Embed to Document Picture-in-Picture and back, grants the user-mediated loopback permission,
+  sends one exact snapshot plus compact context to the Companion, and applies the two contiguous authority
+  deltas for Desktop surface and model seat. After handoff it first requires an immediate token-free
+  `page-visible` report, then emits a real hidden visibility change, requires the Companion authority to receive
+  only the bounded `SurfaceEvent` without a model request, commits deterministic background work, returns the
+  page to visible and requires the page replica to pull and apply every intervening delta. It then opens a
+  separate 430×760 Companion window with zero horizontal overflow, verifies the shared reference identity,
+  visible page-availability indicator, actual host model identifier and three audio controls, and drives the
+  real actor buttons through collaborating, observing, paused and short-away presentations. Short-away stays
+  dormant without a lease, while a later bounded lease produces the directional Agent-Solo relay. The smoke
+  selects a cockpit background and requires it plus the same shared session to survive a Companion reload,
+  captures the visual states, submits one deterministic turn through the serialized Model Gateway, observes
+  human plus assistant context, and confirms that the embedded model input is disabled after handoff.
+
+`npm run smoke:accessibility` opens another isolated Chrome profile at an exact 390×844 CSS viewport. It requires exactly 36 non-ignored interactive browser accessibility nodes (including the FormBuilder Studio Build/Fill/Export controls, the ARIA `tab` role and Chrome's `DisclosureTriangle` role for the panel's collapsible sections alongside `button`/`checkbox`/`combobox`/`link`/`textbox`; the Studio's Delegate and Directive controls are gone, and with them the last `spinbutton` on the page, while the folded Handoff section keeps its six controls out of the default view) with non-empty names and unique DOM identities, then drives the same number of real Tab events and requires every stop to remain visible with `:focus-visible`. It also clicks the embedded model through observing, paused and collaborating and the human through brief-away, long-away and present. Horizontal control/text clipping and more than one pixel of document overflow fail the gate. This is browser accessibility-tree and keyboard/layout evidence, not screen-reader practice.
+
+`npm run smoke:builder` opens the FormBuilder Studio Build/Fill/Export section in an isolated Chrome profile and proves it end to end with no agent involved: add a field from the palette, fill it in on the Fill tab, submit a valid `formularerstellen-response-v1` response, and confirm all three export controls are present. It then proves one addressable field (not just the canvas) can be pointed at and targeted (GAP-00) — the page's one Cowork panel, not a second surface inside the Studio, is where that target is read back — and that the Cowork integration is click-gated like everything else: a "Model suggests a field" offer stays inert in the panel's offer list until a real trusted click, after which exactly one verified receipt appears there. It then drives the full delegation flow through the panel's own handover buttons: stepping away under a canvas-scoped grant adds six fields with no per-field click (GAP-01/GAP-04), "I'm back" reports what changed and highlights exactly those fields and waits for a verdict (GAP-03/GAP-05), a real feedback click resolves it, and a recognized directive ("make it required") applies with no offer chip and no second click (GAP-02) — the smoke types it into the panel's conversation input, so what is proven is the `human-utterance` authorization origin, not speech recognition or a microphone before entering awaiting-feedback again. It also checks that `document.modelContext.getTools().length` (when WebMCP is enabled) is still 9.
+
+`npm run smoke:contrast` uses a separate temporary Chrome profile and audits the actual rendered foreground against Chrome-resolved background ranges. It requires exactly eleven collaboration states (ten Cowork demo states plus one FormBuilder Studio state, `builder-offer-visible`: a Studio field suggestion visible as an offer chip — which now means a chip in the Cowork panel, since the Studio no longer has an offer list of its own), at least 30 visible text items in every state, zero unresolved backgrounds and an unrounded 4.5:1 minimum for every audited range. The deterministic Listening state substitutes only the recognition boundary; it does not claim microphone capture or audible output.
 
 ## Reproducible juror dry-run
 
-Run `npm run proof` for a compact integration journey through the actual protocol and FormBuilder packages. The ten steps cover native field focus, a reasoned one-shot related-context request, a latest-only conversation turn with an exact-id reply, an offer that cannot authorize itself, a matching human click, verified causal change plus feedback, a scoped AFK lease, a collaborative `form-add-field` design step, a delegation grant whose utterance-authorized directive changes a field and then waits for a real verdict, and the real `formularerstellen-response-v1` export. The command exits non-zero if any step fails and reports both `browserClaim: false` and `hostTokenClaim: false` so this local proof cannot be mistaken for browser acceptance.
+`npm run proof` is the deterministic ten-step integration journey described in [What each check proves](#what-each-check-proves). It exits non-zero on failure and reports `browserClaim: false` and `hostTokenClaim: false`.
 
 ## Connected-browser acceptance snapshot
 
@@ -92,7 +137,7 @@ The runner waits for a complete document, page-owned
 `modelContext.getTools` and the rendered `Native WebMCP` state before invoking
 a tool, so browser registration startup is not mistaken for product absence.
 
-`npm run smoke:webmcp` used Chrome 152.0.7977.64 with the current WebMCP testing features and a fresh temporary profile. The secure local origin exposed `registerTool`, `getTools` and `executeTool`; the showcase reported `Native WebMCP`; Chrome discovered exactly nine Cowork tools and completed ten tool calls, the eight read/offer/reply calls plus `cowork_read_presence` and `cowork_execute_solo`. Focus contained 9 adapter characters and the target-bound one-shot expansion contained 110. Two native offer calls exposed `Ada Lovelace` and then `Lukas Geiger` while leaving the field unchanged. Two trusted browser clicks applied and verified those exact values; two further trusted clicks recorded `Good`. Native change and feedback reads each returned only the second of two events with `omittedCount: 1`, while retaining the offer, trusted-click and observed-change references. A second bounded typed turn was returned through `cowork_read_turn`; `cowork_reply_turn` matched its exact id and exposed one inert visible offer, which changed the field only after another trusted click. Chrome 152 accepted JSON-string arguments through its current in-page execution surface after rejecting the newer object form, and the smoke records that compatibility fact. The report sets `browserClaim: true`, `conversationClaim: true`, `webMcpReplyClaim: true`, `agentClientClaim: false` and `hostTokenClaim: false`. The same smoke was repeated on the installed branded Google Chrome 152.0.7977.77 by setting `COWORK_CHROME_PATH` to `C:\Program Files\Google\Chrome\Application\chrome.exe`, with the same two features enabled: nine tools discovered and every claim in the report true. Only the extension smokes still need a Chrome for Testing build, and only because branded Chrome ignores `--load-extension`.
+`npm run smoke:webmcp` used Chrome 152.0.7977.64 with the current WebMCP testing features and a fresh temporary profile. The secure local origin exposed `registerTool`, `getTools` and `executeTool`; the showcase reported `Native WebMCP`; Chrome discovered exactly nine Cowork tools and completed ten tool calls, the eight read/offer/reply calls plus `cowork_read_presence` and `cowork_execute_solo`. Focus contained 9 adapter characters and the target-bound one-shot expansion contained 110. Two native offer calls exposed `Ada Lovelace` and then `Lukas Geiger` while leaving the field unchanged. Two trusted browser clicks applied and verified those exact values; two further trusted clicks recorded `Good`. Native change and feedback reads each returned only the second of two events with `omittedCount: 1`, while retaining the offer, trusted-click and observed-change references. A second bounded typed turn was returned through `cowork_read_turn`; `cowork_reply_turn` matched its exact id and exposed one inert visible offer, which changed the field only after another trusted click. Chrome 152 accepted JSON-string arguments through its current in-page execution surface after rejecting the newer object form, and the smoke records that compatibility fact. The report sets `browserClaim: true`, `conversationClaim: true`, `webMcpReplyClaim: true`, `agentClientClaim: false` and `hostTokenClaim: false`. The same smoke was repeated on the installed branded Google Chrome 152.0.7977.77 by setting `COWORK_CHROME_PATH` to `C:\Program Files\Google\Chrome\Application\chrome.exe`, with the same two features enabled; it discovered nine tools. Its report sets `browserClaim: true`, `conversationClaim: true`, `webMcpReplyClaim: true`, `agentClientClaim: false` and `hostTokenClaim: false`. For the earlier extension run, the recorded Chrome 152.0.7977.77 build ignored `--load-extension`; this is a build-specific result, not a blanket claim about branded Chrome.
 
 The same isolated Chrome runtime imported the real bridge module and supplied a calendar-shaped host catalog with one read and one mutation. The bridge emitted two summaries within 350 adapter characters, executed the read tool twice, normalized a small result and reduced a 5,016-character host result to a 1,200-character labeled preview. The mutation stayed `offer-only`, returned `HUMAN_CONFIRMATION_REQUIRED` and never reached the host executor. This sets `browserHostClaim: true` and `foreignLiveSiteClaim: false`: it is browser-host acceptance of the portable adapter, not discovery or invocation on an unrelated live website.
 
