@@ -143,22 +143,22 @@ history replay or model turn?
 sequenceDiagram
   actor Human
   participant Page as FormBuilder replica
-  participant Link as Loopback Companion Link
+  participant CompanionLink as Loopback Companion Link
   participant Authority as Companion Session Authority
   participant Surface as Companion UI/tray
   participant Gateway as Model Gateway
 
   Human->>Page: changes tab
-  Page->>Link: SurfaceEvent(page-hidden, last revision)
-  Link->>Authority: validate origin, session, surface and cursor
+  Page->>CompanionLink: SurfaceEvent(page-hidden, last revision)
+  CompanionLink->>Authority: validate origin, session, surface and cursor
   Authority-->>Surface: revisioned surface-visibility delta
-  Note over Link,Gateway: no page content and no model call
+  Note over CompanionLink,Gateway: no page content and no model call
   Authority->>Authority: optional authorized background work
   Human->>Page: returns to tab
-  Page->>Link: SurfaceEvent(page-visible, last revision)
-  Link->>Authority: validate and append current visibility
-  Page->>Link: pullDeltas(after last revision)
-  Link-->>Page: ordered hidden, background-work and visible deltas
+  Page->>CompanionLink: SurfaceEvent(page-visible, last revision)
+  CompanionLink->>Authority: validate and append current visibility
+  Page->>CompanionLink: pullDeltas(after last revision)
+  CompanionLink-->>Page: ordered hidden, background-work and visible deltas
   Page->>Page: apply complete batch and render current revision
 ```
 
@@ -223,7 +223,7 @@ sequenceDiagram
     else no model transport
       Conversation->>Conversation: deterministic local helper reply
     end
-    Conversation-->>Panel: bounded reply; no execution right
+    Conversation-->>Panel: bounded reply, no execution right
     Panel-->>Human: message + exact visible offer
     Human->>Panel: trusted click on offer
     Panel->>Form: apply exact value and verify
@@ -375,7 +375,7 @@ sequenceDiagram
   participant Worker as Extension service worker
   participant ExtensionHost as Optional isolated host consumer
 
-  Note over Page,Extension: document.modelContext is absent; extension starts off
+  Note over Page,Extension: document.modelContext is absent, extension starts off
   Human->>Extension: toolbar toggle on
   Human->>Page: point at a stable text control
   PageClient->>Extension: readFocus(pointer)
